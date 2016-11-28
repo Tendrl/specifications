@@ -14,7 +14,7 @@ Problem description
 ===================
 
 Current Tendrl way of consuming and processing is not robust enough to adopt
-with the Tendrl object namespacing, We also need to accomodate lates
+with the Tendrl object namespacing, We also need to accomodate latest
 changes to the gluster get-state output.
 
 Use Cases
@@ -28,6 +28,8 @@ Proposed change
 * General re-factoring of code handling gluster get-state
 
 * Accomodate latest changes to output of gluster get-state w.r.t volume options
+
+* More details: get-state output changes http://review.gluster.org/#/c/15889
 
 Alternatives
 ------------
