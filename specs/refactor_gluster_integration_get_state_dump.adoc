@@ -7,7 +7,7 @@ to re-factor the way Tendrl consumes and processes the get-state output.
 Notes:
 
 * In light of new changes to gluster get-state
-  http://review.gluster.org/#/c/15889
+  http://review.gluster.org/#/c/15975
 
 
 == Problem description
@@ -17,6 +17,9 @@ considers only the volumes and bricks and pushes the details to central store.
 It needs to be modified to update the newly available volume options as well to
 central store.
 
+Also not all the volume attributes are added to Volume object in central store.
+The same should be taken care and added.
+
 == Use Cases
 
 This addresses the use case of obtaining refreshed gluster cluster state and
@@ -25,7 +28,7 @@ updating the same to central store.
 == Proposed change
 
 * Re-factor the code to handle the current output structure of get-state command
-related to volume options
+related to volume options.
 
 The current output from gluster get-state command is proposed to be of the
 format
@@ -143,9 +146,16 @@ Base port: 49152
 Last allocated port: 49153
 ```
 
-* General refactoring of code handling the gluster get-state output
+* General refactoring of code handling the gluster get-state output and add
+all missing volume attributes to the Volume object
 
-* More details: get-state output changes http://review.gluster.org/#/c/15889
+* Modify the tendrl definitions specifications for gluster and add all the
+missing attributes to Volume object
+
+* Add an attribute namely "options" to Volume object which is of type json and
+contains key:value pairs as option name and option values
+
+* More details: get-state output changes http://review.gluster.org/#/c/15975
 
 === Alternatives
 
@@ -154,13 +164,15 @@ None
 === Data model impact
 
 * The persister model for Volume
+** Add all the missing attributes if volume to the model
+** Add attribute "options" of type json which contains key:value pairs
 
 === Impacted modules
 
 ==== Tendrl API impact
 
 * Tendrl object definitions for volume will need to be updated for accommodating
-the newly added volume options
+the newly added volume attributes
 
 ==== Tendrl/common impact
 
@@ -176,7 +188,7 @@ None
 
 ==== Notifications/Monitoring impact
 
-* Monitoring might want to take a note of the new volume options
+* Monitoring might want to take a note of the new volume attributes
 
 ==== Security impact
 
@@ -215,9 +227,11 @@ in central store (etcd)
 * Update the get-state output parsing logic and update volume options details to
 central store
 
+* Add all the missing volume attributes to the Volume object in central store
+
 == Dependencies
 
-* Required Gluster 3.9 + patch http://review.gluster.org/#/c/15889
+* Required Gluster 3.9 + patch http://review.gluster.org/#/c/15975
 
 == Testing
 
@@ -225,6 +239,9 @@ central store
 
 * Verify the volume details in central store if it contains the volume options
 correctly under the URI ```/clusters/<id>/Volumes/<id>/Options```
+
+* Check if all the attributes available in get-state output are properly getting
+listed in central store under Volume object
 
 == Documentation impact
 
