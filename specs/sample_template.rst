@@ -81,49 +81,63 @@ Questions which need to be addressed by this section include:
   need to take into account existing objects, or modify other existing data
   describe how that will work.
 
+Impacted Modules
+----------------
+
 REST API impact
----------------
+  Each API method which is either added or changed should have the following:
 
-Each API method which is either added or changed should have the following
+  * Specification for the method
 
-* Specification for the method
+    * A description of what the method does suitable for use in
+      user documentation
 
-  * A description of what the method does suitable for use in
-    user documentation
+    * Method type (POST/PUT/GET/DELETE)
 
-  * Method type (POST/PUT/GET/DELETE)
+    * Normal http response code(s)
 
-  * Normal http response code(s)
+    * Expected error http response code(s)
 
-  * Expected error http response code(s)
+      * A description for each possible error code should be included
+        describing semantic errors which can cause it such as
+        inconsistent parameters supplied to the method, or when a
+        volume is not in an appropriate state for the request to
+        succeed.
 
-    * A description for each possible error code should be included
-      describing semantic errors which can cause it such as
-      inconsistent parameters supplied to the method, or when a
-      volume is not in an appropriate state for the request to
-      succeed.
+    * URL for the resource
 
-  * URL for the resource
+    * Parameters which can be passed via the url
 
-  * Parameters which can be passed via the url
+    * Tendrl definition for the body data if allowed
 
-  * Tendrl definition for the body data if allowed
+    * Tendrl definition for the response data if any
 
-  * Tendrl definition for the response data if any
+  * Example use case including typical API samples for both data supplied
+    by the caller and the response
 
-* Example use case including typical API samples for both data supplied
-  by the caller and the response
+  * Discuss any policy changes, and discuss what things a deployer needs to
+    think about when defining their policy.
 
-* Discuss any policy changes, and discuss what things a deployer needs to
-  think about when defining their policy.
+  Example Tendrl definitions can be found in the Tendrl node-agent tree
+  https://github.com/Tendrl/node_agent/blob/master/etc/tendrl_definitions_node_agent.yaml
 
-Example Tendrl definitions can be found in the Tendrl node-agent tree
-https://github.com/Tendrl/node_agent/blob/master/etc/tendrl_definitions_node_agent.yaml
+  Note that the definitions should be defined as restrictively as
+  possible. Object attributes which are required should be marked as such.
 
-Note that the definitions should be defined as restrictively as
-possible. Object attributes which are required should be marked as such.
+  Reuse of existing predefined objects/atoms is highly encouraged.
 
-Reuse of existing predefined objects/atoms is highly encouraged.
+Notifications/Monitoring impact
+  Please specify any changes to notifications. Be that an extra notification,
+  changes to an existing notification, or removing a notification.
+
+Common module impact
+  Please specify any changes to common module.
+
+Node agent impact
+  Please specify any changes to node agent.
+
+Sds integration impact
+  Please specify any changes to sds integrations such as ceph, gluster etc.
 
 Security impact
 ---------------
@@ -153,12 +167,6 @@ a reference (https://wiki.openstack.org/wiki/Security/Guidelines).  These
 guidelines are a work in progress and are designed to help you identify
 security best practices.  For further information, feel free to reach out
 to the OpenStack Security Group at openstack-security@lists.openstack.org.
-
-Notifications/Monitoring impact
--------------------------------
-
-Please specify any changes to notifications. Be that an extra notification,
-changes to an existing notification, or removing a notification.
 
 Other end user impact
 ---------------------
