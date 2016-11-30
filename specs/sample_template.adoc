@@ -7,8 +7,6 @@ Tendrl community/developers can understand.
 
 Some notes about using this template:
 
-* Your spec should be in ReSTructured text, like this template.
-
 * Please wrap text at 79 columns.
 
 * Please do not delete any of the sections in this template.  If you have
