@@ -1,0 +1,235 @@
+= Refactor Gluster Integration's state dump module
+
+
+The gluster get-state output is consumed by tendrl-gluster-integration. We need
+to re-factor the way Tendrl consumes and processes the get-state output.
+
+Notes:
+
+* In light of new changes to gluster get-state
+  http://review.gluster.org/#/c/15889
+
+
+== Problem description
+
+Current Tendrl way of consuming and processing the gluster get-state output
+considers only the volumes and bricks and pushes the details to central store.
+It needs to be modified to update the newly available volume options as well to
+central store.
+
+== Use Cases
+
+This addresses the use case of obtaining refreshed gluster cluster state and
+updating the same to central store.
+
+== Proposed change
+
+* Re-factor the code to handle the current output structure of get-state command
+related to volume options
+
+The current output from gluster get-state command is proposed to be of the
+format
+
+```
+[Global]
+MYUUID: 3780fd01-8047-402c-81df-e361a1935bb8
+op-version: 30900
+
+[Global options]
+
+[Peers]
+Peer1.primary_hostname: <fqdn1>
+Peer1.uuid: 3c94c637-cb3b-4580-b718-a7fc5abef4ef
+Peer1.state: Peer in Cluster
+Peer1.connected: Connected
+Peer1.othernames:
+Peer2.primary_hostname: <fqdn2>
+Peer2.uuid: 3f1459e9-9f68-4c6c-8a30-53c09188cd5f
+Peer2.state: Peer in Cluster
+Peer2.connected: Connected
+Peer2.othernames:
+
+[Volumes]
+Volume1.name: vol1
+Volume1.id: 5e24f6ed-239e-4961-ac47-1e9ed44aa7b1
+Volume1.type: Distribute
+Volume1.transport_type: tcp
+Volume1.status: Started
+Volume1.brickcount: 3
+Volume1.Brick1.path: <fqdn1>:/root/bricks/vol1_b1
+Volume1.Brick1.hostname: <fqdn1>
+Volume1.Brick1.port: 49152
+Volume1.Brick1.rdma_port: 0
+Volume1.Brick1.status: Started
+Volume1.Brick1.signedin: True
+Volume1.Brick2.path: <fqdn2>:/root/bricks/vol1_b2
+Volume1.Brick2.hostname: <fqdn2>
+Volume1.snap_count: 0
+Volume1.stripe_count: 1
+Volume1.replica_count: 1
+Volume1.subvol_count: 3
+Volume1.arbiter_count: 0
+Volume1.disperse_count: 0
+Volume1.redundancy_count: 0
+Volume1.quorum_status: not_applicable
+Volume1.snapd_svc.online_status: Offline
+Volume1.snapd_svc.inited: True
+Volume1.rebalance.id: 00000000-0000-0000-0000-000000000000
+Volume1.rebalance.status: not_started
+Volume1.rebalance.failures: 0
+Volume1.rebalance.skipped: 0
+Volume1.rebalance.lookedup: 0
+Volume1.rebalance.files: 0
+Volume1.rebalance.data: 0Bytes
+Volume1.options.transport.address-family: inet
+Volume1.options.performance.readdir-ahead: on
+Volume1.options.nfs.disable: on
+
+Volume2.name: vol2
+Volume2.id: 778b04f7-24da-4d68-9418-a16f03361d7e
+Volume2.type: Distribute
+Volume2.transport_type: tcp
+Volume2.status: Started
+Volume2.brickcount: 3
+Volume2.Brick1.path: <fqdn1>:/root/bricks/vol2_b1
+Volume2.Brick1.hostname: <fqdn1>
+Volume2.Brick1.port: 49153
+Volume2.Brick1.rdma_port: 0
+Volume2.Brick1.status: Started
+Volume2.Brick1.signedin: True
+Volume2.Brick2.path: <fqdn2>:/root/bricks/vol2_b2
+Volume2.Brick2.hostname: <fqdn2>
+Volume2.snap_count: 0
+Volume2.stripe_count: 1
+Volume2.replica_count: 1
+Volume2.subvol_count: 3
+Volume2.arbiter_count: 0
+Volume2.disperse_count: 0
+Volume2.redundancy_count: 0
+Volume2.quorum_status: not_applicable
+Volume2.snapd_svc.online_status: Offline
+Volume2.snapd_svc.inited: True
+Volume2.rebalance.id: 00000000-0000-0000-0000-000000000000
+Volume2.rebalance.status: not_started
+Volume2.rebalance.failures: 0
+Volume2.rebalance.skipped: 0
+Volume2.rebalance.lookedup: 0
+Volume2.rebalance.files: 0
+Volume2.rebalance.data: 0Bytes
+Volume2.options.transport.address-family: inet
+Volume2.options.performance.readdir-ahead: on
+Volume2.options.nfs.disable: on
+
+
+[Services]
+svc1.name: glustershd
+svc1.online_status: Offline
+
+svc2.name: nfs
+svc2.online_status: Offline
+
+svc3.name: bitd
+svc3.online_status: Offline
+
+svc4.name: scrub
+svc4.online_status: Offline
+
+svc5.name: quotad
+svc5.online_status: Offline
+
+
+[Misc]
+Base port: 49152
+Last allocated port: 49153
+```
+
+* General refactoring of code handling the gluster get-state output
+
+* More details: get-state output changes http://review.gluster.org/#/c/15889
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+* The persister model for Volume
+
+=== Impacted modules
+
+==== Tendrl API impact
+
+* Tendrl object definitions for volume will need to be updated for accommodating
+the newly added volume options
+
+==== Tendrl/common impact
+
+None
+
+==== Tendrl/node_agent impact
+
+None
+
+==== SDS integration impact
+
+None
+
+==== Notifications/Monitoring impact
+
+* Monitoring might want to take a note of the new volume options
+
+==== Security impact
+
+None
+
+==== Performance impact
+
+None
+
+==== Other deployer impact
+
+None
+
+==== Developer impact
+
+None
+
+== Implementation
+
+* github issue link here
+
+=== Assignee(s)
+
+Primary assignee:
+  shtripat
+
+
+Other contributor(s):
+  r0h4n
+
+== Work items
+
+* Introduce a class VolumeOptions in persister module to render volume options
+in central store (etcd)
+
+* Update the get-state output parsing logic and update volume options details to
+central store
+
+== Dependencies
+
+* Required Gluster 3.9 + patch http://review.gluster.org/#/c/15889
+
+== Testing
+
+* Check if the gluster get-state output is parsed without any error
+
+* Verify the volume details in central store if it contains the volume options
+correctly under the URI ```/clusters/<id>/Volumes/<id>/Options```
+
+== Documentation impact
+
+None
+
+== References
+
+* https://www.redhat.com/archives/tendrl-devel/2016-November/msg00063.html
