@@ -1,12 +1,6 @@
-..
- This work is licensed under a Creative Commons Attribution 3.0 Unported
- License.
+// vim: tw=79
 
- http://creativecommons.org/licenses/by/3.0/legalcode
-
-==========================================
-Example Spec - The title of your spec
-==========================================
+= Example Spec - The title of your spec
 
 Introduction paragraph -- why are we doing anything? A single paragraph that the
 Tendrl community/developers can understand.
@@ -20,31 +14,31 @@ Some notes about using this template:
 * Please do not delete any of the sections in this template.  If you have
   nothing to say for a whole section, just write: None
 
-* For help with syntax, see http://sphinx-doc.org/rest.html
-
-* To test out your formatting, build the docs using tox, or see:
-  https://www.siafoo.net/reST.xml
+* If you've never written asciidoc before, the
+http://asciidoctor.org/docs/asciidoc-syntax-quick-reference/[asciidoctor syntax
+reference] is the best place to start. Jump into the more detailed
+http://asciidoctor.org/docs/user-manual/[user manual] as you realize the need
+for a feature beyond text formatting.
 
 * If you would like to provide a diagram with your spec, ascii diagrams are
   required.  http://asciiflow.com/ is a very nice tool to assist with making
   ascii diagrams.
 
 
-Problem description
-===================
+== Problem description
 
 A detailed description of the problem. What problem is this spec
 addressing?
 
-Use Cases
-=========
+== Use Cases
+
 
 What use cases does this address? What impact on actors does this change have?
 Ensure you're clear about the actors in each use case: Developer, end user,
 deployer, etc.
 
-Proposed change
-===============
+== Proposed change
+
 
 Here is where you cover the change you propose to make in detail. How do you
 propose to solve this problem?
@@ -52,8 +46,8 @@ propose to solve this problem?
 If this is one part of a larger effort make it clear where this piece ends. In
 other words, what's the scope of this effort?
 
-Alternatives
-------------
+=== Alternatives
+
 
 What are some alternative ways to fix the problem being solved?  What are the
 reasons for using the proposed method as opposed to some of the alternatives?
@@ -61,8 +55,8 @@ Why aren't we using those? This doesn't require an overly detailed write up,
 instead just demonstrate that thought has been put into the proposed solution
 and some info on why it's an appropriate choice.
 
-Data model impact
------------------
+=== Data model impact:
+
 
 Changes which require modifications to the data model often have a wider impact
 on the system.  The community often has strong opinions on how the data model
@@ -81,10 +75,9 @@ Questions which need to be addressed by this section include:
   need to take into account existing objects, or modify other existing data
   describe how that will work.
 
-Impacted Modules
-----------------
+=== Impacted Modules:
 
-REST API impact
+==== Tendrl API impact:
   Each API method which is either added or changed should have the following:
 
   * Specification for the method
@@ -118,29 +111,29 @@ REST API impact
   * Discuss any policy changes, and discuss what things a deployer needs to
     think about when defining their policy.
 
-  Example Tendrl definitions can be found in the Tendrl node-agent tree
+  * Example Tendrl definitions can be found in the Tendrl node-agent tree
   https://github.com/Tendrl/node_agent/blob/master/etc/tendrl_definitions_node_agent.yaml
 
-  Note that the definitions should be defined as restrictively as
+  * New definitions should be defined as restrictively as
   possible. Object attributes which are required should be marked as such.
 
-  Reuse of existing predefined objects/atoms is highly encouraged.
+  * Reuse of existing predefined objects/atoms is highly encouraged.
 
-Notifications/Monitoring impact
-  Please specify any changes to notifications. Be that an extra notification,
+==== Notifications/Monitoring impact:
+Please specify any changes to notifications. Be that an extra notification,
   changes to an existing notification, or removing a notification.
 
-Common module impact
-  Please specify any changes to common module.
+==== Tendrl/common impact:
+Please specify any changes to common module.
 
-Node agent impact
-  Please specify any changes to node agent.
+==== Tendrl/node_agent impact:
+Please specify any changes to node agent.
 
-Sds integration impact
-  Please specify any changes to sds integrations such as ceph, gluster etc.
+==== Sds integration impact:
+Please specify any changes to sds integrations such as ceph, gluster etc.
 
-Security impact
----------------
+=== Security impact:
+
 
 Describe any potential security impact on the system.  Some of the items to
 consider include:
@@ -168,8 +161,7 @@ guidelines are a work in progress and are designed to help you identify
 security best practices.  For further information, feel free to reach out
 to the OpenStack Security Group at openstack-security@lists.openstack.org.
 
-Other end user impact
----------------------
+=== Other end user impact:
 
 Aside from the API, are there other ways a user will interact with this
 feature?
@@ -177,8 +169,8 @@ feature?
 * Does this change have an impact on any other Tendrl asset? What does the user
   interface there look like?
 
-Performance Impact
-------------------
+=== Performance impact:
+
 
 Describe any potential performance impact on the system, for example
 how often will new code be called, and is there a major change to the calling
@@ -189,7 +181,7 @@ Examples of things to consider here include:
 * A small code block might look like a small addition but when considering
   large scale deployments the proposed code block may in fact be performed on
   hundreds of nodes.
-  
+
 * A small change in a utility function or a commonly used decorator can have a
   large impacts on performance.
 
@@ -199,8 +191,8 @@ Examples of things to consider here include:
 * Will the change include any locking, and if so what considerations are there
   on holding the lock?
 
-Other deployer impact
----------------------
+=== Other deployer impact:
+
 
 Discuss things that will affect how you deploy and configure Tendrl
 that have not already been mentioned, such as:
@@ -221,8 +213,8 @@ that have not already been mentioned, such as:
   any used directories created before the change landed?  Do we move them?  Do
   we have a special case in the code?
 
-Developer impact
-----------------
+=== Developer impact:
+
 
 Discuss things that will affect other developers working on Tendrl,
 such as:
@@ -232,11 +224,11 @@ such as:
   the feature is required.
 
 
-Implementation
-==============
+== Implementation:
 
-Assignee(s)
------------
+
+=== Assignee(s):
+
 
 Who is leading the writing of the code? Or is this a spec where you're
 throwing it out there to see who picks it up?
@@ -250,16 +242,16 @@ Primary assignee:
 Other contributors:
   <github-id or None>
 
-Work Items
-----------
+=== Work Items:
+
 
 Work items or github tasks -- break the feature up into the things that need to be
 done to implement it. Those parts might end up being done by different people,
 but we're mostly trying to understand the timeline for implementation.
 
 
-Dependencies
-============
+== Dependencies:
+
 
 * Include specific references to specs or github issues in Tendrl, or in other
   projects, that this one either depends on or is related to.
@@ -271,8 +263,8 @@ Dependencies
   included in Tendrl? Or does it depend on a specific version of library?
 
 
-Testing
-=======
+== Testing:
+
 
 Please discuss how the change will be tested. We especially want to know what
 functional tests will be added. It is assumed that unit test coverage will be
@@ -285,16 +277,16 @@ software configurations available)? If so, are there mitigation plans (3rd
 party testing, CI enhancements, etc).
 
 
-Documentation Impact
-====================
+== Documentation impact:
+
 
 What is the impact on the docs team of this change? Some changes might require
 donating resources to the docs team to have the documentation updated. Don't
 repeat details discussed above, but please reference them here.
 
 
-References
-==========
+== References:
+
 
 Please add any useful references here. You are not required to have any
 reference. Moreover, this specification should still make sense when your
