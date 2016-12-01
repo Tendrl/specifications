@@ -1,0 +1,206 @@
+= Refactor modules like tendrl-gluster-integartion, tendrl-node-agent etc and
+move the common code to tendrl-common
+
+
+All the Tendrl modules like tendrl-gluster-integartion, tendrl-node-agent etc
+use various persisters, managers and job executors which have almost similar
+logic written and could ideally be moved to the common module tendrl-common.
+
+Any module specific logic can be implemented as part of extended classes from
+these common ones defined in tendrl-common module.
+
+
+== Problem description
+
+Currently there are lot of duplicate classes, code written across Tendrl modules
+like persister for central store, manager, job handlers from the etcd queue.
+Also base classes for flows, atoms and test cases are replicated across modules.
+
+These replicated classes and sources could be moved to the common module and
+individual modules can either use them as is or extend them for additional
+business logic.
+
+Even there are various sample configuration files which are replicated across
+the tendrl modules and could be more organized and moved to common module. Only
+modules specific configurations should be kept as part of the individual modules
+
+
+== Use Cases
+
+None
+
+== Proposed change
+
+* Move the base flow class to common module and all individual flows in the
+other modules can extend from this
+
+* Move all the utilities to common module, which are nowhere specific to a
+bridge in tendrl (e.g. flow utils, manager utils etc)
+
+* Define base class for Manager in common module and extend from this in
+individual modules
+
+* Define base class for Persister in common module and extend from this in
+individual modules
+
+* Define base job handler (rpc) in common module and if required extend from the
+same in individual modules
+
+* Move the base test class to common module and extend all the test cases from
+the same in individual modules
+
+* Re-factor the code to change the logging directory as per standardization
+
+* Re-factor the code across various modules to fix test cases and attain the
+code coverage level to 90%
+
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== Impacted modules
+
+==== Tendrl API impact
+
+None
+
+==== Tendrl/common impact
+
+* Common module gets all common classes and code moved here e.g.
+** Common Manager class
+** Common Persister class
+** Common Job Queue Handler class
+** Utilities
+** Base flow class
+** Base atom class
+** Base test case class
+
+==== Tendrl/node_agent impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+==== SDS integration impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+==== Notifications/Monitoring impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+==== Security impact
+
+None
+
+==== Performance impact
+
+None
+
+==== Other deployer impact
+
+None
+
+==== Developer impact
+
+None
+
+== Implementation
+
+* github issue link here
+
+=== Assignee(s)
+
+Primary assignee:
+  shtripat
+
+
+Other contributor(s):
+  r0h4n
+
+== Work items
+
+* Introduce a base class Manager under common module
+
+* Introduce a base class Persister under common module
+
+* Introduce a base class Rpc under common module
+
+* Move the base Flow class to common module
+
+* Introduce a base Atom class under common module
+
+* Move utilities (e.g. flow utils and manager util) to common module
+
+* Move the base test class to common module
+
+* Move the common configurations to common module
+
+* Extend the Manager, Persister and Rpc in individual modules from common
+
+* Extend the Flow and Atom in individual flows and atoms of the individual
+modules
+
+* Re-factor the code in different modules to use common utilities from common
+module
+
+* Re-factor the code for standardizing the logging directories for modules
+
+* Extend the base test class in individual test cases in modules
+
+* Re-factor the test cases and make sure code coverage is 90% or more
+
+
+== Dependencies
+
+None
+
+== Testing
+
+* Sanity check for a job execution
+
+* Verify if logs are created as per the standard paths
+
+* Verify if test case code coverage is 90% or more for all the modules
+
+
+== Documentation impact
+
+None
+
+== References
+
+None
