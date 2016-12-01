@@ -1,0 +1,234 @@
+= Specification for segregating configurations per module wise
+
+This specification describes, Currently all the configuration details of
+different modules are read from same file. Instead of that store the
+configuration details in different files as well as etcd and read from
+particular source based on priority.
+
+== Problem description
+
+Currently, All the tendrl modules are configured from same file. Also, while
+import flow the configuration file gets appended with SDS specific
+configurations while installation of SDS integration bits on the storage nodes.
+To avoid this we have to store the configuration details into layer wise.
+
+1. Store the configuration details into different files as per modules, And
+   configure modules using those files. (high priority).
+2. Each modules should store its own configuration details to etcd and configured
+   via api request (Less priority).
+
+Only node_agent configuration file have its own configuration details and
+etcd configuration details.
+
+At the time of installation, Each module's configuration details should store in
+different files with proper name. Always tendrl modules should configured from
+those files only.
+When module run the configuration details should be stored in etcd.
+
+* Integration modules should store its configuration details under cluster
+  specific hierarchy in the central store.
+* Other modules should store its configuration with proper hierarchy.
+
+The configuration in the central store needs to be treated as an object
+hierarchy, which appropriate atoms and flows to allow modification of this
+object hierarchy. If any modification on configurations in etcd, Then it should
+affect a local configuration files also. But any changes in local configuration
+file should not affect configurations in etcd. Any changes in integration
+specific configuration in etcd will affect config files of particular cluster
+nodes only. But changes in other configuration in etc will affect all nodes
+local config files.
+
+== Use Cases
+
+Centralized deployment-wide or cluster-wide configuration in the central store,
+which can be overridden per component via configuration files or command line
+options.
+
+== Proposed change
+
+* Modify the sample configuration files in each modules. It should contain
+  its own and relevant configuration information only.
+* Rename the sample configuration files in each modules with proper name.
+* Modify the spec file in each module to copy the configuration file with
+  proper name.
+* Create a new python file each module to keep configuration details.
+* Modify the config file in each module  to read the configuration details from
+  particular local config file.
+* Modify the manager in each module to read the configuration details from newly
+  created file and store it in in etcd. Integration specific modules should
+  store configuration details under cluster specific hierarchy in the central
+  store.
+* Modify the yaml file in each module with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Create atoms and flows to allow modification on configuration in etcd. It
+  should modify local configuration file also.
+* Modify tendrl definition file in node_agent to store node_agent specific
+  configuration details.
+
+== Alternatives
+
+None
+
+== Data model impact
+
+* Define and implement a "Config" object for each Tendrl component
+* Add config details in etcd with key /_tendrl/Config/repo_name.
+* Add integration specific details in etcd with key
+  /clusters/cluster_id/_tendrl/Config/repo_name.
+
+== Impacted modules
+
+=== Tendrl API impact:
+
+* Api to get deployment wise configuration details /_tendrl/Config/repo_name.
+* Api to get integration specific configuration details
+  /clusters/cluster_id/_tendrl/Config/repo_name.
+
+=== Tendrl/common impact
+
+None
+
+=== Tendrl/node_agent impact
+
+* Modify the tendrl definition file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd with proper
+  key.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+=== Tendrl/gluster_integration impact
+
+* Modify the installation document to copy configuration file with proper name.
+* Rename sample configuration file
+* Modify the spec file to copy configuration file with proper name.
+* Modify the tendrl definition file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd under cluster
+  specific hierarchy in the central store.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+=== Tendrl/ceph_integration impact
+
+* Modify the installation document to copy configuration file with proper name.
+* Rename sample configuration file
+* Modify the spec file to copy configuration file with proper name.
+* Modify the tendrl definition file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd under cluster
+  specific hierarchy in the central store.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+=== Tendrl/performance_monitoring impact
+
+* Modify the installation document to copy configuration file with proper name.
+* Rename sample configuration file
+* Modify the spec file to copy configuration file with proper name.
+* Modify the yaml file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd with proper
+  key.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+=== Tendrl/alerting impact
+
+* Modify the installation document to copy configuration file with proper name.
+* Rename sample configuration file
+* Modify the spec file to copy configuration file with proper name.
+* Modify the yaml file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd with proper
+  key.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+
+== Security impact
+
+None
+
+== Notifications/Monitoring impact
+
+None
+
+== Other end user impact
+
+None
+
+== Performance Impact
+
+None
+
+== Other deployer impact
+
+None
+
+== Developer impact
+
+None
+
+== Implementation
+
+* https://github.com/Tendrl/gluster_integration/issues/81
+* https://github.com/Tendrl/ceph_integration/issues/54
+* https://github.com/Tendrl/node_agent/issues/91
+* https://github.com/Tendrl/common/issues/76
+* https://github.com/Tendrl/performance_monitoring/issues/11
+* https://github.com/Tendrl/alerting/issues/7
+
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+Other contributor(s): TODO
+
+== Work Items
+
+* Modify the installation document to copy configuration file with proper name.
+* Rename sample configuration file
+* Modify the spec file to copy configuration file with proper name.
+* Modify the yaml file with new object, atoms, flows, pre-run,
+  post-run, attributes, type, uuid, version, inputs, description for the
+  configuration.
+* Add new python file to keep configuration details.
+* Modify manager to read and store it own configuration into etcd with proper
+  key.
+* Create new flow and atoms to allow modification on configuration in etcd. And
+  it should affect local configuration file also.
+
+== Dependencies
+
+* https://github.com/Tendrl/specifications/pull/7
+
+== Testing
+
+* Sanity check for flow
+* Check all modules are configured successfully
+* Check all the logging are works fine
+
+== Documentation impact
+
+* Modify installation documents in ceph_integration, gluster_integration,
+  node_agent, alerting, performance_monitoring.
+
+== References
+
+* https://github.com/Tendrl/node_agent/issues/83
+* https://github.com/Tendrl/node_agent/issues/99
+* https://github.com/Tendrl/gluster_integration/issues/86
+* https://github.com/Tendrl/ceph_integration/issues/57
