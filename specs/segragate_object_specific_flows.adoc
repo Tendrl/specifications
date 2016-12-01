@@ -1,0 +1,278 @@
+= Segregate object specific flows
+
+
+All the object specific actions must be segregated under the object's namespace
+as flows. It must be noted that such a flow defined under object's namespace
+should not have dependency on any other objects' namespace. By doing this, it
+will be very easy for API to know about the list of actions that can be
+performed on the object.
+
+
+== Problem description
+
+Currently some of the actions specific to objects are defined as flows in
+global namespace of the particular entity. This does not give a clear picture
+about the object to which the flow is related.
+
+By defining the objects specific actions as flows under objects' namespace,
+we can easily relate the flows with the corresponding objects'. It will be easy
+for the API to figure out the actions that can be performed on the object. Care
+must be taken to see that such flows are not dependent on any other objects'.
+
+So in all the yaml definitions that are already available, object specific
+flows have to be moved under the specific object. This has to be considered
+while adding new yaml definitions for flows in the future as well.
+
+== Use Cases
+
+* This specification has to be followed while adding new definition to yaml
+in the future- Developer.
+
+* API layer can figure out the list of actions specific to an object by looking
+at the list of flows under that particular object- API Developer.
+
+== Proposed change
+
+Have all the actions specific to an object as a flow under the objects'
+namespace.
+Example:
+Lets consider the case of volume as an object. In this case the actions specific
+to volume are start, stop, delete etc. All these actions should be defined as
+flows under the volumes' namespace.
+
+sample yaml definition for this:
+
+[source,yaml]
+----
+namespace.tendrl.gluster_integration:
+  flows:
+    CreateVolume:
+      atoms:
+        - tendrl.gluster_integration.objects.volume.atoms.create
+      description: "Create Volume with bricks"
+      enabled: true
+      inputs:
+        mandatory:
+          - Volume.volname
+          - Volume.bricks
+        optional:
+          - Volume.stripe_count
+          - Volume.replica_count
+          - Volume.arbiter_count
+          - Volume.disperse_count
+          - Volume.disperse_data_count
+          - Volume.redundancy_count
+          - Volume.transport
+          - Volume.force
+      post_run:
+        - tendrl.gluster_integration.objects.volume.atoms.volume_exists
+      pre_run:
+        - tendrl.gluster_integration.objects.volume.atoms.volume_not_exists
+      run: tendrl.gluster_integration.flows.create_volume.CreateVolume
+      type: Create
+      uuid: 1951e821-7aa9-4a91-8183-e73bc8275b8e
+      version: 1
+  objects:
+    Volume:
+      atoms:
+        create:
+          enabled: true
+          inputs:
+            mandatory:
+              - Volume.volname
+              - Volume.bricks
+            optional:
+              - Volume.stripe_count
+              - Volume.replica_count
+              - Volume.arbiter_count
+              - Volume.disperse_count
+              - Volume.disperse_data_count
+              - Volume.redundancy_count
+              - Volume.transport
+              - Volume.force
+          name: create_volume
+          run: tendrl.gluster_integration.objects.volume.atoms.create.Create
+          type: Create
+          uuid: 242f6190-9b37-11e6-950d-a24fc0d9649c
+        delete:
+          enabled: true
+          inputs:
+            mandatory:
+              - Volume.volname
+              - Volume.vol_id
+          name: delete_volume
+          run: tendrl.gluster_integration.objects.volume.atoms.delete.Delete
+          type: Delete
+          uuid: 242f6190-9b37-11e6-950d-a24fc0d9650c
+        start:
+          enabled: true
+          inputs:
+            mandatory:
+              - Volume.volname
+          name: start_volume
+          run: tendrl.gluster_integration.objects.volume.atoms.start.Start
+          type: Start
+          uuid: 242f6190-9b37-11e6-950d-a24fc0d9651c
+        stop:
+          enabled: true
+          inputs:
+            mandatory:
+              - Volume.volname
+          name: stop_volume
+          run: tendrl.gluster_integration.objects.volume.atoms.stop.Stop
+          type: Stop
+          uuid: 242f6190-9b37-11e6-950d-a24fc0d9652c
+      flows:
+	DeleteVolume:
+	  atoms:
+	    - tendrl.gluster_integration.objects.volume.atoms.delete
+	  description: "Delete Volume"
+      	  enabled: true
+          inputs:
+            mandatory:
+              - Volume.volname
+              - Volume.vol_id
+          post_run:
+	    - tendrl.gluster_integration.objects.volume.atoms.volume_not_exists
+      	  pre_run:
+	    - tendrl.gluster_integration.objects.volume.atoms.volume_exists
+          run: tendrl.gluster_integration.objects.volume.flows.delete_volume.DeleteVolume
+          type: Delete
+	  uuid: 1951e821-7aa9-4a91-8183-e73bc8275b9e
+      	  version: 1
+	StartVolume:
+      	  atoms:
+            - tendrl.gluster_integration.objects.volume.atoms.start
+      	  description: "Start Volume"
+      	  enabled: true
+	  inputs:
+            mandatory:
+              - Volume.volname
+      	  post_run:
+            - tendrl.gluster_integration.objects.volume.atoms.volume_started
+      	  pre_run:
+            - tendrl.gluster_integration.objects.volume.atoms.volume_exists
+      	  run: tendrl.gluster_integration.objects.volume.flows.start_volume.StartVolume
+      	  type: Start
+      	  uuid: 1951e821-7aa9-4a91-8183-e73bc8275b6e
+      	  version: 1
+      attrs:
+        arbiter_count:
+          help: "Arbiter count of volume"
+          type: Integer
+        bricks:
+          help: "List of brick mnt_paths for volume"
+          type: List
+        deleted:
+          help: "Flag is volume is deleted"
+          type: Boolean
+        disperse_count:
+          help: "Disperse count of volume"
+          type: Integer
+        disperse_data_count:
+          help: "Disperse data count of volume"
+          type: Integer
+        force:
+          help: "If force execute the action"
+          type: Boolean
+        redundancy_count:
+          help: "Redundancy count of volume"
+          type: Integer
+        replica_count:
+          help: "Replica count of volume"
+          type: Integer
+        stripe_count:
+          help: "Stripe count of volume"
+          type: Integer
+        transport:
+          help: "Transport type for volume"
+          type: String
+        vol_id:
+          help: "ID of the gluster volume"
+          type: String
+        volname:
+          help: "Name of gluster volume"
+          type: String
+      enabled: true
+      value: clusters/$Tendrl_context.cluster_id/Volumes/$Volume.vol_id/
+tendrl_schema_version: 0.3
+----
+
+Note that the flows specific to volume namely delete volume and start volume
+has no dependency on any other object other than volume.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+The flows(only object-specific flows) which are currently placed in the global
+namespace of a particular entity, will be moved under the namespace of the
+specific object. Example in the "Proposed change" section gives a clear picture.
+
+=== REST API impact
+
+API layer can benefit from this proposed change, as it can now easily figure
+out the set of actions specific to an object and expose them as APIs to the
+end user.
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+None
+
+=== Other end user impact
+
+None
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+None
+
+=== Developer impact
+
+* This specification has to be followed while adding new flow definition to
+yaml in the future by all the developers.
+
+== Implementation
+
+=== Assignee(s)
+
+To be figured out later
+
+Primary assignee:
+  None
+
+Other contributors:
+  None
+
+=== Work Items
+
+To be added later. Note that yaml definitions in all the components line
+node-agent, ceph-integration and gluster-integration should follow this
+specifications, hence issues should be filed in all these components.
+
+== Dependencies
+
+None
+
+== Testing
+
+Since this is a change in the yaml definition, the testing has to be
+done as part of the yaml validator that we have in the code.
+
+== Documentation Impact
+
+None
+
+== References
+
+None
