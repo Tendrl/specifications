@@ -1,0 +1,165 @@
+= Pluggable Alerts Delivery End-Points
+
+== Introduction
+
+The alerting module in tendrl needs to alert/notify
+
+* State changes of tendrl managed entities
+* Threshold breaches of utilizations of tendrl managed entities.
+
+via mediums such as:
+
+* SNMP-traps
+* email
+
+== Problem description
+
+The different alert delivery options like email, snmp-traps, etc.. need to be
+configurable i.e, some users might choose to receive only email alerts whereas
+some might choose all the mediums that the tendrl supports. This creates a
+requirement for the alert delivery mechanism to be configurable.
+
+== Use Cases
+
+Users configured in tendrl subscribe to specific types of alerts and need to
+be notified only through chosen mediums of alert delivery.
+
+* User A wants to be notified of all tendrl supported alerts of entities of
+  cluster C1 and C2 via email and snmp. User B wants to be notified of all
+  alerts of cluster C3 only via email.
+* User A wants to be notified of all tendrl supported alerts of entities of
+  cluster C1 via email and C2 via snmp traps.
+* User A wants to be notified only of cpu and disk utilization threshold
+  breaches and node status changes via only sms.
+
+And all combinations of the above.
+
+== Proposed change
+
+* Tendrl managed users will be allowed to subscribe for specific alerts or all
+  alerts via tendrl-api. This api will require the details like what kinds of
+  alerts the user desires to be notified of, the medium through which user
+  desires to be notified.The appropriate validations will be made as part of
+  execution of the api job to find if all required configurations are present
+  for the choices made in api request body.
+
+----
+  ex
+      {
+        Name: User1,
+        is_admin: False,
+        email: user1@users.com,
+        alert_subscriptions: [
+          {
+            cluster_name: 'cluster-1',
+            alert_categories: ['cpu_utilization', 'cluster_utilization']
+            notification_medium: ['email', 'snmp']
+          },
+          {
+            cluster_name: 'cluster-2',
+            alert_categories: '*',
+            notification_medium: ['email', 'snmp']
+          }
+        ]
+      }
+----
+
+* A user can be marked as admin by setting is_admin to True. The admin user
+  needs to be configured with some details like below:
+  For email notification,
+  ** email-id
+  ** encrypted password/auth cert file
+    *** Optional if auth required, in most enterprises its likely not
+  ** Authentication protocol ssl/tls if authentication required.
+  ** smtp email server and port.
+  ** If any of the necessary configuration is missed, configuring corresponding
+     means of notification(email/snmp) will not be allowed for other users and
+     hence such a means of notification will not be available.
+     *** Example: If admin user is not configured with snmp port and server,
+     then the email notification will not be available and also the other users
+     will not be allowed to subscribe for email notifications.
+  This configuration will be done via an api exposed by tendrl-api and the
+  validations of api request body will be done by the api's corresponding flow.
+
+=== Alternatives
+
+To be explored.
+
+=== Data model impact
+
+The user management capability needs to be built into tendrl.
+Till then these configurations can be maintained as part of the config file as
+below:
+
+----
+[alerting]
+admin_email_id = abc@users.com
+admin_email_smtp_port = 25
+admin_email_smtp_server = smtp.xyz.abc.com
+recipient_email_id = def@users.com
+recipient_alert_subscriptions = *
+recipient_notification_medium = ['email']
+----
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+tendrl/api parses the definitions file for dynamic generation of apis. Hence
+an impact of this change on api needs to be studied.
+
+==== Notifications/Monitoring impact:
+
+The alerting application needs to add flows for configuring users.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact
+
+New apis will be added for user configuration.
+
+=== Performance impact
+
+None
+
+=== Other deployer impact
+
+None
+
+
+=== Developer impact
+
+== Implementation
+
+=== Assignee(s)
+
+
+== Dependencies:
+
+
+
+== Documentation impact
+
+None
+
+== Testing
+
+This adds new apis for user configuration which need to be tested.
+
+== References
+
+Comments on https://github.com/Tendrl/alerting/pull/1
