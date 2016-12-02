@@ -1,5 +1,4 @@
-= Refactor modules like tendrl-gluster-integartion, tendrl-node-agent etc and
-move the common code to tendrl-common
+= Refactor tendrl modules and move the common code to tendrl-common
 
 
 All the Tendrl modules like tendrl-gluster-integartion, tendrl-node-agent etc
@@ -27,7 +26,10 @@ modules specific configurations should be kept as part of the individual modules
 
 == Use Cases
 
-None
+* Moving of all the common code from various tendrl modules would make sure that
+individual modules dont have specific implementations for similar stuff. Also
+the common modules plays as a library which could be referred and utilized by
+any module easily.
 
 == Proposed change
 
@@ -79,6 +81,7 @@ None
 ** Base flow class
 ** Base atom class
 ** Base test case class
+** Configuration management logic
 
 ==== Tendrl/node_agent impact
 
@@ -140,7 +143,33 @@ None
 
 == Implementation
 
-* github issue link here
+As part of above mentioned movement of classes and code to common module as a
+libary would affect the below flows majorly
+
+* Loading the cluster data to central store from managers. Only the SDS
+integration specific logic for reading and processing the cluster data remains
+within the integration modules and rest common logic is inherited from common
+module.
+
+* The way the job are picked and processed from job queue of etcd. From specific
+integration modules only the common library code would be invoked to get the job
+done.
+
+* The integration specific modules would extend the base persister from common
+module and would additionally provide SDS specific functionality written. These
+functions would mostly invoke the common module library function for doing the
+actual jobs for persistence to the central store.
+
+* The flows and atoms classes defined in individual SDS integration modules
+would extend from common library defined classes. So effectively these flows and
+atoms satisfy `is-a` relation with common module definitions of flow and atom.
+
+* The source code flow which takes care of loading and availing the
+configurations would change. The common module would provide all the library
+functions which can load and avail the configurations in understandable format
+to different modules as long as they provide the location details of these
+configuration files. The common module as library doesn't default to any
+location for these configuration files.
 
 === Assignee(s)
 
@@ -203,4 +232,8 @@ None
 
 == References
 
-None
+* https://github.com/Tendrl/common/issues/58
+
+* https://github.com/Tendrl/common/issues/60
+
+* https://github.com/Tendrl/common/issues/62
