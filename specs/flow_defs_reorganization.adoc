@@ -37,20 +37,21 @@ queue.
 
 == Proposed change
 
-* The node-agent pushes a master definition /tendrl_definitions to etcd which
-  will be referred by the flow execution framework.
+* The node-agent pushes a master definition to /tendrl/definitions_main in
+  etcd which will be referred by the flow execution framework.
 * Every component desiring to push its respective definitions to etcd, will
   push it to its specific directory under a common root directory say
-  tendrl_integrations.d/<component_name>.
+  /tendrl/integrations.d/definitions_<component_name>.
 * The master definition file will have an includes statement to include all
   definitions under the common definitions root directory.
-  ex: include /tendrl_integrations.d/*
+  ex: include /tendrl/integrations.d/definitions_*
 * The master definitions file will have sections for detection of system
   resources, integration version mappings and also provisioning options.
 
 ex:
 
-* The node_agent on its start will push a master definitions file.
+* The node_agent on its start will push a master definitions file to etcd in
+  /tendrl/definitions_main.
   ex:
 
   namespace.tendrl.detect:
@@ -163,43 +164,36 @@ ex:
 
 * Similarly
   ** ceph-integration will load its definitions in
-     /tendrl_integrations.d/ceph_integration/
+     /tendrl/integrations.d/definitions_ceph_integration/
   ** gluster-integration will load its definitions in
-     /tendrl_integrations.d/gluster_integration/
+     /tendrl/integrations.d/definitions_gluster_integration/
   ** performance_monitoring will load its definitions in
-     /tendrl_integrations.d/monitoring_integration/
-
+     /tendrl/integrations.d/definitions_monitoring_integration/
 * As part of execution of job in etcd, the flow execution framework in
-  node_agent reads the master definitions in /tendrl_definitions in etcd
-  and subsequently reads all definitions in /tendrl_integrations.d/ on
-  seeing the line "include /tendrl_integrations.d/*".
+  node_agent reads the master definitions in /tendrl/definitions_main in etcd
+  and subsequently reads all definitions in /tendrl/integrations.d/ on
+  seeing the line "include /tendrl/integrations.d/definitions_*".
 
 
 === Alternatives
 
 * Append monitoring related definitions yaml to node_agents definitions
   directory in etcd.
-
     ** Drawbacks
-
 		*** Any service requiring to do this will need to re-read whole flow
             file append its own definitions and then push back complete set
             again only in order to append its definitions.
     	*** This requires the flow specifics implemented in node_agent which
     	    is not correct
-
 * Implement the flow in corresponding agent and have it run as a service.
-
     ** Drawbacks
     	*** Every agent however minimal it is, needs to be run as a service
     	    that handles its specific job.
-
-	** Note
+	  ** Note
     	*** This is the current procedure.
-
 * The other alternative is:
   ** Push all flow definitions to a path under a common root directory say for
-     ex: /tendrl_definitons/ in etcd
+     ex: /tendrl/definitions_main in etcd
   ** Now, when there's a job in the queue, the flow framework will make use of
      either of the following:
   ** A part of the full qualified package name in the run parameter of job
@@ -226,7 +220,7 @@ an impact of this change on api needs to be studied.
 ==== Notifications/Monitoring impact:
 
 The performance_monitoring application will push its definitions to the path
-/tendrl_integrations.d/tendrl_performance_monitoring_definitions
+/tendrl/integrations.d/definitions_monitoring_integration
 
 ==== Tendrl/common impact:
 
@@ -235,9 +229,9 @@ None
 ==== Tendrl/node_agent impact:
 
 node_agent pushes its definitions to tendrl_definitions_node_agent currently
-it now needs to be the new decided /tendrl_definitions path in etcd and needs
-to have an include directory now to include all integrations definitions along
-with some refactoring.
+it now needs to be the new decided /tendrl/definitions_main path in etcd and
+needs to have an include directory now to include all integrations definitions
+along with some refactoring.
 
 ==== Sds integration impact:
 
