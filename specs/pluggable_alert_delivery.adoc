@@ -46,7 +46,7 @@ And all combinations of the above.
 ----
   ex
       {
-        Name: User1,
+        name: User1,
         is_admin: False,
         email: user1@users.com,
         alert_subscriptions: [
@@ -101,6 +101,20 @@ recipient_alert_subscriptions = *
 recipient_notification_medium = ['email']
 ----
 
+If client needs to be authenticated, user needs to specify authentication cert
+file path as below:
+
+----
+[alerting]
+admin_email_id = abc@users.com
+admin_email_smtp_port = 25
+admin_email_smtp_server = smtp.xyz.abc.com
+admin_auth_cert = '<cert_path>'
+recipient_email_id = def@users.com
+recipient_alert_subscriptions = *
+recipient_notification_medium = ['email']
+----
+
 === Impacted Modules:
 
 ==== Tendrl API impact:
@@ -145,8 +159,22 @@ None
 
 == Implementation
 
+* Handlers will be defined in alerting module for dispatching observed alerts
+  to configured destinations through respective means.
+  ** Example: mail handler for sending out mail and snmp handler for snmp-trap
+* Tendrl/alerting will look into user's 'notification_medium' field and
+  accordingly:
+  ** If tag is not present or its value is empty, it is interpreted as user
+     having chosen not to receive any notification.
+  ** The presence of valid values like 'email' or 'snmp', the appropriate
+     notification handler(ex:mail_handler) is invoked to send out alerts.
+
+
 === Assignee(s)
 
+Primary assignee:
+
+  * Changes in alerting module : Anmol Babu
 
 == Dependencies:
 
