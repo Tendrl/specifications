@@ -1,0 +1,182 @@
+// vim: tw=79
+
+= Configuring collectd
+
+== Introduction
+
+Tendrl's monitoring stack uses the following components:
+
+* collectd
+  ** A daemon process that resides on tendrl managed nodes, collects
+     performance statistics and pushes them to time-series db for maintaining
+     historic data.
+  ** Everything in collectd is done in plugins.
+  ** Collectd activates those plugins that are loaded and/or configured in
+     collectd’s conf files.
+  ** Changes in conf files will be effected in collectd only on restart of
+     the collectd daemon.
+
+* graphite
+  ** Used by tendrl monitoring stack as time series db
+  ** It consists of three software components:
+    *** carbon - a high-performance service that listens for time-series data
+    *** whisper - a simple database library for storing time-series data
+    *** graphite-web - Graphite's user interface & API for rendering graphs
+        and dashboards
+  ** Metrics get fed into the stack via the Carbon service, which writes data
+     out to Whisper databases for long-term storage.
+
+== Problem Description
+
+Tendrl needs to configure collectd for it to start collecting the performance
+statistics at regular intervals of time. This process of configuring collectd
+should require no/minimal user intervention.
+
+== Use Cases
+
+The use cases addressed by this spec are:
+
+* Tendrl core and monitoring stack are installed and user starts node-agent on
+  nodes so that they can be managed by tendrl and the new node needs to be
+  monitored.
+* Tendrl core stack is installed and one/more nodes are managed by tendrl core.
+  Now the user decides to monitor his tendrl managed nodes by installing the
+  tendrl/performance_monitoring.
+
+== Proposed change
+
+* The tendrl/performance_monitoring on start, uploads the default monitoring
+  configuration and flows for generating the collectd configurations.
+* The performance_monitoring application then looks into the etcd's '/nodes'
+  directory to see if there are any nodes that are currently managed by tendrl
+  If there are any, it triggers the monitoring provisioning flow on every node
+  for node monitoring via the core API.
+  ** The provisioning flow for the monitoring stack installs collectd-related
+     pieces on every node and generates the configuration files from templates
+     shipped with the collectd plugins on nodes.
+* For any new node that is managed by tendrl, the performance_monitoring
+  application repeats the above procedure of intiating the monitoring
+  provisioning flow.
+
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+The default monitoring configurations will be a dict of fields like below:
+
+----
+{
+  'interval': 60,
+  'thresholds': {
+    'cpu': {'Warning': 80, 'Failure': 90},
+    'mount_point': {'Warning': 80, 'Failure': 90},
+    'memory': {'Warning': 80, 'Failure': 90},
+    'swap': {'Warning': 50, 'Failure': 70}
+  }
+}
+----
+
+and they will be system wide default configuration that are exposed for
+updates in the form of a yaml file at /etc/tendrl/monitoring_defaults.yaml.
+These values are read at the time of starting of performance_monitoring
+application and hence updates to the file will be reflected on restart of
+performance monitoring application.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The flow defined for the configuration is intended to be intially triggered
+internally by the performance_monitoring applciation but for editting of the
+configuration (ex: updating the threshold values to override the defaults),
+the tendrl needs to proxy to the api exposed by the performance_monitoring
+application.
+
+==== Notifications/Monitoring impact:
+
+The performance_monitoring application needs to implement a flow for collectd
+configuration and also this needs to be exposed via an api which the tendrl-api
+proxies to.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+The flow framework needs to be reorganised as described in:
+https://github.com/Tendrl/specifications/pull/8
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+This involves parsing /etc/tendrl/monitoring_defaults.yaml which is exposed
+to user so that user can override the tendrl chosen default configuration and
+have his/her own defaults.
+
+=== Other end user impact:
+
+Apart from the capability to have custom entity specific configuration,
+the user can override the defaults configuration file at
+/etc/tendrl/monitoring_defaults.yaml inorder to override tendrl chosen defaults
+And this will allow him to avoid the otherwise only available cumbersome way
+of having to override the tendrl chosen default configuration on every entity
+using the api.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+An additional config file /etc/tendrl/monitoring_defaults.yaml that is optional
+for edits is exposed for user editting the tendrl chosen default configuration.
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  anmolbabu
+
+=== Work Items:
+
+* https://github.com/Tendrl/performance_monitoring/issues/8
+* https://github.com/Tendrl/performance_monitoring/issues/9
+
+== Dependencies:
+
+https://github.com/Tendrl/specifications/pull/8/files
+
+
+== Testing:
+
+This adds 2 ways of overriding the tendrl chosen default monitoring
+configurations as described under "Other end user impact" and
+"Tendrl API impact" which need to be tested.
+
+== Documentation impact:
+
+The items to be documented includes an api exposed for overriding the default
+monitoring configuration and also a config file that can be used to have custom
+default values that override the tendrl chosen defaults as desscribed under:
+"Other end user impact" and the api is described in "Tendrl API impact"
+
+
+== References:
+
+* https://github.com/Tendrl/performance_monitoring/issues/8
+* https://github.com/Tendrl/performance_monitoring/issues/9
+* https://github.com/Tendrl/specifications/pull/8
+* https://github.com/Tendrl/performance_monitoring/pull/2
