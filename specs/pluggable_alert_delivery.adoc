@@ -115,6 +115,77 @@ recipient_alert_subscriptions = *
 recipient_notification_medium = ['email']
 ----
 
+The alert for performance threshold breaches as obtained from collectd looks
+like below:
+
+{
+  'CurrentValue': '7.176942e+00',
+  'WarningMax': '1.000000e+00',
+  'Severity': 'FAILURE',
+  'Plugin': 'memory',
+  'TypeInstance': 'used',
+  'DataSource': 'value',
+  'FailureMax': '2.000000e+00',
+  'Time': '1481046935.536',
+  'Type': 'percent'
+}
+
+where the fields correspond to the following below:
+* CurrentValue :
+    The current utilization value.
+* WarningMax
+    The configured warning threshold on crossing which warning alert is raised.
+* Severity
+    The severity level of the threshold breached.
+* Plugin
+    The name of the plugin(same as the type of resource) for which the alert
+    has been raised.
+* TypeInstance
+    The type of metric ex: used, available or total
+* FailureMax
+    The configured critical/failure threshold
+* Time
+    The time at which threshold breach was detected
+* Type
+    The type of value which breached the threshold.
+    ex: percent to indicate it was the percentage value that breached threshold
+
+The structure of alert has been modified to the following to suit any kind of
+alerts as for a performance statistics threshold crossing:
+
+----
+{
+  event_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
+  node_id: '5205962e-bc46-11e6-a4a6-cec0c932cz01',
+  time_stamp: '1481046935.536',
+  'resource': 'memory',
+  'CurrentValue': '7.176942e+00',
+  tags: {
+    'WarningMax': '1.000000e+00',
+    'FailureMax': '2.000000e+00',
+  },
+  'Type': 'percent-used',
+  'severity': 'failure',
+}
+----
+
+and for a status based alert:
+
+----
+{
+  event_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
+  node_id: '5205962e-bc46-11e6-a4a6-cec0c932cz01',
+  time_stamp: '1481046935.536',
+  'resource': 'cluster',
+  'CurrentValue': 'Down',
+  tags: {
+    'cluster_id' : '6406062e-be46-11e6-a4a6-cec0c932ce01',
+  },
+  'Type': 'status',
+  'severity': 'failure',
+}
+----
+
 === Impacted Modules:
 
 ==== Tendrl API impact:
@@ -162,13 +233,23 @@ None
 * Handlers will be defined in alerting module for dispatching observed alerts
   to configured destinations through respective means.
   ** Example: mail handler for sending out mail and snmp handler for snmp-trap
+* A new handler can be hooked into the tendrl alerting system by adding it to
+  a designated directory and with a name prefixed with the notification medium
+  name. ex: email_handler for alerting/tendrl/alerting/notification/
+* Whenever a new handler is added, the first thing the handler is supposed to
+  do is add itself to a list of supported notification mechanisms in etcd.
+* For the api to get list of the supported notification mechanisms, it can
+  look into this list.
 * Tendrl/alerting will look into user's 'notification_medium' field and
   accordingly:
   ** If tag is not present or its value is empty, it is interpreted as user
      having chosen not to receive any notification.
   ** The presence of valid values like 'email' or 'snmp', the appropriate
      notification handler(ex:mail_handler) is invoked to send out alerts.
-
+* So this means 2 flows need to be added:
+  ** One for users subscribing to receive different types of alerts of
+     different entities.
+  ** And one for listing the supported notification mechanisms.
 
 === Assignee(s)
 
@@ -178,11 +259,14 @@ Primary assignee:
 
 == Dependencies:
 
-
+* User management in tendrl.
 
 == Documentation impact
 
-None
+* This adds 2 apis:
+  ** One to list supported alert notifying mechanisms.
+  ** One for Users to subscribe to interested alerts and be notified by chosen
+     alerting means.
 
 == Testing
 
