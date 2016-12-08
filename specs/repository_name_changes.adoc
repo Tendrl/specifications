@@ -18,13 +18,14 @@ None.
 == Proposed change
 
 Below repositories to be renamed:
-ceph_integration --> ceph-integration
-node_agent --> node-agent
-gluster_integration --> gluster-integration
-common --> commons
-tendrl-api --> api
-performance_monitoring --> performance-monitoring
-tendrl_frontend --> dashboard
+
+* `ceph_integration` -> `ceph-integration`
+* `node_agent` -> `node-agent`
+* `gluster_integration` -> `gluster-integration`
+* `common` -> `commons`
+* `tendrl-api` -> `api`
+* `performance_monitoring` -> `performance-monitoring`
+* `tendrl_frontend` -> `dashboard`
 
 === Alternatives
 
