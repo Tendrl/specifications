@@ -4,6 +4,8 @@
 
 Repository names need to be updated to follow lowercase, hyphenated convention. The specification intend to cover affected repositories and any code and packaging changes required.
 
+Name of `Tendrl` github group itself is not affected by this change.
+
 
 == Problem description
 
