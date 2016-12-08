@@ -18,7 +18,9 @@ via mediums such as:
   sense that adding any new alert notifying means should be an easy task and
   should not involve much changes in the core alerting framework.
 * The alerting mechanism should have a way to set importance of alerts so that
-  the alerts desingated as important will be notified to users even when
+  the alerts desingated as important will be notified to users even if the
+  alerting module crashed and hence the alert could not be notified but will
+  be alerted once the alerting module is started back.
 
 == Use Cases
 
@@ -35,16 +37,37 @@ via mediums such as:
 * Whenever a new handler is added, the first thing the handler is supposed to
   do is add itself as a means to list of supported notification mechanisms in
   etcd.
-* For the api to get list of the supported notification mechanisms, it can
-  look into this list.
 * The alerts raised are persisted in etcd before sending out notifications in
   '/alerts' directory of etcd by node-agent.
-* The alerts marked as severity critical are deemed important and hence their
+* Each alert will carry an additional attribute that carries its significance
+  which will be added by the respective handler. The supported significance
+  levels can be 'HIGH', 'MEDIUM' and 'LOW'.
+  ** The 'LOW' significance level alerts will not be notified. But will feature
+     in the list of alerts in etcd.
+  ** The 'MEDIUM' significance level alerts will be attempted to be notified.
+  ** The 'HIGH' significance level alerts will be re-attempted to be notified
+     (on restart) if a previous attempt failed(crash of alerting service).
+
+----
+  Note:
+    * The different alerts need to be yet classified on various importance
+      levels.
+      And this is my current opinion:
+      **  Any threshold breach corresponding notification is a 'HIGH'
+          significance alerts
+    * The complete list of events and their importance/significance level needs
+      to be decided.Following are some of the github issues to capture the list
+      ** https://github.com/Tendrl/documentation/issues/44
+      ** https://github.com/Tendrl/documentation/issues/45
+      ** https://github.com/Tendrl/documentation/issues/46
+----
+
+* The alerts marked as significance HIGH are deemed important and hence their
   delivery is guranteed even in case of sudden crash of alerting module. This
   is achieved by updating a field('notified': True) of the alert in etcd
   directory to indicate that the alert has been notified. When alerting module
   is started, it scans all alerts in '/alerts' directory and sends out
-  notifications for those that are marked severity 'critical' and are not set
+  notifications for those that are marked significance 'HIGH' and are not set
   with 'notified': True.
 * So this means 2 flows need to be added:
   ** For users to be able to subscribe to receive different types of alerts of
@@ -71,6 +94,7 @@ The structure of alert can be the following:
   'tags': <custom alert specific info>,
   'type': <the type of alert percent-used/status of resource>
   'severity': <severity of alert>
+  'significance': <the severity of importance of notifying the alert>
 }
 ----
 
@@ -90,6 +114,7 @@ For a performance monitoring related alert:
   },
   'Type': 'percent-used',
   'severity': 'Critical',
+  'significance': 'HIGH',
 }
 ----
 
@@ -107,6 +132,7 @@ and for a status based alert:
   },
   'Type': 'status',
   'severity': 'Critical',
+  'significance': 'HIGH',
 }
 ----
 
@@ -179,4 +205,7 @@ This adds new apis for user configuration which need to be tested.
 
 == References
 
-Comments on https://github.com/Tendrl/alerting/pull/1
+* Comments on https://github.com/Tendrl/alerting/pull/1
+* https://github.com/Tendrl/documentation/issues/44
+* https://github.com/Tendrl/documentation/issues/45
+* https://github.com/Tendrl/documentation/issues/46
