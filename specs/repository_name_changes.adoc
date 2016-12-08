@@ -1,0 +1,148 @@
+// vim: tw=79
+
+= Repository name changes
+
+Repository names need to be updated to follow lowercase, hyphenated convention. The specification intend to cover affected repositories and any code and packaging changes required.
+
+
+== Problem description
+
+In Fedora, the RPM names usually match the upstream repository names. Currently for tendrl GitHub repositories are not aligned with rpm names. This would make it clearer to everyone that what code comes from where and help to maintain the overall packaging ecosystem consistency.
+
+== Use Cases
+
+None.
+
+== Proposed change
+
+Below repositories to be renamed:
+ceph_integration --> ceph-integration
+node_agent --> node-agent
+gluster_integration --> gluster-integration
+common --> commons
+tendrl-api --> api
+performance_monitoring --> performance-monitoring
+tendrl_frontend --> dashboard
+
+=== Alternatives
+
+
+None.
+
+=== Data model impact:
+
+
+None.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* README and documentaion
+* Packaging related changes
+
+==== Notifications/Monitoring impact:
+
+* README and documentaion
+* Infra related changes(coveragerc, tox)
+* Configuration file changes
+* Source code related changes
+* Test changes
+* Packaging and build related changes
+
+==== Tendrl/common impact:
+
+* README and documentaion
+* Infra related changes(coveragerc, tox)
+* Configuration file changes
+* Source code related changes
+* Test changes
+* Packaging and build related changes
+
+==== Tendrl/node_agent impact:
+
+* README and documentaion
+* Infra related changes(coveragerc, tox)
+* Configuration file changes
+* Source code related changes
+* Test changes
+* Packaging and build related changes
+
+==== Sds integration impact:
+
+* README and documentaion
+* Infra related changes(coveragerc, tox)
+* Configuration file changes
+* Source code related changes
+* Test changes
+* Packaging and build related changes
+
+==== Tendrl frontend impact:
+
+* README and documentaion
+* Packaging related changes
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+The RPM generated out of tendrl_frontend repository(tendrl-frontend) will be changed to tendrl-dashboard
+
+=== Developer impact:
+
+None.
+
+
+== Implementation:
+
+* https://github.com/Tendrl/specifications/issues/12
+
+=== Assignee(s):
+
+Primary assignee:
+
+nthomas-redhat
+
+Other contributor(s):
+
+=== Work Items:
+
+* <<Github issue id>> for modifications in tendrl-api
+* <<Github issue id>> for modifications in tendrl-frontend
+* <<Github issue id>> for modifications in node_agent
+* <<Github issue id>> for modifications in ceph_integration
+* <<Github issue id>> for modifications in gluster_integration
+* <<Github issue id>> for modifications in common
+
+== Dependencies:
+
+
+None.
+
+
+== Testing:
+
+* Generate rpms.
+* Install RPMs and bring up tendrl
+* Verify basic workflows(import ceph/gluster, pool/volume CRUD)
+
+
+== Documentation impact:
+
+README and other documentaion needs to updated as discussed in 'Proposed changes' section
+
+
+== References:
+
+None.
