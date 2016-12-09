@@ -33,7 +33,8 @@ via mediums such as:
   ** Example: mail handler for sending out mail and snmp handler for snmp-trap
 * A new handler can be hooked into the tendrl alerting system by adding it to
   a designated directory and with a name prefixed with the notification medium
-  name. ex: email_handler for alerting/tendrl/alerting/notification/
+  name. ex: email_handler for mail notification in the directory
+  alerting/tendrl/alerting/notification/
 * Whenever a new handler is added, the first thing the handler is supposed to
   do is add itself as a means to list of supported notification mechanisms in
   etcd.
@@ -55,7 +56,7 @@ via mediums such as:
       And this is my current opinion:
       **  Any threshold breach corresponding notification is a 'HIGH'
           significance alerts
-    * The complete list of events and their importance/significance level needs
+    * The complete list of alerts and their importance/significance level needs
       to be decided.Following are some of the github issues to capture the list
       ** https://github.com/Tendrl/documentation/issues/44
       ** https://github.com/Tendrl/documentation/issues/45
@@ -69,12 +70,20 @@ via mediums such as:
   is started, it scans all alerts in '/alerts' directory and sends out
   notifications for those that are marked significance 'HIGH' and are not set
   with 'notified': True.
-* So this means 2 flows need to be added:
-  ** For users to be able to subscribe to receive different types of alerts of
-     different entities along with configuration for chosen ways of being
-     alerted.
-  ** For listing the supported notification mechanisms.
-  And correspondingly the tendrl-api will have apis for these.
+* An alert will also have a field to ack it. Acking an alert can be done by
+  tendrl-user(lets say user is aware of a problem and has taken some action on
+  it and doesn't want to be shown the alert until the issue is completely
+  rectified. In such case user can ack such an alert using an api that
+  tendrl-api exposes and such an api will set 'acked': True and
+  'acked-by': <user_name> to indicate user <user-name> acked the alert and
+  doesn't want to see it in the list of alerts) or occurence of negation of the
+  existing alert(ex: Lets say cpu utilization of a node breached critical
+  threshold and a corresponding alert is raised by collectd and the alert is
+  stored in etcd by the node-agent after a while when the cpu utilization is
+  back normal, the previous alert corresponding to its threshold breach needs
+  to be acked as no more relevant. This is achieved by setting 'acked' to True
+  and 'ackedby' to tendrl which means tendrl has acked this alert as no more
+  relevant)
 
 === Alternatives
 
@@ -86,15 +95,17 @@ The structure of alert can be the following:
 
 ----
 {
-  'event-id': <unique tendrl generated id>,
+  'alert-id': <unique tendrl generated id>,
   'node-id': <id of node on which alert was detected>,
   'time-stamp': <time stamp of alert>,
   'resource': <the name of resource for which alert has been raised>,
   'current-value': <the current observed value status/utilization as applies>
   'tags': <custom alert specific info>,
-  'type': <the type of alert percent-used/status of resource>
-  'severity': <severity of alert>
-  'significance': <the severity of importance of notifying the alert>
+  'type': <the type of alert percent-used/status of resource>,
+  'severity': <severity of alert>,
+  'significance': <the severity of importance of notifying the alert>,
+  'ackedby': <indicate who acked the alert>,
+  'acked': <boolean to indicate if the alert is acked>,
 }
 ----
 
@@ -103,7 +114,7 @@ For a performance monitoring related alert:
 
 ----
 {
-  event_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
+  alert_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
   node_id: '5205962e-bc46-11e6-a4a6-cec0c932cz01',
   time_stamp: '1481046935.536',
   'resource': 'memory',
@@ -114,6 +125,8 @@ For a performance monitoring related alert:
   },
   'Type': 'percent-used',
   'severity': 'Critical',
+  'ackedby': '',
+  'acked': False,
   'significance': 'HIGH',
 }
 ----
@@ -122,7 +135,7 @@ and for a status based alert:
 
 ----
 {
-  event_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
+  alert_id : '6405962e-bc46-11e6-a4a6-cec0c932ce01',
   node_id: '5205962e-bc46-11e6-a4a6-cec0c932cz01',
   time_stamp: '1481046935.536',
   'resource': 'cluster',
@@ -132,6 +145,8 @@ and for a status based alert:
   },
   'Type': 'status',
   'severity': 'Critical',
+  'ackedby': '',
+  'acked': False,
   'significance': 'HIGH',
 }
 ----
@@ -142,12 +157,61 @@ The severity levels can be 'Critical', 'Info' or 'Warning'.
 
 ==== Tendrl API impact:
 
-tendrl/api parses the definitions file for dynamic generation of apis. Hence
-an impact of this change on api needs to be studied.
+As briefed in section "Proposed change" above, 2 new apis need to be added:
+
+* Api to get list of currently supported means of notification.
+* Api to get list of alerts with various filtering options such as based on
+  time, acked/not acked, alert type, severity, resource and significance .
 
 ==== Notifications/Monitoring impact:
 
-The alerting application needs to add flows for configuring users.
+Tendrl/alerting needs to implement flows for apis as described in section
+"Tendrl API impact".
+
+The flow definition for the above will look like:
+
+----
+# flake8: noqa
+data = """---
+namespace.tendrl.alerting:
+  objects:
+    Alert:
+      attrs:
+        alert-id:
+          type: String
+        node-id:
+          type: String
+        time-stamp:
+          type: String
+        resource:
+          type: String
+        current-value:
+          type: String
+        tags:
+          type: String
+        type:
+          type: String
+        severity:
+          type: String
+        significance:
+          type: String
+        ackedby:
+          type: String
+        acked:
+          type: Boolean
+      enabled: true
+      value: alerts/$Alert.alert_id
+      list: alerts/
+        filter_criteria:
+          type: json
+    NotificationMedia:
+      attrs:
+        name:
+          type: String
+        list: alerts/notification_medium/
+tendrl_schema_version: 0.3
+"""
+----
 
 ==== Tendrl/common impact:
 
@@ -167,7 +231,7 @@ None
 
 === Other end user impact
 
-New apis will be added for user configuration.
+None
 
 === Performance impact
 
@@ -195,13 +259,15 @@ Primary assignee:
 == Documentation impact
 
 * This adds 2 apis:
-  ** One to list supported alert notifying mechanisms.
-  ** One for Users to subscribe to interested alerts and be notified by chosen
-     alerting means.
+  ** Api to get list of currently supported means of notification.
+  ** Api to get list of alerts with various filtering options such as based on
+     time, acked/not acked, alert type, severity, resource and significance.
+
 
 == Testing
 
-This adds new apis for user configuration which need to be tested.
+This spec introduces an api to list available means of alert notification which
+needs to be tested.
 
 == References
 
