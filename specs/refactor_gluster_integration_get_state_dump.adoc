@@ -18,7 +18,7 @@ It needs to be modified to update the newly available volume options as well to
 central store.
 
 Also not all the volume attributes are added to Volume object in central store.
-The same should be taken care and added.
+The same should be taken care of and added.
 
 == Use Cases
 
@@ -148,6 +148,9 @@ Last allocated port: 49153
 
 * General refactoring of code handling the gluster get-state output and add
 all missing volume attributes to the Volume object
+** Additional fields available under volume details from get-state output
+like transport_type, snap_count, stripe_count, replica_count, arbiter_count,
+quorum_status, ... to be added to central store
 
 * Modify the tendrl definitions specifications for gluster and add all the
 missing attributes to Volume object
