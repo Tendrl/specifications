@@ -235,6 +235,43 @@ This spec requires 2 kinds of new apis to be exposed:
 ==== Notifications/Monitoring impact:
 
 Implementation of flows and apis described in "Proposed change" section.
+The flow definition corresponding to this in Tendrl/performance_monitoring
+will look like:
+
+----
+namespace.tendrl.node_monitoring:
+  flows:
+    ConfigureCollectd:
+      atoms:
+        - tendrl.node_agent.objects.Node.atoms.cmd
+      description: "Execute given command on given node"
+      enabled: true
+      inputs:
+        mandatory:
+          - Node.fqdn
+          - plugin_name
+          - plugin_conf_params
+          - Service.name
+      post_run:
+        - tendrl.node_agent.objects.Service.atoms.check_service_status
+      pre_run:
+        - tendrl.node_agent.objects.Node.atoms.check_node_up
+      run: tendrl.node_monitoring.flows.configure_collectd.ConfigureCollectd
+      type: Create
+      uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
+tendrl_schema_version: 0.3
+----
+
+* In the above flow definition, the flow ConfigureCollectd synthesises a
+  command string with command name and its parameters which will be executed
+  by the atom tendrl.node_agent.objects.Node.atoms.cmd. So, basically the logic
+  to generate collectd config files is implemented as a command that creates
+  conf files using:
+  ** Templates intended to be maintained at /etc/collectd_template directory
+     (done as part of node_monitoring application installation). The command
+     to generate conf file, collectd custom plugins and templates will be
+     maintained as part of Tendrl/performance_monitoring
+  ** The configuration parameters passed from the api and hence the job.
 
 ==== Tendrl/common impact:
 
@@ -242,8 +279,49 @@ None
 
 ==== Tendrl/node_agent impact:
 
-The flow framework needs to be reorganised as described in:
-https://github.com/Tendrl/specifications/pull/8
+A new atom 'check_service_status' is implemented and a corresponding entry is
+made under 'Service' object of node-agent definition file as:
+
+----
+    Service:
+      atoms:
+        configure:
+          enabled: true
+          inputs:
+            mandatory:
+              - Service.config_path
+              - Service.config_data
+          name: "Configure Service"
+          post_run:
+            - tendrl.node_agent.atoms.service.validations.check_service_running
+          run: tendrl.node_agent.atoms.service.configure.Configure
+          type: Update
+          uuid: b90a0d97-8c9f-4ab1-8f64-dbb5638159a3
+        check_service_status:
+          enabled: true
+          inputs:
+            mandatory:
+              - Node.fqdn
+              - Service.name
+          name: "check whether the service is running"
+          run: tendrl.node_agent.objects.service.atoms.check_service_status.CheckServiceStatus
+          type: Create
+          uuid: eda0b13a-7362-48d5-b5ca-4b6d6533a5ab
+      attrs:
+        config_data:
+          help: "Configuration data for the service"
+          type: String
+        config_path:
+          help: "configuration file path for the service eg:/etc/tendrl/tendrl.conf"
+          type: String
+        name:
+          help: "Name of the service"
+          type: String
+        state:
+          help: "Service state can be started|stopped|restarted|reloaded"
+          type: String
+      enabled: true
+----
 
 ==== Sds integration impact:
 
