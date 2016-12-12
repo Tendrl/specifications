@@ -1,29 +1,29 @@
 // vim: tw=79
 
-= Use 'value' attribute in objects to locate object path in etcd
+= Use 'value' attribute in objects to locate object path in etcd.
 
 Tendrl API should use the 'value' attribute defined in the definitions yaml
-files to infer the path of the object in etcd. These paths are used to retrieve
-a single instance or a list of the defined object.
+files to infer the path of the an object in etcd. 
+This path is used to retrieve detail of a single instance of an object.
 
 == Problem description
 
-Tendrl API currently locate object paths based on certain assumptions like the
-object path is the plural of the object name etc. The assumption might not
-always be correct and hence the paths for retrieving single instance or a list
-of the objects should be picked up from the definitions yaml files under the
-object section with a attribute defined as 'value'.
+Tendrl API currently locates object paths based on certain assumptions like the
+object path is the plural of the object name in etcd. The assumption might not
+always be correct and hence the paths for retrieving single instance of an
+object should be picked up from the definitions yaml files under the
+object section with an attribute defined as 'value'.
 
 == Use Cases
 
 Using the configurations from the definitions yaml files for locating path for
-finding objects makes the API future proof and reduces assumptions or conventions which might break in certain situations.
+finding object details makes the API future proof and reduces assumptions or conventions which might break in certain situations.
 
 == Proposed change
 
 Tendrl API should use the configuration defined under objects 'value' in the
 defitnitions yaml file to locate the path for specific object. The path should
-be used to retrieve a single instance or a list of the object.
+be used to retrieve details of a single instance of an object.
 
 === Alternatives
 
@@ -38,7 +38,7 @@ None
 
 ==== Tendrl API impact:
 
-The proposed change is a internal change and will not affect existing API's.
+The proposed change is an internal change and will not affect existing API's.
 
 ==== Tendrl/common impact:
 
@@ -46,11 +46,13 @@ None
 
 ==== Tendrl/node_agent impact:
 
-None
+Node agent definitions yaml should be updated to have 'value' attribute for all
+objects.
 
 ==== Sds integration impact:
 
-None
+Sds integrations definitions yaml should be updated to have 'value' attribute
+for all objects.
 
 === Security impact:
 
@@ -93,7 +95,7 @@ None
 
 == Testing:
 
-Test listing of all objects work as expected.
+Test API's which provide detail of an object work as expected.
 
 == Documentation impact:
 
