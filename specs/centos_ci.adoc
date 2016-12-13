@@ -2,10 +2,13 @@
 
 = CentOS CI
 
+We need to make sure that new code doesn't break existing codebase and check
+that new features works as early as possible. This can be done by running
+acceptance integration tests automatically, using CentOS CI infrastructure.
+
 == Problem description
 
-We need to make sure that new code doesn't break existing codebase and check
-that new features works as early as possible. To make this happen, CentOS CI
+CentOS CI
 will be configured to launch acceptance integration test run for every new
 nightly rpm build from tendrl nightly copr project. As set of implemented
 features in tendrl codebase grows, the set of acceptance tests is extended to
