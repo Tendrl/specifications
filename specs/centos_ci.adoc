@@ -3,7 +3,7 @@
 = CentOS CI
 
 CentOS CI should be configured to launch applicable set of tests as an
-acceptance tests for every new build.
+acceptance tests for every new built rpm package.
 
 == Problem description
 
@@ -11,7 +11,7 @@ None
 
 == Use Cases
 
-* Acceptance testing for new builds.
+* Acceptance testing for every new rpm package.
 
 == Proposed change
 
@@ -108,4 +108,5 @@ None
 == References:
 
 * https://ci.centos.org/view/tendrl/[CentOS CI - Tendrl board]
+* https://copr.fedorainfracloud.org/coprs/tendrl/tendrl/[Tendrl Copr Repository]
 
