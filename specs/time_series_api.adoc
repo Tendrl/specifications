@@ -1,0 +1,287 @@
+// vim: tw=79
+
+= Expose a way for tendrl-api to expose data from time series db
+
+== Introduction
+
+A small introduction to the components part of this spec
+(borrowed from Tendrl/documentation):
+
+=== Tendr/tendrl-api
+
+* Frontend/northbound API.
+* This is the integration point for any external management system/frontend
+  with Tendrl, including the Tendrl UI.
+* The App has the necessary logic to understand the state definitions stored in
+  the Central Store and present them over it’s API.
+* The App has the necessary logic to be able to invoke Operations through the
+  Central Store’s Job Queue implementation.
+* The App is completely stateless. All the state is stored in the Central
+  Store. The App essentially acts as a translation proxy between an external
+  system (including Tendrl UI) and the Central Store.
+* The App is intended to be primarily used for systems integration. As such,
+  the API is completely generic and self descriptive. The intended use case is
+  that any system wishing to leverage Tendrl uses the API’s descriptive
+  responses to construct targeted queries for a specific cluster instances
+  being managed by Tendrl.
+
+=== Tendrl Performance (performance_monitoring)
+
+It is a separate service that runs outside tendrl core stack and it relies on
+the state information in tendrl’s central store for its functioning. Typically
+it can be co-resident with tendrl application but nothing necessiates this.
+Following are its sub-components based on the functionalities:
+
+* Api Layer : This layer will serve the following responsibilities.
+  ** Serve the time series data stored in time series database.
+  ** The apis internally use a plugin based approach for querying the
+     time-series performance data which eases the task of supporting multiple
+     time-series databases.
+* Aggregator : This module aggregates atomic stats(ex: cluster utilization) to
+  composite(system utilization) stats which will be required by UI for the
+  dashboards.
+
+== Problem description
+
+Tendrl/tendrl-api(a part of tendrl-core) is agnostic of time-series db(a part
+of monitoring stack of tendrl) and its specifics but needs to be able to expose
+data in the time series db if the monitoring stack is installed.
+
+== Use Cases
+
+* If monitoring stack is installed by user, the user should be able to seamlessly
+  access tendrl maintained time series performance data over specified
+  time-ranges.
+
+== Proposed change
+
+* Tendrl/performance-monitoring will expose apis to access performance data in
+  time-series db. This is achieved by:
+  ** Interface to time-series db is designed in the form of plugins specific to
+     a time-series db.
+    *** This means that to support a new time-series db, all it takes is the
+        addition of its apecic interface as a plugin and doesn't require
+        touching any other part of the code.
+    *** The way the plugins work is :
+      **** The interfaces to time-series db are added under the directory
+           tendrl/performance-monitoring/time_series_db/dbplugins of
+           tendrl/performance-monitoring.
+      **** These plugins inherit from a common interface and hence all of them
+           follow a similar basic skeletal structure.
+      **** The plugin framework uses python's meta-class approach and they get
+           registered with the framework when everything in the plugin path is
+           imported but only the plugin configured in trendrl's conf will be
+           used to interface to the time-series db. The way this works is as
+           follows:
+            ***** A singleton manager looks for all/any plugins in directory
+                  tendrl/performance-monitoring/time_series_db/dbplugins and
+                  imports them all.
+            ***** The moment they are imported the meta-class registers an
+                  instance of the plugin with itself.
+            ***** The singleton manager then stores the instance of required
+                  time-series db plugin which will be henceforth used for all
+                  interactions with the time-series db.
+            ***** Since the manager is a singleton, there is only one instance
+                  of it throughout the life of Tendrl/performance-monitoring
+                  application which means all this house-keeping is done only
+                  once during the lifecycle of the application.
+* The following apis will be exposed by Tendrl/performance-monitoring:
+  ** An api to list the monitored resources of a particular entity
+  ** An api to get statistics of any monitored resource from list in above api
+     for a particular entity.
+* The Tendrl/tendrl-api proxies to these apis and remains agnostic of the
+  time-series db specifics.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+Data in time-series db is stored as key-value pairs(utilization to timestamp)
+in its specific collection/table named by the fully qualified resource name
+and this is very specific to the way collectd's plugins send metrics to time
+series db and hence not much control can be exercised here unless we use
+custom collectd plugins rather than the collectd provided ones
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The tendrl-api interfaces to the apis mentioned above under the section
+"Proposed change" and detailed below under "Notifications/Monitoring impact".
+
+==== Notifications/Monitoring impact:
+
+The api list to be exposed will grow with time. Currently, the following apis
+can be considered:
+
+To explore the resources that are monitored, we can use the api described
+below.
+
+Sample Request
+
+----------
+GET /monitoring/nodes/<node_name>/monitored_types
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+
+[{
+  type: string,
+  description: the resource name,
+}]
+
+ex:
+['resource_1', 'resource_2', ...]
+----------
+
+The above response which is an array of resource name strings gives different
+statistics that tendrl's monitoring stack maintains in its time series db.
+
+
+Sample Request
+
+----------
+GET /monitoring/nodes/<node_name>/<resource_name>/stats
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+[
+  {
+    "target": {
+      type: string,
+      description: full qualified name of the resource including the
+        node name, a default prefix which gives a namespace to the stats in
+        graphite and name of the resource.
+    },
+    "datapoints": [
+      [{
+          type: float,
+          description: Instant value of target
+        }, {
+          type: long,
+          description: Timestamp at which the value was observed
+      }],....
+    ]
+  }
+]
+
+ex: [
+  {
+    "target": "{graphite_prefix.host_name.metric_name}",
+    "datapoints": [
+      [5.50091681946991, 1478495700],....
+    ]
+  }
+]
+----------
+
+The above response gives the statistics for last 24 hours corresponding to the
+'resource_name' passed to it. If a time range is passed as optional arguements
+to the above api, then the api responds with the statistics for that time
+range.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+The apis exposed by Tendrl/performance-monitoring although are only getters,
+need to be covered by a layer of authentication.It could even be as sample as
+a shared token by which its access is enabled only to Tendrl/tendrl-api.
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+Some of the config options as below need to be made available:
+
+----
+[time_series]
+time_series_db = graphite
+time_series_db_server = 0.0.0.0
+time_series_db_port = 80
+
+[tendrl_performance]
+performance_server_interface = 0.0.0.0
+
+
+where the fields mean the following:
+
+* time_series_db - to indicate the currently used time-series db so that the
+                   corresponding plugin can be used
+* time_series_db_server - ip of the server where the time-series db resides.
+* time_series_db_port - port on which time series db can be acceseed for read.
+* performance_server_interface - the network interface only on which the
+                                 Tendrl/performance_monitoring serves
+----
+
+=== Developer impact:
+
+This has extensive impact on 2 modules tendrl-api and performance-monitoring
+and hence warrants a very high collaboration between the implementers of the
+2 modules
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Who is leading the writing of the code? Or is this a spec where you're
+throwing it out there to see who picks it up?
+
+If more than one person is working on the implementation, please designate the
+primary author and contact.
+
+Primary assignee:
+  performance_monitoring part: anmolbabu
+  tendrl-api part: Anup(anivargi)
+
+=== Work Items:
+
+----
+TODO: raise github issues and link here
+----
+
+== Dependencies:
+
+None
+
+== Testing:
+
+This spec introduces new apis as described above in 'Proposed changes' and
+detailed in the section 'Notifications/Monitoring impact' which need to be
+tested.
+
+== Documentation impact:
+
+This spec introduces new apis as described above in 'Proposed changes' and
+detailed in the section 'Notifications/Monitoring impact' which need to be
+documented.
+
+== References:
+
+None
