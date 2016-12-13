@@ -2,28 +2,46 @@
 
 = CentOS CI
 
-CentOS CI should be configured to launch applicable set of tests as an
-acceptance tests for every new built rpm package.
-
 == Problem description
 
-None
+We need to make sure that new code doesn't break existing codebase and check
+that new features works as early as possible. To make this happen, CentOS CI
+will be configured to launch acceptance integration test run for every new
+nightly rpm build from tendrl nightly copr project. As set of implemented
+features in tendrl codebase grows, the set of acceptance tests is extended to
+cover new features.
 
 == Use Cases
 
-* Acceptance testing for every new rpm package.
+* Acceptance testing for every new build from tendrl copr nightly project.
+* The same set of tests should be run for stable builds from current tendrl
+  copr as well.
 
 == Proposed change
 
-* CentOS CI host provisioning system have to be utilized for testing machines
+* New copr tendrl project with nightly builds needs to be created. Right now
+  we have just copr project for
+  https://copr.fedorainfracloud.org/coprs/tendrl/tendrl/[stable tendrl buils],
+  but for the purposes of CI proposed here, we need another one with the latest
+  code.
+
+* When nightly build fails, no acceptance tests are executed and the build
+  needs to be fixed first.
+
+* Acceptance tests executed by CentOS CI system will work with rpm builds only.
+
+* CentOS CI host provisioning system will be utilized for testing machines
   provisioning.
 
 * Installation and configuration of all Tendrl components should be automated
-  for usage in CI (this contains also installation and configuration of all
-  additional required components including gluster and ceph).
+  via ansible playbooks/roles from
+  https://github.com/Tendrl/usmqe-setup[usmqe-setup] repository for usage in CI
+  (this contains also installation and configuration of all additional required
+  components including gluster and ceph).
 
 * Tendrl test suite should allow execution of subset of tests marked as
-  acceptance.
+  acceptance. http://doc.pytest.org/en/latest/example/markers.html[Pytest
+  marker] `@pytest.mark.acceptance` will be used to flag a test case as such.
 
 === Alternatives
 
@@ -35,7 +53,7 @@ None
 
 === Impacted Modules:
 
-None
+Every module needs to in good shape from rpmbuild point of view.
 
 ==== Tendrl API impact:
 
@@ -75,7 +93,8 @@ None
 
 === Developer impact:
 
-None
+When the nightly builds fail, build issues needs to be fixed first before CI
+system could run the acceptance tests.
 
 == Implementation:
 
@@ -86,6 +105,7 @@ Primary assignee:
 
 Other contributors:
   mkudlej
+  mbukatov
 
 === Work Items:
 
@@ -95,18 +115,18 @@ Other contributors:
 
 == Dependencies:
 
-TBD
+Nightly copr builds. Details of nightl copr build workflow should be specified.
 
 == Testing:
 
-None
+This is all about testing.
 
 == Documentation impact:
 
-None
+QE team needs to write documentation of the CI system when it's design is
+agreed on and finalized.
 
 == References:
 
 * https://ci.centos.org/view/tendrl/[CentOS CI - Tendrl board]
 * https://copr.fedorainfracloud.org/coprs/tendrl/tendrl/[Tendrl Copr Repository]
-
