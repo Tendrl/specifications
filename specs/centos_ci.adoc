@@ -1,0 +1,111 @@
+// vim: tw=79
+
+= CentOS CI
+
+CentOS CI should be configured to launch applicable set of tests as an
+acceptance tests for every new build.
+
+== Problem description
+
+None
+
+== Use Cases
+
+* Acceptance testing for new builds.
+
+== Proposed change
+
+* CentOS CI host provisioning system have to be utilized for testing machines
+  provisioning.
+
+* Installation and configuration of all Tendrl components should be automated
+  for usage in CI (this contains also installation and configuration of all
+  additional required components including gluster and ceph).
+
+* Tendrl test suite should allow execution of subset of tests marked as
+  acceptance.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+None
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+=== Assignee(s):
+
+Primary assignee:
+  dahorak
+
+Other contributors:
+  mkudlej
+
+=== Work Items:
+
+* Jenkins job for preparing testing VMs.
+* Jenkins job for installation of Tendrl and all other required components.
+* Jenkins job for launching subset of tests on prepared cluster.
+
+== Dependencies:
+
+TBD
+
+== Testing:
+
+None
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://ci.centos.org/view/tendrl/[CentOS CI - Tendrl board]
+
