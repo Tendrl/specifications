@@ -18,6 +18,7 @@ By defining the objects specific actions as flows under objects' namespace,
 we can easily relate the flows with the corresponding objects'. It will be easy
 for the API to figure out the actions that can be performed on the object. Care
 must be taken to see that such flows are not dependent on any other objects'.
+The flows which are dependent on multiple objects should be at the global leval
 
 So in all the yaml definitions that are already available, object specific
 flows have to be moved under the specific object. This has to be considered
@@ -201,6 +202,9 @@ tendrl_schema_version: 0.3
 Note that the flows specific to volume namely delete volume and start volume
 has no dependency on any other object other than volume.
 
+The flows that are dependent on multiple objects should be retained at the
+global leval.
+
 === Alternatives
 
 None
@@ -246,10 +250,10 @@ yaml in the future by all the developers.
 
 === Assignee(s)
 
-To be figured out later
+nnDarshan
 
 Primary assignee:
-  None
+nnDarshan
 
 Other contributors:
   None
@@ -275,4 +279,8 @@ None
 
 == References
 
-None
+https://github.com/Tendrl/specifications/issues/34
+
+https://github.com/Tendrl/gluster_integration/issues/90
+
+https://github.com/Tendrl/ceph_integration/issues/60
