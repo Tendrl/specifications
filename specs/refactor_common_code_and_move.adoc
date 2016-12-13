@@ -56,6 +56,10 @@ the same in individual modules
 * Re-factor the code across various modules to fix test cases and attain the
 code coverage level to 90%
 
+* Move the command executor, package installer and service manager utilities
+from node_agent module to common module as its generic in nature and can be
+used by other modules as well.
+
 
 === Alternatives
 
@@ -82,6 +86,7 @@ None
 ** Base atom class
 ** Base test case class
 ** Configuration management logic
+** Command executor, package installer and service manager utilities
 
 ==== Tendrl/node_agent impact
 
@@ -96,6 +101,9 @@ None
 * Extend all the atoms from common atom class
 
 * Extend all the test cases from common test class
+
+* Remove command executor, package installer and service manager as its
+now moved to common module
 
 ==== SDS integration impact
 
@@ -171,6 +179,10 @@ to different modules as long as they provide the location details of these
 configuration files. The common module as library doesn't default to any
 location for these configuration files.
 
+* The node agent flows which invoke command executor, package installer and
+service manager now need to refer common module utilities as the code is moved
+to common module now.
+
 === Assignee(s)
 
 Primary assignee:
@@ -178,7 +190,7 @@ Primary assignee:
 
 
 Other contributor(s):
-  r0h4n
+  r0h4n, nnDarshan
 
 == Work items
 
@@ -212,6 +224,9 @@ module
 
 * Re-factor the test cases and make sure code coverage is 90% or more
 
+* Move the command executor, package installer and service manager utilities
+to common module
+
 
 == Dependencies
 
@@ -228,7 +243,10 @@ None
 
 == Documentation impact
 
-None
+* Update the tendrl/common document and remove the logging yaml related
+changes as the common module is now used as a library and doesnt have
+its own logging. Rather it would use specific module's logging e.g.
+node-agent, gluster-integration etc.
 
 == References
 
@@ -237,3 +255,21 @@ None
 * https://github.com/Tendrl/common/issues/60
 
 * https://github.com/Tendrl/common/issues/62
+
+* https://github.com/Tendrl/common/issues/80
+
+* https://github.com/Tendrl/common/issues/82
+
+* https://github.com/Tendrl/common/issues/83
+
+* https://github.com/Tendrl/common/issues/84
+
+* https://github.com/Tendrl/node_agent/issues/102
+
+* https://github.com/Tendrl/gluster_integration/issues/89
+
+* https://github.com/Tendrl/ceph_integration/issues/59
+
+* https://github.com/Tendrl/performance_monitoring/issues/13
+
+* https://github.com/Tendrl/alerting/issues/9
