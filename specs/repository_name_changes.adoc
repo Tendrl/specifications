@@ -4,6 +4,8 @@
 
 Repository names need to be updated to follow lowercase, hyphenated convention. The specification intend to cover affected repositories and any code and packaging changes required.
 
+Name of `Tendrl` github group itself is not affected by this change.
+
 
 == Problem description
 
@@ -16,13 +18,14 @@ None.
 == Proposed change
 
 Below repositories to be renamed:
-ceph_integration --> ceph-integration
-node_agent --> node-agent
-gluster_integration --> gluster-integration
-common --> commons
-tendrl-api --> api
-performance_monitoring --> performance-monitoring
-tendrl_frontend --> dashboard
+
+* `ceph_integration` -> `ceph-integration`
+* `node_agent` -> `node-agent`
+* `gluster_integration` -> `gluster-integration`
+* `common` -> `commons`
+* `tendrl-api` -> `api`
+* `performance_monitoring` -> `performance-monitoring`
+* `tendrl_frontend` -> `dashboard`
 
 === Alternatives
 
@@ -118,12 +121,12 @@ Other contributor(s):
 
 === Work Items:
 
-* <<Github issue id>> for modifications in tendrl-api
-* <<Github issue id>> for modifications in tendrl-frontend
-* <<Github issue id>> for modifications in node_agent
-* <<Github issue id>> for modifications in ceph_integration
-* <<Github issue id>> for modifications in gluster_integration
-* <<Github issue id>> for modifications in common
+* https://github.com/Tendrl/tendrl-api/issues/38
+* https://github.com/Tendrl/tendrl_frontend/issues/62
+* https://github.com/Tendrl/node_agent/issues/101
+* https://github.com/Tendrl/ceph_integration/issues/58
+* https://github.com/Tendrl/gluster_integration/issues/88
+* https://github.com/Tendrl/specifications/pull/24
 
 == Dependencies:
 
