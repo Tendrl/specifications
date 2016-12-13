@@ -10,7 +10,7 @@ Tendrl's monitoring stack uses the following components:
   ** A daemon process that resides on tendrl managed nodes, collects
      performance statistics and pushes them to time-series db for maintaining
      historic data.
-  ** Everything in collectd is done in plugins.
+  ** Everything in collectd is achieved through plugins.
   ** Collectd activates those plugins that are loaded and/or configured in
      collectd’s conf files.
   ** Changes in conf files will be effected in collectd only on restart of
@@ -275,12 +275,8 @@ tendrl_schema_version: 0.3
 
 ==== Tendrl/common impact:
 
-None
-
-==== Tendrl/node_agent impact:
-
 A new atom 'check_service_status' is implemented and a corresponding entry is
-made under 'Service' object of node-agent definition file as:
+made under 'Service' object of Tendrl/common definition file as:
 
 ----
     Service:
@@ -293,8 +289,8 @@ made under 'Service' object of node-agent definition file as:
               - Service.config_data
           name: "Configure Service"
           post_run:
-            - tendrl.node_agent.atoms.service.validations.check_service_running
-          run: tendrl.node_agent.atoms.service.configure.Configure
+            - tendrl.common.atoms.service.validations.check_service_running
+          run: tendrl.common.atoms.service.configure.Configure
           type: Update
           uuid: b90a0d97-8c9f-4ab1-8f64-dbb5638159a3
         check_service_status:
@@ -304,7 +300,7 @@ made under 'Service' object of node-agent definition file as:
               - Node.fqdn
               - Service.name
           name: "check whether the service is running"
-          run: tendrl.node_agent.objects.service.atoms.check_service_status.CheckServiceStatus
+          run: tendrl.common.objects.service.atoms.check_service_status.CheckServiceStatus
           type: Create
           uuid: eda0b13a-7362-48d5-b5ca-4b6d6533a5ab
       attrs:
@@ -322,6 +318,11 @@ made under 'Service' object of node-agent definition file as:
           type: String
       enabled: true
 ----
+
+
+==== Tendrl/node_agent impact:
+
+None
 
 ==== Sds integration impact:
 
