@@ -53,7 +53,7 @@ None
 
 === Impacted Modules:
 
-Every module needs to in good shape from rpmbuild point of view.
+Every module needs to be in good shape from rpmbuild point of view.
 
 ==== Tendrl API impact:
 
