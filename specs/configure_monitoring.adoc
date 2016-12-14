@@ -240,25 +240,35 @@ will look like:
 
 ----
 namespace.tendrl.node_monitoring:
-  flows:
-    ConfigureCollectd:
-      atoms:
-        - tendrl.node_agent.objects.Node.atoms.cmd
-      description: "Execute given command on given node"
-      enabled: true
-      inputs:
-        mandatory:
-          - Node.fqdn
-          - plugin_name
-          - plugin_conf_params
-          - Service.name
-      post_run:
-        - tendrl.node_agent.objects.Service.atoms.check_service_status
-      pre_run:
-        - tendrl.node_agent.objects.Node.atoms.check_node_up
-      run: tendrl.node_monitoring.flows.configure_collectd.ConfigureCollectd
-      type: Create
-      uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
+  Tendrl_definition:
+    flows:
+      ConfigureCollectd:
+        atoms:
+          - tendrl.node_agent.objects.Node.atoms.cmd
+        description: "Execute given command on given node"
+        enabled: true
+        inputs:
+          mandatory:
+            - Node.fqdn
+            - plugin_name
+            - plugin_conf_params
+            - Service.name
+        post_run:
+          - tendrl.node_agent.objects.Service.atoms.check_service_status
+        pre_run:
+          - tendrl.node_agent.objects.Node.atoms.check_node_up
+        run: tendrl.node_monitoring.flows.configure_collectd.ConfigureCollectd
+        type: Create
+        uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
+  Config:
+    time_series:
+      time_series_db: 'graphite'
+      time_series_db_server: '0.0.0.0'
+      time_series_db_port: 80
+    tendrl_performance:
+      performance_server_interface: '0.0.0.0'
+      log_cfg_path = '/etc/tendrl/performance_monitoring_logging.yaml'
+      log_level = 'DEBUG'
 tendrl_schema_version: 0.3
 ----
 
@@ -272,6 +282,15 @@ tendrl_schema_version: 0.3
      to generate conf file, collectd custom plugins and templates will be
      maintained as part of Tendrl/performance_monitoring
   ** The configuration parameters passed from the api and hence the job.
+
+----
+Note:
+The flow definition will be loaded by Tendrl/performance_monitoring to the
+'/_tendrl/definitions/integrations.d/performance_monitoring' directory in etcd
+and an includes statement of the form:
+'#include /_tendrl/definitions/integrations.d/performance_monitoring'
+will be added to the master definitions file at '/_tendrl/definitions/master'
+----
 
 ==== Tendrl/common impact:
 
