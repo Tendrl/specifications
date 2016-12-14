@@ -1,0 +1,103 @@
+// vim: tw=79
+
+= Use 'enabled' attribute to allow API requests
+
+Tendrl API should use the 'enabled' attribute defined in the definitions yaml
+files to allow requests to be performed.
+
+== Problem description
+
+Tendrl API currently allows requests for all available objects and flows, which
+is not the desired expectation.
+
+== Use Cases
+
+Using the configuration from the definitions files help us to limit and control
+what the end user can access via the API.
+
+== Proposed change
+
+Tendrl API should use the 'enabled' attribute defined against flows and object
+to allow API requests.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The proposed change is an internal change and will not affect existing API's.
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+Node agent definitions yaml should be updated to have 'enabled' attribute for
+objects and flows
+
+==== Sds integration impact:
+
+Sds integrations definitions yaml should be updated to have 'enabled' attribute
+for objects and flows.
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+None.
+
+=== Assignee(s):
+
+Primary assignee:
+@anivargi
+
+=== Work Items:
+
+https://github.com/Tendrl/tendrl-api/issues/39
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Test API's which provide object details work as expected.
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
+
