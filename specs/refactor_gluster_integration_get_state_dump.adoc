@@ -1,0 +1,586 @@
+= Refactor Gluster Integration's state dump module
+
+
+The gluster get-state output is consumed by tendrl-gluster-integration. We need
+to re-factor the way Tendrl consumes and processes the get-state output.
+
+Notes:
+
+* In light of new changes to gluster get-state
+  http://review.gluster.org/#/c/15975
+
+
+== Problem description
+
+Current Tendrl way of consuming and processing the gluster get-state output
+considers only the volumes and bricks and pushes the details to central store.
+It needs to be modified to update the newly available volume options as well to
+central store.
+
+Also not all the volume attributes are added to Volume object in central store.
+The same should be taken care of and added.
+
+== Use Cases
+
+This addresses the use case of obtaining refreshed gluster cluster state and
+updating the same to central store.
+
+== Proposed change
+
+* Re-factor the code to handle the current output structure of get-state command
+related to volume options.
+
+The current output from gluster get-state command is proposed to be of the
+format
+
+```
+[Global]
+MYUUID: 3780fd01-8047-402c-81df-e361a1935bb8
+op-version: 30900
+
+[Global options]
+
+[Peers]
+Peer1.primary_hostname: <fqdn1>
+Peer1.uuid: 3c94c637-cb3b-4580-b718-a7fc5abef4ef
+Peer1.state: Peer in Cluster
+Peer1.connected: Connected
+Peer1.othernames:
+Peer2.primary_hostname: <fqdn2>
+Peer2.uuid: 3f1459e9-9f68-4c6c-8a30-53c09188cd5f
+Peer2.state: Peer in Cluster
+Peer2.connected: Connected
+Peer2.othernames:
+
+[Volumes]
+Volume1.name: vol1
+Volume1.id: 5e24f6ed-239e-4961-ac47-1e9ed44aa7b1
+Volume1.type: Distribute
+Volume1.transport_type: tcp
+Volume1.status: Started
+Volume1.brickcount: 3
+Volume1.Brick1.path: <fqdn1>:/root/bricks/vol1_b1
+Volume1.Brick1.hostname: <fqdn1>
+Volume1.Brick1.port: 49152
+Volume1.Brick1.rdma_port: 0
+Volume1.Brick1.status: Started
+Volume1.Brick1.signedin: True
+Volume1.Brick2.path: <fqdn2>:/root/bricks/vol1_b2
+Volume1.Brick2.hostname: <fqdn2>
+Volume1.snap_count: 0
+Volume1.stripe_count: 1
+Volume1.replica_count: 1
+Volume1.subvol_count: 3
+Volume1.arbiter_count: 0
+Volume1.disperse_count: 0
+Volume1.redundancy_count: 0
+Volume1.quorum_status: not_applicable
+Volume1.snapd_svc.online_status: Offline
+Volume1.snapd_svc.inited: True
+Volume1.rebalance.id: 00000000-0000-0000-0000-000000000000
+Volume1.rebalance.status: not_started
+Volume1.rebalance.failures: 0
+Volume1.rebalance.skipped: 0
+Volume1.rebalance.lookedup: 0
+Volume1.rebalance.files: 0
+Volume1.rebalance.data: 0Bytes
+Volume1.options.transport.address-family: inet
+Volume1.options.performance.readdir-ahead: on
+Volume1.options.nfs.disable: on
+
+Volume2.name: vol2
+Volume2.id: 778b04f7-24da-4d68-9418-a16f03361d7e
+Volume2.type: Distribute
+Volume2.transport_type: tcp
+Volume2.status: Started
+Volume2.brickcount: 3
+Volume2.Brick1.path: <fqdn1>:/root/bricks/vol2_b1
+Volume2.Brick1.hostname: <fqdn1>
+Volume2.Brick1.port: 49153
+Volume2.Brick1.rdma_port: 0
+Volume2.Brick1.status: Started
+Volume2.Brick1.signedin: True
+Volume2.Brick2.path: <fqdn2>:/root/bricks/vol2_b2
+Volume2.Brick2.hostname: <fqdn2>
+Volume2.snap_count: 0
+Volume2.stripe_count: 1
+Volume2.replica_count: 1
+Volume2.subvol_count: 3
+Volume2.arbiter_count: 0
+Volume2.disperse_count: 0
+Volume2.redundancy_count: 0
+Volume2.quorum_status: not_applicable
+Volume2.snapd_svc.online_status: Offline
+Volume2.snapd_svc.inited: True
+Volume2.rebalance.id: 00000000-0000-0000-0000-000000000000
+Volume2.rebalance.status: not_started
+Volume2.rebalance.failures: 0
+Volume2.rebalance.skipped: 0
+Volume2.rebalance.lookedup: 0
+Volume2.rebalance.files: 0
+Volume2.rebalance.data: 0Bytes
+Volume2.options.transport.address-family: inet
+Volume2.options.performance.readdir-ahead: on
+Volume2.options.nfs.disable: on
+
+
+[Services]
+svc1.name: glustershd
+svc1.online_status: Offline
+
+svc2.name: nfs
+svc2.online_status: Offline
+
+svc3.name: bitd
+svc3.online_status: Offline
+
+svc4.name: scrub
+svc4.online_status: Offline
+
+svc5.name: quotad
+svc5.online_status: Offline
+
+
+[Misc]
+Base port: 49152
+Last allocated port: 49153
+```
+
+* General refactoring of code handling the gluster get-state output and add
+all missing volume attributes to the Volume object
+** Below additional fields available under volume details from get-state output
+to be added to central store
+```
+- transport_type
+- snap_count
+- stripe_count
+- replica_count
+- subvol_count
+- arbiter_count
+- disperse_count
+- redundancy_count
+- quorum_status
+- snapd_svc.online_status
+- snapd_svc.inited
+- rebalance.id
+- rebalance.status
+- rebalance.failures
+- rebalance.skipped
+- rebalance.lookedup
+- rebalance.files
+- rebalance.data
+```
+
+* Modify the tendrl definitions specifications for gluster and add all the
+missing attributes to Volume object
+** The snippet from updated tendrl definitions would be as below for volume
+attributes
+```
+     Volume:
+       .......
+       attrs:
+         arbiter_count:
+           help: "Arbiter count of volume"
+           type: Integer
+         bricks:
+           help: "List of brick mnt_paths for volume"
+           type: List
+         deleted:
+           help: "Flag is volume is deleted"
+           type: Boolean
+         disperse_count:
+           help: "Disperse count of volume"
+           type: Integer
+         disperse_data_count:
+           help: "Disperse data count of volume"
+           type: Integer
+         force:
+           help: "If force execute the action"
+           type: Boolean
+         redundancy_count:
+           help: "Redundancy count of volume"
+           type: Integer
+         replica_count:
+           help: "Replica count of volume"
+           type: Integer
+         stripe_count:
+           help: "Stripe count of volume"
+           type: Integer
+         transport:
+           help: "Transport type for volume"
+           type: String
+         vol_id:
+           help: "ID of the gluster volume"
+           type: String
+         volname:
+           help: "Name of gluster volume"
+           type: String
+         vol_type:
+           help: "Type of the volume"
+           type: String
+         rebal_data:
+           help: "Rebalance data"
+           type: String
+         rebal_skipped:
+           help: "Skipped files while rebalance"
+           type: String
+         subvol_count:
+           help: "Count of subvolumes"
+           type: Integer
+         brick_count:
+           help: "Count of bricks"
+           type: Integer
+         cluster_id:
+           help: "UUID of the cluster"
+           type: String
+         snapd_inited:
+           help: "If snapd is initialized"
+           type: String
+         status:
+           help: "Status of the volume"
+           type: String
+         rebal_id:
+           help: "UUID of the rabalance task"
+           typoe: String
+         rebal_lookedup:
+           help: "Looked up files for rebalance"
+           type: Integer
+         snap_count:
+           help: "Count of the snapshots"
+           type: Integer
+         rebal_files:
+           help: "No of files rebalanced"
+           type: Integer
+         snapd_status:
+           help: "Status of snapd"
+           type: String
+         options:
+           help: "options list for volume"
+           type: json
+         quorum_status:
+           help: "Quorum status"
+           type: String
+         rebal_status:
+           help: "Status of rebalance task"
+           type: String
+         rebal_failures:
+           help: "Failed no of files for rebalance"
+           type: Integer
+       enabled: true
+       ..........
+```
+
+* Add an attribute namely "options" to Volume object which is of type json and
+contains key:value pairs as option name and option values
+
+** The new structure of volume object under etcd would be as below after changes
+```
+{
+
+    "action": "get",
+    "node": {
+        "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/vol_type",
+                "value": "Distribute",
+                "modifiedIndex": 4647,
+                "createdIndex": 4647
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_data",
+                "value": "0Bytes",
+                "modifiedIndex": 4630,
+                "createdIndex": 4630
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_skipped",
+                "value": "0",
+                "modifiedIndex": 4635,
+                "createdIndex": 4635
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/subvol_count",
+                "value": "1",
+                "modifiedIndex": 4644,
+                "createdIndex": 4644
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Bricks",
+                "dir": true,
+                "modifiedIndex": 37,
+                "createdIndex": 37
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/arbiter_count",
+                "value": "0",
+                "modifiedIndex": 4623,
+                "createdIndex": 4623
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/brick_count",
+                "value": "1",
+                "modifiedIndex": 4624,
+                "createdIndex": 4624
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/disperse_count",
+                "value": "0",
+                "modifiedIndex": 4627,
+                "createdIndex": 4627
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/cluster_id",
+                "value": "7aece92f-7bae-47eb-9511-0e68b0664e5e",
+                "modifiedIndex": 4696,
+                "createdIndex": 4696
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/redundancy_count",
+                "value": "0",
+                "modifiedIndex": 4637,
+                "createdIndex": 4637
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/vol_id",
+                "value": "ff0bceae-9901-46b0-9464-7fa4836d2535",
+                "modifiedIndex": 4697,
+                "createdIndex": 4697
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/snapd_inited",
+                "value": "True",
+                "modifiedIndex": 4640,
+                "createdIndex": 4640
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/status",
+                "value": "Started",
+                "modifiedIndex": 4642,
+                "createdIndex": 4642
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/stripe_count",
+                "value": "1",
+                "modifiedIndex": 4643,
+                "createdIndex": 4643
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_id",
+                "value": "00000000-0000-0000-0000-000000000000",
+                "modifiedIndex": 4633,
+                "createdIndex": 4633
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_lookedup",
+                "value": "0",
+                "modifiedIndex": 4634,
+                "createdIndex": 4634
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/snap_count",
+                "value": "0",
+                "modifiedIndex": 4639,
+                "createdIndex": 4639
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_files",
+                "value": "0",
+                "modifiedIndex": 4632,
+                "createdIndex": 4632
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/snapd_status",
+                "value": "Offline",
+                "modifiedIndex": 4641,
+                "createdIndex": 4641
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/replica_count",
+                "value": "1",
+                "modifiedIndex": 4638,
+                "createdIndex": 4638
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Options",
+                "dir": true,
+                "modifiedIndex": 78,
+                "createdIndex": 78
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/name",
+                "value": "vol1",
+                "modifiedIndex": 4628,
+                "createdIndex": 4628
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/quorum_status",
+                "value": "not_applicable",
+                "modifiedIndex": 4629,
+                "createdIndex": 4629
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_status",
+                "value": "not_started",
+                "modifiedIndex": 4636,
+                "createdIndex": 4636
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/deleted",
+                "value": "",
+                "modifiedIndex": 4626,
+                "createdIndex": 4626
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/rebal_failures",
+                "value": "0",
+                "modifiedIndex": 4631,
+                "createdIndex": 4631
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/transport_type",
+                "value": "tcp",
+                "modifiedIndex": 4645,
+                "createdIndex": 4645
+            }
+        ],
+        "modifiedIndex": 12,
+        "createdIndex": 12
+    }
+
+}
+```
+
+** The new field `Options` under volume object would be listed as below in etcd
+```
+{
+
+    "action": "get",
+    "node": {
+        "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Options",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Options/performance.readdir-ahead",
+                "value": "on",
+                "modifiedIndex": 2340,
+                "createdIndex": 2340
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Options/nfs.disable",
+                "value": "on",
+                "modifiedIndex": 2341,
+                "createdIndex": 2341
+            },
+            {
+                "key": "/clusters/7aece92f-7bae-47eb-9511-0e68b0664e5e/Volumes/ff0bceae-9901-46b0-9464-7fa4836d2535/Options/transport.address-family",
+                "value": "inet",
+                "modifiedIndex": 2342,
+                "createdIndex": 2342
+            }
+        ],
+        "modifiedIndex": 78,
+        "createdIndex": 78
+    }
+
+}
+```
+
+* More details: get-state output changes http://review.gluster.org/#/c/15975
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+* The persister model for Volume
+** Add all the missing attributes if volume to the model
+** Add attribute "options" of type json which contains key:value pairs
+
+=== Impacted modules
+
+==== Tendrl API impact
+
+* Tendrl object definitions for volume will need to be updated for accommodating
+the newly added volume attributes
+
+==== Tendrl/common impact
+
+None
+
+==== Tendrl/node_agent impact
+
+None
+
+==== SDS integration impact
+
+None
+
+==== Notifications/Monitoring impact
+
+* Monitoring might want to take a note of the new volume attributes
+
+==== Security impact
+
+None
+
+==== Performance impact
+
+None
+
+==== Other deployer impact
+
+None
+
+==== Developer impact
+
+None
+
+== Implementation
+
+* https://github.com/Tendrl/specifications/issues/30
+
+=== Assignee(s)
+
+Primary assignee:
+  shtripat
+
+
+Other contributor(s):
+  r0h4n
+
+== Work items
+
+* Introduce a class VolumeOptions in persister module to render volume options
+in central store (etcd)
+
+* Update the get-state output parsing logic and update volume options details to
+central store
+
+* Add all the missing volume attributes to the Volume object in central store
+
+== Dependencies
+
+* Required Gluster 3.9 + patch http://review.gluster.org/#/c/15975
+
+== Testing
+
+* Check if the gluster get-state output is parsed without any error
+
+* Verify the volume details in central store if it contains the volume options
+correctly under the URI ```/clusters/<id>/Volumes/<id>/Options```
+
+* Check if all the attributes available in get-state output are properly getting
+listed in central store under Volume object
+
+== Documentation impact
+
+None
+
+== References
+
+* https://www.redhat.com/archives/tendrl-devel/2016-November/msg00063.html
+
+* https://github.com/Tendrl/gluster_integration/issues/41
