@@ -26,8 +26,9 @@ In event of changes to definitions during Tendrl run time, Tendrl components sho
 
 == Proposed change
 
-* Fix central store location for definitions under node context at "definitions/data".
-* Fix central store location for definitions under cluster context at "clusters/$cluster_id/definitions/data"
+* Fix central store location for definitions under node context at "/_tendrl/definitions/master".
+* Fix central store location for definitions which extend the node_agent (eg: Monitoring, alerts) at "/_tendrl/definitions/integrations.d/*"
+* Fix central store location for definitions under cluster context at "clusters/$cluster_id/_tendrl/definitions/data"
 * Drive the initial node agent boot strap via a single yaml
 * Provide ways to "#include /etcd/definitions/" in the above boot strap definition file.
 * Periodic flow for node agent and sds-integration which will re-compile changes to the definitions
