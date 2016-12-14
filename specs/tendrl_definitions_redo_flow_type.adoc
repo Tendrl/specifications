@@ -1,0 +1,101 @@
+// vim: tw=79
+
+= Tendrl Definitions: Ensure flow "type" is available
+
+== Problem description
+
+Tendrl Flow definitions are consumed by tendrl-api to generate the API, A Flow can be of "type" create/delete/update, This "type" is referenced by the tendrl-api to map http methods to the individual flows exposed by the API. 
+
+Need to ensure "type" is correctly specified on every flow in all the Tendrl namespaces.
+
+== Use Cases
+
+The API wants to be able to correctly map http methods to type of outcome of the Flow execution. 
+
+== Proposed change
+
+* Ensure current and future flow definitions contain "type" as either of "create|delete|update"
+* Ensure the "type" attribute is consumed by tendrl-api to ensure access to flows via apt http methods
+* Ensure Tendrl Definitions validation checks for valid "type" attribute on flows
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Flow base class : add "type" attribute with valid values as "create|delete|update"
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* tendrl-api should always make use of "type" attribute from the flow definition.
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+* Ensure Tendrl Definitions validation checks for valid "type" attribute on flows
+
+==== Tendrl/node_agent impact:
+
+* Ensure current and future flow definitions contain "type" as either of "create|delete|update"
+
+==== Sds integration impact:
+
+* Ensure current and future flow definitions contain "type" as either of "create|delete|update"
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+WIP
+
+=== Assignee(s):
+
+Primary assignee:
+  r0h4n
+
+Other contributors:
+  None
+
+=== Work Items:
+
+WIP
+
+== Dependencies:
+
+WIP
+
+== Testing:
+
+WIP
+
+== Documentation impact:
+
+WIP
+
+== References:
+
+None
