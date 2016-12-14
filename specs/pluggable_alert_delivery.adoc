@@ -342,6 +342,14 @@ Primary assignee:
 
   * Changes in alerting module : Anmol Babu
 
+=== Work Items:
+
+* https://github.com/Tendrl/alerting/issues/10
+* https://github.com/Tendrl/alerting/issues/11
+  ** https://github.com/Tendrl/alerting/issues/12
+  ** https://github.com/Tendrl/alerting/issues/13
+* https://github.com/Tendrl/alerting/issues/14
+
 == Dependencies:
 
 * User management in tendrl.
