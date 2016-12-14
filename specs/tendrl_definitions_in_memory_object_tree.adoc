@@ -1,0 +1,97 @@
+// vim: tw=79
+
+= Tendrl Definitions in memory object tree representation
+
+== Problem description
+
+* Tendrl Definition drive the tendrl-api and tendrl-node-agent and tendrl-<sds-integration> and are stored/compiled in the central store
+
+* Tendrl Definitions are not currently converted into a object tree which will encapsulate all the Tendrl definitions for that Tendrl component.
+
+== Use Cases
+
+* An in-memory object tree representation of Tendrl definitions is essential for streamlining read/writes to the objects under those definitions
+
+== Proposed change
+
+* Create in-memory object tree which represents the Tendrl definitions present in that context (eg: node context, tendrl context)
+* Ensure current and future objects are not written/read unless they are part of the object tree.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+* Need common code to create object trees in memory based on provided Tendrl Definitions
+
+==== Tendrl/node_agent impact:
+
+* Consume Tendrl/common and create object tree in memory based on provided Tendrl Definitions
+
+==== Sds integration impact:
+
+* Consume Tendrl/common and create object tree in memory based on provided Tendrl Definitions
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+WIP
+
+=== Assignee(s):
+
+Primary assignee:
+ r0h4n
+
+=== Work Items:
+
+WIP
+
+== Dependencies:
+
+None
+
+== Testing:
+
+WIP
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
