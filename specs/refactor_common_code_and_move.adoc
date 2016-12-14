@@ -1,0 +1,275 @@
+= Refactor tendrl modules and move the common code to tendrl-common
+
+
+All the Tendrl modules like tendrl-gluster-integartion, tendrl-node-agent etc
+use various persisters, managers and job executors which have almost similar
+logic written and could ideally be moved to the common module tendrl-common.
+
+Any module specific logic can be implemented as part of extended classes from
+these common ones defined in tendrl-common module.
+
+
+== Problem description
+
+Currently there are lot of duplicate classes, code written across Tendrl modules
+like persister for central store, manager, job handlers from the etcd queue.
+Also base classes for flows, atoms and test cases are replicated across modules.
+
+These replicated classes and sources could be moved to the common module and
+individual modules can either use them as is or extend them for additional
+business logic.
+
+Even there are various sample configuration files which are replicated across
+the tendrl modules and could be more organized and moved to common module. Only
+modules specific configurations should be kept as part of the individual modules
+
+
+== Use Cases
+
+* Moving of all the common code from various tendrl modules would make sure that
+individual modules dont have specific implementations for similar stuff. Also
+the common modules plays as a library which could be referred and utilized by
+any module easily.
+
+== Proposed change
+
+* Move the base flow class to common module and all individual flows in the
+other modules can extend from this
+
+* Move all the utilities to common module, which are nowhere specific to a
+bridge in tendrl (e.g. flow utils, manager utils etc)
+
+* Define base class for Manager in common module and extend from this in
+individual modules
+
+* Define base class for Persister in common module and extend from this in
+individual modules
+
+* Define base job handler (rpc) in common module and if required extend from the
+same in individual modules
+
+* Move the base test class to common module and extend all the test cases from
+the same in individual modules
+
+* Re-factor the code to change the logging directory as per standardization
+
+* Re-factor the code across various modules to fix test cases and attain the
+code coverage level to 90%
+
+* Move the command executor, package installer and service manager utilities
+from node_agent module to common module as its generic in nature and can be
+used by other modules as well.
+
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== Impacted modules
+
+==== Tendrl API impact
+
+None
+
+==== Tendrl/common impact
+
+* Common module gets all common classes and code moved here e.g.
+** Common Manager class
+** Common Persister class
+** Common Job Queue Handler class
+** Utilities
+** Base flow class
+** Base atom class
+** Base test case class
+** Configuration management logic
+** Command executor, package installer and service manager utilities
+
+==== Tendrl/node_agent impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+* Remove command executor, package installer and service manager as its
+now moved to common module
+
+==== SDS integration impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+==== Notifications/Monitoring impact
+
+* Extend common Manager
+
+* Extend common Persister
+
+* Extend common job queue handler
+
+* Extend all the flows from common flow class
+
+* Extend all the atoms from common atom class
+
+* Extend all the test cases from common test class
+
+==== Security impact
+
+None
+
+==== Performance impact
+
+None
+
+==== Other deployer impact
+
+None
+
+==== Developer impact
+
+None
+
+== Implementation
+
+As part of above mentioned movement of classes and code to common module as a
+libary would affect the below flows majorly
+
+* Loading the cluster data to central store from managers. Only the SDS
+integration specific logic for reading and processing the cluster data remains
+within the integration modules and rest common logic is inherited from common
+module.
+
+* The way the job are picked and processed from job queue of etcd. From specific
+integration modules only the common library code would be invoked to get the job
+done.
+
+* The integration specific modules would extend the base persister from common
+module and would additionally provide SDS specific functionality written. These
+functions would mostly invoke the common module library function for doing the
+actual jobs for persistence to the central store.
+
+* The flows and atoms classes defined in individual SDS integration modules
+would extend from common library defined classes. So effectively these flows and
+atoms satisfy `is-a` relation with common module definitions of flow and atom.
+
+* The source code flow which takes care of loading and availing the
+configurations would change. The common module would provide all the library
+functions which can load and avail the configurations in understandable format
+to different modules as long as they provide the location details of these
+configuration files. The common module as library doesn't default to any
+location for these configuration files.
+
+* The node agent flows which invoke command executor, package installer and
+service manager now need to refer common module utilities as the code is moved
+to common module now.
+
+=== Assignee(s)
+
+Primary assignee:
+  shtripat
+
+
+Other contributor(s):
+  r0h4n, nnDarshan
+
+== Work items
+
+* Introduce a base class Manager under common module
+
+* Introduce a base class Persister under common module
+
+* Introduce a base class Rpc under common module
+
+* Move the base Flow class to common module
+
+* Introduce a base Atom class under common module
+
+* Move utilities (e.g. flow utils and manager util) to common module
+
+* Move the base test class to common module
+
+* Move the common configurations to common module
+
+* Extend the Manager, Persister and Rpc in individual modules from common
+
+* Extend the Flow and Atom in individual flows and atoms of the individual
+modules
+
+* Re-factor the code in different modules to use common utilities from common
+module
+
+* Re-factor the code for standardizing the logging directories for modules
+
+* Extend the base test class in individual test cases in modules
+
+* Re-factor the test cases and make sure code coverage is 90% or more
+
+* Move the command executor, package installer and service manager utilities
+to common module
+
+
+== Dependencies
+
+None
+
+== Testing
+
+* Sanity check for a job execution
+
+* Verify if logs are created as per the standard paths
+
+* Verify if test case code coverage is 90% or more for all the modules
+
+
+== Documentation impact
+
+* Update the tendrl/common document and remove the logging yaml related
+changes as the common module is now used as a library and doesnt have
+its own logging. Rather it would use specific module's logging e.g.
+node-agent, gluster-integration etc.
+
+== References
+
+* https://github.com/Tendrl/common/issues/58
+
+* https://github.com/Tendrl/common/issues/60
+
+* https://github.com/Tendrl/common/issues/62
+
+* https://github.com/Tendrl/common/issues/80
+
+* https://github.com/Tendrl/common/issues/82
+
+* https://github.com/Tendrl/common/issues/83
+
+* https://github.com/Tendrl/common/issues/84
+
+* https://github.com/Tendrl/node_agent/issues/102
+
+* https://github.com/Tendrl/gluster_integration/issues/89
+
+* https://github.com/Tendrl/ceph_integration/issues/59
+
+* https://github.com/Tendrl/performance_monitoring/issues/13
+
+* https://github.com/Tendrl/alerting/issues/9
