@@ -1,0 +1,95 @@
+// vim: tw=79
+
+= Tendrl Definitions: Versioned Namespaces
+
+== Problem description
+
+Current Namespaces in Tendrl Definitions are global to Tendrl. In event of updates to any Namespace, there needs to be enough isolation to accomodate the updated namespace in a running Tendrl instance.
+
+== Use Cases
+
+* Live upgrades and migration of Tendrl namespaces
+
+== Proposed change
+
+* Current and future namespaces should contain "version", which maps directly to the in-memory representation of that "version" for that namespace
+* tendrl-api needs to expose all versions of a namespace
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Existing Tendrl namespaces to be versioned via "version" attribute under namespace declaration
+* In-memory object tree should be built with versioned namespaces
+
+==== Notifications/Monitoring impact:
+
+* Existing Tendrl namespaces to be versioned via "version" attribute under namespace declaration
+* In-memory object tree should be built with versioned namespaces
+
+==== Tendrl/common impact:
+
+* Provide common functionality to enable in-memory object tree to be built with versioned namespaces
+
+==== Tendrl/node_agent impact:
+
+* Existing Tendrl namespaces to be versioned via "version" attribute under namespace declaration
+* In-memory object tree should be built with versioned namespaces
+
+==== Sds integration impact:
+
+* Existing Tendrl namespaces to be versioned via "version" attribute under namespace declaration
+* In-memory object tree should be built with versioned namespaces
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  r0h4n
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+WIP
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/pull/15
+
+== Testing:
+
+WIP
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
