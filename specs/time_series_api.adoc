@@ -241,7 +241,7 @@ where the fields mean the following:
 === Developer impact:
 
 This has extensive impact on 2 modules tendrl-api and performance-monitoring
-and hence warrants a very high collaboration between the implementers of the
+and hence warrants a very high collaboration between the owners of the
 2 modules
 
 == Implementation:
@@ -262,9 +262,7 @@ Primary assignee:
 
 === Work Items:
 
-----
-TODO: raise github issues and link here
-----
+* https://github.com/Tendrl/performance_monitoring/issues/7
 
 == Dependencies:
 
