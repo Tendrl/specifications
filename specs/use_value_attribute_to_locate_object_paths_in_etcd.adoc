@@ -1,0 +1,106 @@
+// vim: tw=79
+
+= Use 'value' attribute in objects to locate object path in etcd.
+
+Tendrl API should use the 'value' attribute defined in the definitions yaml
+files to infer the path of the an object in etcd. 
+This path is used to retrieve detail of a single instance of an object.
+
+== Problem description
+
+Tendrl API currently locates object paths based on certain assumptions like the
+object path is the plural of the object name in etcd. The assumption might not
+always be correct and hence the paths for retrieving single instance of an
+object should be picked up from the definitions yaml files under the
+object section with an attribute defined as 'value'.
+
+== Use Cases
+
+Using the configurations from the definitions yaml files for locating path for
+finding object details makes the API future proof and reduces assumptions or conventions which might break in certain situations.
+
+== Proposed change
+
+Tendrl API should use the configuration defined under objects 'value' in the
+defitnitions yaml file to locate the path for specific object. The path should
+be used to retrieve details of a single instance of an object.
+
+=== Alternatives
+
+Use and ensure convention is followed across all object naming and paths
+in etcd.
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The proposed change is an internal change and will not affect existing API's.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+Node agent definitions yaml should be updated to have 'value' attribute for all
+objects.
+
+==== Sds integration impact:
+
+Sds integrations definitions yaml should be updated to have 'value' attribute
+for all objects.
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  @anivargi
+
+=== Work Items:
+
+https://github.com/Tendrl/tendrl-api/issues/28
+
+== Dependencies:
+
+None
+
+
+== Testing:
+
+Test API's which provide detail of an object work as expected.
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
