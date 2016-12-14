@@ -1,0 +1,163 @@
+= Import cluster workflow by using tendrl-frontend UI
+
+The intent of import cluster workflow is to provide a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management using tendrl-frontend UI.
+
+
+== Problem description
+
+This specification describes import cluster workflow using UI which is a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management. This specification addresses the import use-cases of both ceph and gluster storage.
+
+
+== Use Cases
+
+This addresses the use case of importing existing clusters(ceph. gluster etc.) into tendrl for management.
+
+The workflow is as follows:
+
+* "Import Cluster" can be triggered from Landing page (First Time Experience) or Cluster List View.
+
+* User click on "Import Cluster". 
+
+* If multiple storage service providers have been installed on the system. Than it will ask for select the storage service(gluster/ceph) to use for cluster.
+
+* Now we have two step to go for import cluster
+
+	** Step 1: Now we will have all node listed. User select 1 host.
+	( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/183602753 )
+
+		*** Select any MON node in the cluster in case of ceph.
+		*** Select any node in the cluster in case of gluster.
+
+	** Step 2: Use the selected node (in previous step) to extract the details of the cluster.
+	( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/193145495 )
+		*** Now we will have cluster summary. Now go for "Import Cluster".
+
+
+* If cluster associated with selected host contains unsupported configuration, System notifies user to select another cluster to import or to cancel import with error message. An error can occur because of the following:
+
+ 	** Not supported gluster/ceph cluster version.
+ 	** If one of the hosts in the cluster is down or not reachable.
+
+
+== Proposed change
+
+Front-end related changes:
+
+	* When trigger on "import cluster", and  If multiple storage providers are installed, need to be add one popup to identify the type of cluster (gluster/ceph etc) they want to import.
+
+	* Need to be add one more routing for import cluster with parameters for identify the type of cluster (gluster/ceph etc). and will use same template for any type of cluster import (gluster/ceph etc).
+
+	* And breadcrumb need to be add in top of the page for tracking the location information.
+
+	* In case of unexpected or error result, we need to be add error message as suggested by UX design.
+	 ( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/193145484 )
+
+	* For ceph related changes : 
+
+		** After selecting ceph storage service, Now we have two step to go for import cluster
+
+			*** Step 1: Need to be populate all node list in tabular format as UX design suggested. so for tabular component we should have generic component(later can be used for others) for generate the tabular view. ( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/183602753 )
+
+			*** Step 2: We should have template for populate the cluster details (cluster name, storage service and node details ) which will come after selecting node from previous step.
+			( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/193145495 )
+
+		** We need to populate error message in case of ceph if selected node is not a monitor.
+		( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/197663177 )
+
+	* For gluster related changes : 
+
+		** After selecting gluster storage service, Now we have two step to go for import cluster
+
+			*** Step 1: Need to be populate all node list in tabular format as UX design suggested. so for tabular component we should have generic component(later can be used for others) for generate the tabular view. ( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/183602753 )
+
+			*** Step 2: We should have template for populate the cluster details (cluster name, storage service and node details ) which will come after selecting node from previous step.
+			( https://redhat.invisionapp.com/share/R88EUSGJK#/screens/193145495 )
+
+
+=== Alternatives
+
+The solution discussed in the 'Proposed change' is a two step process(involves two API calls). Instead this can be combined into a single API as well where the API taken a single node as input and rest executed in one go. The downside with approach would be that the user will not a chance to verify the fetched cluster details are correct. Also there is an impact on the proposed UX design as well
+
+=== Data model impact:
+
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl frontend impact:
+
+   * Need to be add one more routing for import cluster.
+   * And error message need to be implement accross the application as a common component.
+   * This changes will impect unit test case as well. need to be update the test case according code changes.
+
+==== Tendrl Backend impact:
+
+This is discussed in a different specification - https://github.com/Tendrl/specifications/issues/54
+
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+There should be changes in UI as well and so end user as well impacted.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+Created the github issues to track the implementation:
+
+* https://github.com/Tendrl/tendrl_frontend/issues/63
+
+=== Assignee(s):
+
+
+Primary assignee:
+  kamleshverma1
+
+Other contributors:
+  gnehapk
+
+=== Work Items:
+
+Basic import cluster flows are already implemented in UI. The changes with respect to auto discovering the cluster details as part import cluster needs to be implemented from UI.
+
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/issues/54
+
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+* Should set the initialization properties correct.
+* Should set the details of imported cluster from the view.
+* Should display proper notification message once import cluster workflow initiated.
+
+
+== Documentation impact:
+
+UX design need to be reviewed and updation on UX design is required if any changes propose after review's discussion.
+
+== References:
+
+* https://github.com/Tendrl/specifications/issues/56
+* UX Design: https://redhat.invisionapp.com/share/R88EUSGJK
