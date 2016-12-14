@@ -1,0 +1,104 @@
+// vim: tw=79
+
+= Tendrl Definitions: Provide Object "list" central store path
+
+Objects defined as part of Tendrl definitions should have a "list" key which points to central store path to fetch list of all instances of that Object
+
+
+== Problem description
+
+Object definition in any namespace must include a path to the central store where all instances of that Object can be found
+
+== Use Cases
+
+The "list" key under each Object will be used by the tendrl-api to fetch all instance of that object
+
+== Proposed change
+
+All objects defined under any Tendrl namespace should contain a "list" key which points to the list of all instances of that object in the central store.
+
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Adds "list" key to all Objects in Tendrl namespaces
+
+* The "list" key will point to a relative path in the central store which will contain list of all instances of that object
+eg: 'clusters/xyz/objects/Volumes/' will contain list of all Volumes in that cluster
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* Fetch object list from central store using the "list" key for that Object.
+
+==== Notifications/Monitoring impact:
+
+* Each object needs to provide its "list" path
+
+==== Tendrl/common impact:
+
+* Tendrl object base class will need to be updated to add "list" key
+* Validation should ensure the "list" key points to a relative path under the cluster namespace
+
+==== Tendrl/node_agent impact:
+
+* Each object needs to provide its "list" path
+
+==== Sds integration impact:
+
+* Each object needs to provide its "list" path
+
+=== Security impact:
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  r0h4n
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+WIP
+
+== Dependencies:
+
+* All namespaces and the tendrl-api need to accomodate this change
+
+== Testing:
+
+WIP
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
