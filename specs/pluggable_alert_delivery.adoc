@@ -261,14 +261,13 @@ tendrl_schema_version: 0.3
   ** Api to get list of currently supported means of notification.
 
 ----
-GET /alerting
+GET /alerting/supported_notification_medium
 
 Sample Response:
 
 Status: 200 OK
 {
-  email,
-  snmp
+  notif_medium: [email, snmp]
 }
 ----
 
@@ -276,7 +275,7 @@ Status: 200 OK
      time, acked/not acked, alert type, severity, resource and significance.
 
 ----
-GET /alerts/severity='CRITICAL'
+GET /alerts/severity=CRITICAL
 
 Sample Response:
 
