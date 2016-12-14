@@ -1,0 +1,138 @@
+// vim: tw=79
+
+= Tendrl Definitions Centralize Node agent definitions
+
+Tendrl Definitions provided under the node context and cluster context need a well defined place in the central store.
+These Definitions also need to be re-compiled periodically based on updates to definitions under the node context and cluster context
+
+
+== Problem description
+
+Node Context: Tendrl definitions that require only a Node context (node id)
+Cluster Context: Tendrl definitions that require Tendrl Context (cluster id)
+
+Why centralize:
+Tendrl-api and other Tendrl components rely on Tendrl definitions under the node context and the cluster context to build discoverable Flows. There needs to be formal central store loaction for tendrl definitions under node and cluster context
+
+Why compile:
+There needs to be a periodic flow on the node agent and the sds integration , which makes sure all the Definitions under node context and Cluster context respectively.
+
+
+== Use Cases
+
+tendrl-api, tendrl-gluster-integration, tendrl-ceph-integration should be able to access definitions under node context and cluster context at a well defined location in centra store.
+
+In event of changes to definitions during Tendrl run time, Tendrl components should re-compile and update the definitions and re-build the in-memory object tree as well.
+
+== Proposed change
+
+* Fix central store location for definitions under node context at "/_tendrl/definitions/master".
+* Fix central store location for definitions which extend the node_agent (eg: Monitoring, alerts) at "/_tendrl/definitions/integrations.d/*"
+* Fix central store location for definitions under cluster context at "clusters/$cluster_id/_tendrl/definitions/data"
+* Drive the initial node agent boot strap via a single yaml
+* Provide ways to "#include /etcd/definitions/" in the above boot strap definition file.
+* Periodic flow for node agent and sds-integration which will re-compile changes to the definitions
+* Use this compiled version to build in-memory definition tree for node agent and sds-integration
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Adds "Tendrl_definition" (simial to Tendrl_context) object to node agent and cluster namespace (gluser, ceph integration)
+
+* Adds periodic flow to node agent and sds-integration definitions to collect updated definitions and re-compile them at central location defined by object "Tendrl_definition"
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* tendrl-api needs to fetch definitions under the node context and cluster context from its new location described in "Proposed Change"
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+* Adds "Tendrl_definition" (simial to Tendrl_context) object to node agent
+
+==== Sds integration impact:
+
+* Adds "Tendrl_definition" (simial to Tendrl_context) object to cluster namespace (gluser, ceph integration)
+
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+
+Describe any potential performance impact on the system, for example
+how often will new code be called, and is there a major change to the calling
+pattern of existing code.
+
+Examples of things to consider here include:
+
+* A small code block might look like a small addition but when considering
+  large scale deployments the proposed code block may in fact be performed on
+  hundreds of nodes.
+
+* A small change in a utility function or a commonly used decorator can have a
+  large impacts on performance.
+
+* Calls which result in a database queries can have a profound impact on
+  performance, especially in critical sections of code.
+
+* Will the change include any locking, and if so what considerations are there
+  on holding the lock?
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  r0h4n
+
+Other contributors:
+  None
+
+=== Work Items:
+
+WIP
+
+== Dependencies:
+
+WIP
+
+== Testing:
+
+WIP
+
+== Documentation impact:
+
+WIP
+
+== References:
+
+WIP
