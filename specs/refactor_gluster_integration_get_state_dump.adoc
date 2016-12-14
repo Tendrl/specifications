@@ -540,7 +540,7 @@ None
 
 == Implementation
 
-* github issue link here
+* https://github.com/Tendrl/specifications/issues/30
 
 === Assignee(s)
 
@@ -582,3 +582,5 @@ None
 == References
 
 * https://www.redhat.com/archives/tendrl-devel/2016-November/msg00063.html
+
+* https://github.com/Tendrl/gluster_integration/issues/41
