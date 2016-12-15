@@ -242,20 +242,16 @@ will look like:
 namespace.tendrl.node_monitoring:
   objects:
     Tendrl_definition:
+      value: '/_tendrl/definitions/integrations.d/performance_monitoring/data'
       attrs:
         data:
           help: "The flow definitions corresponding to performance_monitoring module"
           type: json
-        value:
-          help: 'The path in etcd to which the definition needs to be uploaded'
-          type: String
     Config:
+        value: '/_tendrl/config/performance_monitoring'
         data:
           help: "The flow definitions corresponding to performance_monitoring module"
           type: json
-        value:
-          help: 'Path in etcd to which the configs in data attribute needs to be uploaded'
-          type: String
 tendrl_schema_version: 0.3
 ----
 
@@ -283,8 +279,7 @@ tendrl_schema_version: 0.3
       uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
 ----
 
-in the 'data' attribute of 'Tendrl_definition' object and 'value' attribute
-will have '/_tendrl/definitions/integrations.d/performance_monitoring/data'.
+in the 'data' attribute of 'Tendrl_definition' object.
 The 'data' attribute of 'Config' will contain:
 
 ----
@@ -301,9 +296,6 @@ The 'data' attribute of 'Config' will contain:
   }
 }
 ----
-
-and the value will contain '_tendrl/config/performance_monitoring' which is
-the location in etcd where the config in 'data' attribute is uploaded to.
 
 * In the above flow definition, the flow ConfigureCollectd synthesises a
   command string with command name and its parameters which will be executed
