@@ -60,12 +60,11 @@ data in the time series db if the monitoring stack is installed.
   ** Interface to time-series db is designed in the form of plugins specific to
      a time-series db.
     *** This means that to support a new time-series db, all it takes is the
-        addition of its apecic interface as a plugin and doesn't require
+        addition of its specific interface as a plugin and doesn't require
         touching any other part of the code.
     *** The way the plugins work is :
       **** The interfaces to time-series db are added under the directory
-           tendrl/performance-monitoring/time_series_db/dbplugins of
-           tendrl/performance-monitoring.
+           time_series_db/dbplugins of tendrl/performance-monitoring.
       **** These plugins inherit from a common interface and hence all of them
            follow a similar basic skeletal structure.
       **** The plugin framework uses python's meta-class approach and they get
@@ -74,8 +73,7 @@ data in the time series db if the monitoring stack is installed.
            used to interface to the time-series db. The way this works is as
            follows:
             ***** A singleton manager looks for all/any plugins in directory
-                  tendrl/performance-monitoring/time_series_db/dbplugins and
-                  imports them all.
+                  time_series_db/dbplugins and imports them all.
             ***** The moment they are imported the meta-class registers an
                   instance of the plugin with itself.
             ***** The singleton manager then stores the instance of required
@@ -122,7 +120,7 @@ below.
 Sample Request
 
 ----------
-GET /monitoring/nodes/<node_name>/monitored_types
+GET /monitoring/nodes/<node_id>/monitored_types
 ----------
 
 Sample Response
@@ -146,7 +144,7 @@ statistics that tendrl's monitoring stack maintains in its time series db.
 Sample Request
 
 ----------
-GET /monitoring/nodes/<node_name>/<resource_name>/stats
+GET /monitoring/nodes/<node_id>/<resource_name>/stats
 ----------
 
 Sample Response
@@ -188,6 +186,22 @@ The above response gives the statistics for last 24 hours corresponding to the
 to the above api, then the api responds with the statistics for that time
 range.
 
+To get the statistics for a given time-range:
+
+----------
+GET /monitoring/nodes/<node_id>/<resource_name>/stats?from=1997-07-16T19:20+01:00&to=1997-07-18T19:20+01:00
+----------
+
+----
+Note: The time used in the above api needs to abide the iso8601 format
+----
+
+To get the latest stat use:
+
+----------
+GET /monitoring/nodes/<node_id>/<resource_name>/stats?duration=latest
+----------
+
 ==== Tendrl/common impact:
 
 None
@@ -216,27 +230,7 @@ None
 
 === Other deployer impact:
 
-Some of the config options as below need to be made available:
-
-----
-[time_series]
-time_series_db = graphite
-time_series_db_server = 0.0.0.0
-time_series_db_port = 80
-
-[tendrl_performance]
-performance_server_interface = 0.0.0.0
-
-
-where the fields mean the following:
-
-* time_series_db - to indicate the currently used time-series db so that the
-                   corresponding plugin can be used
-* time_series_db_server - ip of the server where the time-series db resides.
-* time_series_db_port - port on which time series db can be acceseed for read.
-* performance_server_interface - the network interface only on which the
-                                 Tendrl/performance_monitoring serves
-----
+None
 
 === Developer impact:
 
@@ -248,13 +242,6 @@ and hence warrants a very high collaboration between the owners of the
 
 
 === Assignee(s):
-
-
-Who is leading the writing of the code? Or is this a spec where you're
-throwing it out there to see who picks it up?
-
-If more than one person is working on the implementation, please designate the
-primary author and contact.
 
 Primary assignee:
   performance_monitoring part: anmolbabu
