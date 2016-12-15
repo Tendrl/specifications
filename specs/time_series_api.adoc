@@ -33,10 +33,10 @@ it can be co-resident with tendrl application but nothing necessiates this.
 Following are its sub-components based on the functionalities:
 
 * Api Layer : This layer will serve the following responsibilities.
-  ** Serve the time series data stored in time series database.
-  ** The apis internally use a plugin based approach for querying the
-     time-series performance data which eases the task of supporting multiple
-     time-series databases.
+** Serve the time series data stored in time series database.
+** The apis internally use a plugin based approach for querying the
+   time-series performance data which eases the task of supporting multiple
+   time-series databases.
 * Aggregator : This module aggregates atomic stats(ex: cluster utilization) to
   composite(system utilization) stats which will be required by UI for the
   dashboards.
@@ -57,36 +57,35 @@ data in the time series db if the monitoring stack is installed.
 
 * Tendrl/performance-monitoring will expose apis to access performance data in
   time-series db. This is achieved by:
-  ** Interface to time-series db is designed in the form of plugins specific to
-     a time-series db.
-    *** This means that to support a new time-series db, all it takes is the
-        addition of its specific interface as a plugin and doesn't require
-        touching any other part of the code.
-    *** The way the plugins work is :
-      **** The interfaces to time-series db are added under the directory
-           time_series_db/dbplugins of tendrl/performance-monitoring.
-      **** These plugins inherit from a common interface and hence all of them
-           follow a similar basic skeletal structure.
-      **** The plugin framework uses python's meta-class approach and they get
-           registered with the framework when everything in the plugin path is
-           imported but only the plugin configured in trendrl's conf will be
-           used to interface to the time-series db. The way this works is as
-           follows:
-            ***** A singleton manager looks for all/any plugins in directory
-                  time_series_db/dbplugins and imports them all.
-            ***** The moment they are imported the meta-class registers an
-                  instance of the plugin with itself.
-            ***** The singleton manager then stores the instance of required
-                  time-series db plugin which will be henceforth used for all
-                  interactions with the time-series db.
-            ***** Since the manager is a singleton, there is only one instance
-                  of it throughout the life of Tendrl/performance-monitoring
-                  application which means all this house-keeping is done only
-                  once during the lifecycle of the application.
+** Interface to time-series db is designed in the form of plugins specific to
+   a time-series db.
+*** This means that to support a new time-series db, all it takes is the
+    addition of its specific interface as a plugin and doesn't require touching
+    any other part of the code.
+*** The way the plugins work is :
+**** The interfaces to time-series db are added under the directory
+     time_series_db/dbplugins of tendrl/performance-monitoring.
+**** These plugins inherit from a common interface and hence all of them follow
+     a similar basic skeletal structure.
+**** The plugin framework uses python's meta-class approach and they get
+     registered with the framework when everything in the plugin path is
+     imported but only the plugin configured in trendrl's conf will be used to
+     interface to the time-series db. The way this works is as follows:
+***** A singleton manager looks for all/any plugins in directory
+      time_series_db/dbplugins and imports them all.
+***** The moment they are imported the meta-class registers an instance of the
+      plugin with itself.
+***** The singleton manager then stores the instance of required time-series db
+      plugin which will be henceforth used for all interactions with the
+      time-series db.
+***** Since the manager is a singleton, there is only one instance of it
+      throughout the life of Tendrl/performance-monitoring application which
+      means all this house-keeping is done only once during the lifecycle of
+      the application.
 * The following apis will be exposed by Tendrl/performance-monitoring:
-  ** An api to list the monitored resources of a particular entity
-  ** An api to get statistics of any monitored resource from list in above api
-     for a particular entity.
+** An api to list the monitored resources of a particular entity
+** An api to get statistics of any monitored resource from list in above api
+   for a particular entity.
 * The Tendrl/tendrl-api proxies to these apis and remains agnostic of the
   time-series db specifics.
 
