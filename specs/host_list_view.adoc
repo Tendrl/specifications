@@ -1,0 +1,96 @@
+// vim: tw=79
+
+= Tendrl Definitions: Display list of hosts discovered by Tendrl
+
+Display list of hosts discovered by Tendrl, whether they currently associated with a cluster or not. The list should have functionality for 
+
+* filtering by name, cluster, role and status.
+* sorting by name.
+
+Host list will be sorted by name by default.
+
+== Problem description
+
+Tendrl should show list of hosts discovered by Tendrl along with their details.
+
+The details shown for each host in UI is -
+* fqdn
+
+== Use Cases
+
+Users can see the list of host present in Tendrl. They can als filter and sort the list. 
+
+== Proposed change
+
+* Create a view for listing host details. 
+* Filter parameter(name/cluster/role/status) should be sent to API to fetch the filtered list of host.
+* Sorting parameter(name and asc/desc) should be sent to API to fetch sorted list of host.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+
+==== Notifications/Monitoring impact:
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+https://github.com/Tendrl/tendrl_frontend/issues/66
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Test whether hosts are correctly being displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/199053039
