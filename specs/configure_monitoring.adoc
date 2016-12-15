@@ -240,6 +240,28 @@ will look like:
 
 ----
 namespace.tendrl.node_monitoring:
+  objects:
+    Tendrl_definition:
+      attrs:
+        data:
+          help: "The flow definitions corresponding to performance_monitoring module"
+          type: json
+        value:
+          help: 'The path in etcd to which the definition needs to be uploaded'
+          type: String
+    Config:
+        data:
+          help: "The flow definitions corresponding to performance_monitoring module"
+          type: json
+        value:
+          help: 'Path in etcd to which the configs in data attribute needs to be uploaded'
+          type: String
+tendrl_schema_version: 0.3
+----
+
+* The performance_monitoring application on startup for example will have:
+
+----
   flows:
     ConfigureCollectd:
       atoms:
@@ -259,10 +281,29 @@ namespace.tendrl.node_monitoring:
       run: tendrl.node_monitoring.flows.configure_collectd.ConfigureCollectd
       type: Create
       uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
-  Tendrl_definition: '/_tendrl/definitions/integrations.d/performance_monitoring/data'
-  Config: '_tendrl/config/performance_monitoring'
-tendrl_schema_version: 0.3
 ----
+
+in the 'data' attribute of 'Tendrl_definition' object and 'value' attribute
+will have '/_tendrl/definitions/integrations.d/performance_monitoring/data'.
+The 'data' attribute of 'Config' will contain:
+
+----
+{
+  'time_series' : {
+    'time_series_db': 'graphite',
+    'time_series_db_server': '0.0.0.0', # The graphite server addr
+    'time_series_db_port': 80
+  },
+  'tendrl_performance' : {
+    'performance_server_interface': '0.0.0.0',
+    'log_cfg_path': '/etc/tendrl/performance_monitoring_logging.yaml',
+    'log_level': 'DEBUG',
+  }
+}
+----
+
+and the value will contain '_tendrl/config/performance_monitoring' which is
+the location in etcd where the config in 'data' attribute is uploaded to.
 
 * In the above flow definition, the flow ConfigureCollectd synthesises a
   command string with command name and its parameters which will be executed
@@ -277,8 +318,8 @@ tendrl_schema_version: 0.3
 
 ==== Tendrl/common impact:
 
-A new atom 'check_service_status' is implemented and a corresponding entry is
-made under 'Service' object of Tendrl/common definition file as:
+A new atom 'check_service_status' is implemented and a correspondingly the
+definition will additionally have:
 
 ----
     Service:
