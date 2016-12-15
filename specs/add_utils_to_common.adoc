@@ -1,0 +1,170 @@
+= Add general purpose utils to common
+
+
+Common repository should have utilities for few very frequently needed actions
+like command execution, package installation, service management etc.
+
+== Problem description
+
+There are few very frequently executed actions like like command execution,
+package installation, service management etc. in the tendrl backend. It is
+better to have utility for these in tendrl-common, so that all the backend
+components like tendrl-node-agent tendrl-gluster-integration and tendrl-ceph
+integration can perform those actions by using tendrl-common as library. This
+avoids the duplication of effort needed to implement such actions. And makes
+maintainability easier
+
+== Use Cases
+
+* All tendrl-backand components can use tendrl-common as library for performing
+these actions.
+
+== Proposed change
+
+Add commonly needed tendrl-backend actions/functions as utils to tendrl-common.
+So that tendrl-common can be used as a library to perform such actions. The
+commonly used actions that we see in tendrl backend currently are:
+
+* command-execution
+* package-installation
+* service-management
+
+All these functions are available as ansible modules. So if we can write a
+wrapper to utilize ansible modules, we will get the functionality without
+having to actually implement the functionality. This avoids a lot of dev
+effort. Also these modules are maintained by ansible community which is very
+active and these modules should be well tested as its being used by a huge
+community. And ansible has a very good collection of modules, so in future
+if we find out that a new util is needed then most probably an ansible
+module will be already available for that. We just have to use the module
+through the wrapper. So its better to leverage the ansible module for
+adding utils to tendrl-common
+
+The expected usage of utils is as follows:
+
+[source,python]
+----
+# using command utility
+
+from tendrl.common.utils.command import Command
+command = Command("ls -la") # it takes command as argument
+# Only the commands listed in safe command list can be run
+# using this utility
+stdout, stderr, rc = command.run()
+# returns standard-out, standard-err and return-count
+
+
+# using install utility
+
+from tendrl.common.utils.package_installer import Installer
+# it takes package name, package_type(rpm, pip and deb) and
+# optionally package version as argument.
+installer = Installer(package_name, package_type, version)
+# returns message and success status
+message, success = installer.install()
+
+
+# using service utility
+
+from tendrl.common.utils.service import Service
+# it takes service name and optional enabled(yes/no) as
+# argument
+service = Service(service_name, enabled="yes")
+# Starting a service
+message, success = service.start()
+# Stopping a service
+message, success = service.stop()
+# Restarting a service
+message, success = service.restart()
+# Reloading a service
+message, success = service.reload()
+#all the above four methods return message and success status
+----
+
+We have to make sure that the command executor utility is not used for running
+malicious commands. In order to achieve this, we maintain a list of legal(safe)
+commands that can be run using the util in tendrl-common code. No other command
+can be executed using the utils.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== REST API impact
+
+None
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+Any monitoring code that resides on SDS node can make use of the utils from
+tendrl-common
+
+=== Other end user impact
+
+None
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+None
+
+=== Developer impact
+
+* Developers contributing to backend components like tendrl-node-agent, tendrl-
+gluster-integration, tendrl-ceph-integration must use these utils every where
+possible, so that duplication of effort is avoided.
+
+== Implementation
+
+=== Assignee(s)
+
+nnDarshan
+
+Primary assignee:
+nnDarshan
+
+Other contributors:
+None
+
+=== Work Items
+
+* Add a ansible module wrapper which can be used to leverage ansible modules.
+
+* Use command module of ansible to implement the command executor util.
+
+* Use pip, yum and deb modules from ansible to implement installer util.
+
+* Use service module from ansible and implement installer util.
+
+PR: https://github.com/Tendrl/common/pull/79
+
+== Dependencies
+
+This adds ansible dependency to tendrl-common repository.
+
+== Testing
+
+Since this is an utility this has to be independently tested thoroughly and
+made sure that there are no issues.
+
+
+== Documentation Impact
+
+None
+
+== References
+
+https://github.com/Tendrl/common/issues/80
+
+https://github.com/Tendrl/common/pull/79
