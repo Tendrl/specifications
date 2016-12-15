@@ -188,7 +188,9 @@ and for a status based alert:
   'resource': 'cluster',
   'CurrentValue': 'Down',
   tags: {
-    'cluster_id' : '6406062e-be46-11e6-a4a6-cec0c932ce01',
+    'Tendrl_context.cluster_id' : '6406062e-be46-11e6-a4a6-cec0c932ce01',
+    'Tendrl_context.sds_name': 'gluster-integration',
+    'Tendrl_context.sds_version': 0.1,
   },
   'Type': 'status',
   'severity': 'Critical',
