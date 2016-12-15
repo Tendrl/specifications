@@ -17,11 +17,11 @@ The details shown for each host in UI is -
 
 == Use Cases
 
-Users can see the list of host present in Tendrl. They can als filter and sort the list. 
+Users can see the list of host present in Tendrl. They can also filter and sort the list. 
 
 == Proposed change
 
-* Create a view for listing host details. 
+* Create a view for listing host. 
 * Filter parameter(i.e name or provider) should be sent to API to fetch the filtered list of host.
 * Sorting parameter(i.e. name or status or utilisation) should be sent to API to fetch sorted list of host.
 
