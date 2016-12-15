@@ -14,11 +14,12 @@ Host list will be sorted by name by default.
 Tendrl should show list of hosts discovered by Tendrl along with their details.
 
 The details shown for each host in UI is -
+
 * fqdn
 
 == Use Cases
 
-Users can see the list of host present in Tendrl. They can als filter and sort the list. 
+Users can see the list of host present in Tendrl. They can also filter and sort the list. 
 
 == Proposed change
 
