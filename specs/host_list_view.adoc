@@ -12,6 +12,7 @@ Display list of hosts discovered by Tendrl, whether they currently associated wi
 Tendrl should show list of hosts discovered by Tendrl along with their details.
 
 The details shown for each host in UI is -
+
 * fqdn
 
 == Use Cases
