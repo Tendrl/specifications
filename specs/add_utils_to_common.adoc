@@ -48,6 +48,8 @@ The expected usage of utils is as follows:
 
 from tendrl.common.utils.command import Command
 command = Command("ls -la") # it takes command as argument
+# Only the commands listed in safe command list can be run
+# using this utility
 stdout, stderr, rc = command.run()
 # returns standard-out, standard-err and return-count
 
@@ -78,6 +80,11 @@ message, success = service.restart()
 message, success = service.reload()
 #all the above four methods return message and success status
 ----
+
+We have to make sure that the command executor utility is not used for running
+malicious commands. In order to achieve this, we maintain a list of legal(safe)
+commands that can be run using the util in tendrl-common code. No other command
+can be executed using the utils.
 
 === Alternatives
 
