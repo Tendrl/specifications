@@ -232,7 +232,7 @@ namespace.tendrl.alerting:
         current-value:
           type: String
         tags:
-          type: String
+          type: json
         type:
           type: String
         severity:
