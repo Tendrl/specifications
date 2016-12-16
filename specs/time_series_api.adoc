@@ -107,6 +107,10 @@ custom collectd plugins rather than the collectd provided ones
 
 The tendrl-api interfaces to the apis mentioned above under the section
 "Proposed change" and detailed below under "Notifications/Monitoring impact".
+Making call's to the monitoring app is via a http client programatically. The
+tendlr-api will define its own url's, somewhat similar to what API's from the
+monitoring app. We need to take this approach since we need to have one point
+of interaction.
 
 ==== Notifications/Monitoring impact:
 
@@ -216,8 +220,38 @@ None
 === Security impact:
 
 The apis exposed by Tendrl/performance-monitoring although are only getters,
-need to be covered by a layer of authentication.It could even be as sample as
-a shared token by which its access is enabled only to Tendrl/tendrl-api.
+need to be covered by a layer of authentication. This is achieved as:
+
+* Flask-Login provides user session management for Flask. It handles the common
+  tasks of logging in, logging out, and remembering users’ sessions over
+  extended periods of time.
+* It will:
+** Store active user’s ID in the session, and lets log them in and out easily.
+** Handle the normally-tricky “remember me” functionality.
+** Help protect users’ sessions from being stolen by cookie thieves.
+* It does not:
+** Impose a particular database or other storage method. How users are loaded
+   is entirely upto flask user.
+** Handle permissions beyond “logged in or not.”
+** Handle user registration or account recovery.
+
+So in accordance with above, the approach we will be taking is:
+
+* Add a default user admin with a configurable password(admin by default).
+* The default login auth cookie is alive for 365 days unless user explicitly
+  logged out. But this cookie alive period is exposed for configuration by
+  flask as a field by name 'REMEMBER_COOKIE_DURATION'.
+
+----
+Note:
+
+* The configuration of admin password, and addition of any more possible users
+  will be handled by user management as admin will also be moved to users in
+  etcd once tendrl has user-management.
+* The configuration of 'REMEMBER_COOKIE_DURATION' field will be exposed for
+  configuration via an api that handles the similar case for tendrl-api as both
+  the apis can share a common configurable field in etcd.
+----
 
 === Other end user impact:
 
