@@ -1,0 +1,182 @@
+// vim: tw=79
+
+= Host Listing Backend Support
+
+== Introduction
+
+The host listing page displays the following details per host:
+
+* Hostname
+* Storage used, total and percentage used
+* Cpu percentage used
+* Memory used, total and percentage used
+* Name of Cluster to which host belongs
+* Role of the node in the cluster
+* Alerts counter that drills down to alerts list filtered by hostname.
+
+The mock up of the UI can be found at:
+https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/199053039
+
+== Problem description
+
+All the details specified in the section under "Introduction" section are
+available at different locations like the following:
+
+* The hostname, Name of Cluster to which host belongs, Role of the node in the
+  cluster and alerts each in etcd.
+* The cpu, memory and storage usage details in time-series db.
+
+This necessiates either the UI to fetch each of the details from different
+sources by making multiple api calls or the tendrl-api looking at multiple
+sources for these information.
+
+== Use Cases
+
+* Host listing page in tendrl UI.
+
+== Proposed change
+
+* The performance-monitoring application anyway performs task of aggregating
+  statistics in time-series db for aggregations at cluster and system levels.
+  At the same time, it can push the host level details to etcd to the path
+  '/monitoring/nodes/node-id/summary'.
+* Whenever a new alert that is related to the node is detected in the alerting
+  module, along with notifying the alert to configured destinations, the alert
+  counter in etcd in '/monitoring/nodes/node-id/summary' will also be
+  incremented if the path exists in etcd already.
+* The performance-monitoring application will accordingly expose following apis
+  ** API to get the summary stored in '/monitoring/nodes/node-id/summary' for
+     all nodes with ids passed as parameter to the api. If no parameter is
+     passed as parameter, it sends data related to all nodes.
+* The alerting module will expose the folllowing apis:
+  ** API to expose alerts with filtering capability as briefed in:
+     https://github.com/Tendrl/specifications/pull/18
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+Structure of summary object in etcd in path '/monitoring/nodes/node-id/summary'
+is as below:
+
+----
+summary: {
+  'cpu': {
+    'percent-used': '10',
+  },
+  'memory': {
+    'used': '429496729',
+    'total': '4294967296',
+    'percent-used': '10',
+  },
+  'storage': {
+    'used': '10737418240',
+    'total': '107374182400',
+    'percent-used': '10'
+  }
+}
+----
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+Tendrl API merges summary data from api exposed by performance-monitoring app
+(described below under 'Notifications/Monitoring impact' section).
+
+==== Notifications/Monitoring impact:
+
+The api to expose summary data looks like:
+
+----------
+GET /monitoring/nodes/summary?nodes=[<node_id>, ...]
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+
+['11927f2f-39ec-450d-bf19-b2b00a53c394' : {
+  'cpu': {
+    'percent-used': '10',
+  },
+  'memory': {
+    'used': '429496729',
+    'total': '4294967296',
+    'percent-used': '10',
+  },
+  'storage': {
+    'used': '10737418240',
+    'total': '107374182400',
+    'percent-used': '10'
+  }
+}....]
+
+----------
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+The proposed change involves a periodic fetch from time-series db and update
+to etcd. But the period of recurrence can be so adjusted that the impact is not
+recognizable.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  performance-monitoring and alerting modules: anmolbabu
+
+=== Work Items:
+
+
+
+== Dependencies:
+
+None
+
+== Testing:
+
+This spec introduces apis as described in 'Proposed change' section and
+'Notifications/Monitoring impact' which need to be tested.
+
+== Documentation impact:
+
+This spec introduces apis as described in 'Proposed change' section and
+'Notifications/Monitoring impact' which need to be tested.
+
+== References:
+
+None
