@@ -1,0 +1,180 @@
+= Gather and populate ceph pool usage data to Tendrl
+
+The ceph integration module in Tendrl synchronizes the cluster data to its
+central store. The cluster data should contain the pool utilization data as well
+and store the same in central store.
+
+Additionally trending graphs as well are required for pool utilization data to
+help administrators to decide on expansion of the cluster.
+
+
+== Problem description
+
+Currently the ceph integration module synchronizes the cluster data to its
+central store. The cluster data should also contain the pool utilization data
+fetched and maintained with cluster so that same can be projected in UI for more
+help to administrator.
+
+In addition to instant pool utilization data maintained with cluster data, the
+time series data also should be maintained in Tendrl for rendering the trending
+graphs for pool utilizations.
+
+
+== Use Cases
+
+* This specification covers the Trending graphs in Tendrl for ceph pool
+utilization data
+
+* The cluster details should contain pool utilization data as well
+
+
+== Proposed change
+
+* Introduce a collectd plug-in which collects the pools utilization data from
+the underlying cluster and pushes the same graphite time series DB
+
+* Enhance the monitoring module in Tendrl to update the instant value of pool
+utilization data to cluster's pool inventory in central store. This would be
+applicable only if monitoring in enabled for Tendrl
+
+* Enhance the ceph cluster sync logic in Tendrl's ceph integration module to
+fetch process and update the pool utilization data to central store with
+cluster's pool inventory.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Update the `Pool` data model to include utilization related fields `used`,
+`total` and `PercentUsed`
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* The pool listing API `GET /cluster/:cluster_id/pool/:pool_id` should list the
+pool with additional fields related to utilization as below
+
+```
+Status: 200 OK
+
+{
+    'cluster_id': 'bc2c51e1-516d-45b8-8310-7caab2fa784c',
+    'min_size': '1',
+    'pg_num': '128',
+    'pool_id': '1',
+    'pool_name': 'testpool',
+    'utilization': {
+        'used': 0,
+        'total': 1024,
+        'percent_used': 0
+    }
+}
+```
+
+==== Notifications/Monitoring impact:
+
+* Add a collectd plug-in in monitoring module for getting the pool utilization
+data and pushing it to time series DB
+
+* Enhance monitoring module to set the instant values for the pool utilization
+data associated with pool inventory in central store
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+* Tendrl's ceph integration module should synchronize the pool utilization data
+as well while cluster data getting synchronized
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+* The REST output for listing individual pools would be including additional
+utilization details
+
+=== Performance impact:
+
+* We might need to figure out the impact of running `ceph df` command on ceph
+storage node (mon only) for getting the pool utilization data. Accordingly the
+collectd plug-in frequency should be set.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* API module owner to make sure pool listing contains the utilization details
+as well and shown properly
+
+== Implementation:
+
+* Add a collectd plug-in to execute `ceph df` command to fetch the pool
+utilization data and push to time series database
+
+* Make sure this plug-in gets activated only when monitoring is enabled for
+Tendrl and this plug-in should be enabled only on mon nodes of the cluster. The
+monitoring module changes to be done to activate the plug-in only on mon nodes.
+
+* Enhance monitoring module to update central store with pool specific
+utilization instant data
+
+* Enhance the ceph integration module's cluster data syncing logic to fetch the
+instant pool utilization details and save along-with the pool inventory in
+central store
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+  anmolbabu - monitoring module
+  anivargi - API module
+
+=== Work Items:
+
+* Add a collectd plug-in to fetch pool utilization data and push it to time
+series database
+
+* Monitoring module changes to push the instant values of pool utilization to
+central store for specific pools
+
+* Changes in monitoring module to deploy the pool utilization module only on
+monitor nodes of the ceph cluster
+
+* Enhance the ceph integration module for fetching and maintaining pool
+utilization data with pool
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Verify if the pool listing displays the utilization as well in central store
+
+* Verify the pool listing API to make sure utilization details are listed
+
+* Verify if the time series DB is getting pool utilization data populated
+
+== Documentation impact:
+
+* REST api documentation to update the pool listing results and add utilization
+data as well
+
+== References:
+
+*
