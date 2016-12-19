@@ -43,7 +43,7 @@ node agent and read-write from the bridge.
 this socket.
 ** Any alert on that socket is always taken to etcd by the node agent
 ** In addition to writing the generated alerts, the bridge also reads from the
-socket. It then filters and chooses only the alerts it can act on
+socket. It then filters and chooses only the alerts it can act on.
 * The list of supported types of alerts will be maintained in etcd in the path
 '/monitoring/alert_types'. This is done as follows:
 ** When node-agent/bridge(sources of alerts) is started, adds the types of alert
