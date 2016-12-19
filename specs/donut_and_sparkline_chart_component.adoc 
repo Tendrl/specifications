@@ -1,0 +1,199 @@
+= Donut and Sparkline chart component for UI
+
+The intent of chart components is to provide a mechanism to draw charts into tendrl-UI for monitoring stuff.
+
+
+== Problem description
+
+This specification describes about chart components. Generally , We should have one common component for draw the charts (donut or sparkline chart) as shown in UX design. ( https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/185937524 ).
+
+
+== Use Cases
+
+This addresses the drawn of charts (donut or sparkline chart) into tendrl-UI for monitoring stuff.
+
+The workflow is as follows:
+
+* We can track cluster, host, pool and volume list usages and monitoring stuff using chart components. ( https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/185937524 )
+
+
+== Proposed change
+
+Front-end related changes:
+
+	* Donut chart related changes:
+
+	** We are going to create "angular directive" for donut chart component in order to draw "donut chart". and directive name will be "donutChart" and it will support the following parameters.
+
+	*** chartId: Expected "unique number" for each chart in one template.
+				For example: if you are using ng-repeat .
+
+		
+		<div ng-repeat="host in hostList"> <donut-chart chart-id="{{$index}}"> </donut-chart> </div>
+		
+
+		NOTE: Internally we are using "c3" Chart (plugin used for draw chart) so it will expect unique id for each chart.
+
+
+	*** chartTitle (optional): Expected a string for title.
+		NOTE:- In UX design, some of the place "title" is not defined. so it should be optional. (https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/198417118 )
+
+
+	*** chartData: Should be object with two properties - total and used.
+		Example: -
+		
+		(In controller):
+
+		vm.chartData = {"used":352460800,"total":3524608000} (defined chartData object)
+
+		(In template):
+
+		<div ng-repeat="host in hostList"> <donut-chart chart-id="{{$index}}" chart-data="chartData"> </donut-chart> </div>
+
+		
+
+		NOTE: if "vm.chartData.total" is zero . than automatically "donut chart" will show "no data available".
+
+	*** chartThresholds (optional): If user will not pass thresholds value as parameter 	than it will have default value: {'warning':'60','error':'90'} which should be 
+		defined in "config.json". because it should be configurable.
+		Example: -
+		
+		(In controller):
+
+		vm.chartThresholds = {'warning':'40','error':'90'}; (defined chartThresholds object)
+
+		(In your template):
+
+		<div ng-repeat="host in hostList"> <donut-chart chart-id="{{$index}}" chart-thresholds="chartThresholds"> </donut-chart> </div>
+
+		
+
+	* Sparkline chart related changes:
+
+	** We are going to create "angular directive" for Sparkline chart component in order to draw "Sparkline chart". and directive name will be "sparklineChart" and it will support the following parameters.
+
+	*** chartId: Expected "unique number" for each chart in one template.
+				For example: if you are using ng-repeat .
+
+		 
+		<div ng-repeat="host in hostList"> <sparkline-chart chart-id="{{$index}}"> </sparkline-chart> </div>
+		
+
+		NOTE: Internally we are using "c3" Chart (plugin used for draw chart) so it will expect unique id for each chart.
+
+	*** chartData: Should be one array with used value with their corresponding timestamp.
+		Example: -
+		
+        [["usedValue1","timestamp1"],["usedValue2","timestamp2"],["usedValue3","timestamp3"]]
+        
+        (In your controller):
+
+        vm.chartData = [
+                [10, 1311836001],
+                [20, 1311836002],
+                [30, 1311836003],
+                [20, 1311836004],
+                [30, 1311836005],
+                [10, 1311836006]
+        ]
+
+        (In your template):
+
+        <div ng-repeat="host in hostList"
+            <sparkline-chart chart-id="{{$index}}" chart-data="chartData">
+            </sparkline-chart>
+        </div>
+
+        
+
+        NOTE: if your "vm.chartData" is empty array. than automatically "sparkline chart" will show "no data available".
+
+
+
+=== Alternatives
+
+We can use static c3 chart plugin without any angular wrapper(angular patternfly). but it will be very difficult to handle in angular application.
+
+=== Data model impact:
+
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl frontend impact:
+
+   * We need to add c3js chart (http://c3js.org/) libaray . and also one wrapper "angular patternfly" (http://angular-patternfly.rhcloud.com/) in order to access c3 chart features in angularjs application.
+
+   * Also we need to pass "c3 chart" and "angular patternfly" as dependency in app module.
+
+   * Need to create directives for charts(donut and sparkline).
+
+==== Tendrl Backend impact:
+
+None.
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+There should be changes in UI as well and so end user as well impacted.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+Created the github issues to track the implementation:
+
+* https://github.com/Tendrl/tendrl_frontend/issues/67
+
+=== Assignee(s):
+
+
+Primary assignee:
+  kamleshverma1
+
+Other contributors:
+  None.
+
+=== Work Items:
+
+Need to add all dependency library (c3, angular patternfly). and need to implement directives for charts (donut and sparkline)
+
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/issues/84
+
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+* Should set the initialization properties correct.
+* Should set the details of charts from the view.
+
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/specifications/issues/84
+* UX Design: https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/185937524
