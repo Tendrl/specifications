@@ -251,6 +251,8 @@ Note:
 * The configuration of 'REMEMBER_COOKIE_DURATION' field will be exposed for
   configuration via an api that handles the similar case for tendrl-api as both
   the apis can share a common configurable field in etcd.
+* To track the authentication part a separate spec will be raised. And that
+  spec will fix https://github.com/Tendrl/specifications/issues/89
 ----
 
 === Other end user impact:
