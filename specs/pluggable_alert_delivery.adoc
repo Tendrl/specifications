@@ -44,6 +44,20 @@ this socket.
 ** Any alert on that socket is always taken to etcd by the node agent
 ** In addition to writing the generated alerts, the bridge also reads from the
 socket. It then filters and chooses only the alerts it can act on
+* The list of supported types of alerts will be maintained in etcd in the path
+'/monitoring/alert_types'. This is done as follows:
+** When node-agent/bridge(sources of alerts) is started, adds the types of alert
+it handles to the etcd's directory mentioned above. This is implemented as
+follows:
+*** The alert handlers are implented as python classes that extend a common
+base alert handler. And during the init of all defined handlers by a
+common manager, the alert handlers will add the type of alerts they handle
+to the list maintained by the module(bridge/node-agent). And once the init
+of all handlers is complete, the module(bridge/node-agent) updates the list
+to etcd. the structure of this list in etcd will look as briefed in section
+'Impacted Modules=>Notifications/Monitoring impact=>API to list alert types'
+** This list is exposed via an api by the alerting module which will be proxied
+to by the tendrl-api.
 * Alert meta-data:
 ** Each alert will carry additional attribute that carries its significance
 which will be added by respective handler. The supported significance levels
@@ -98,9 +112,9 @@ ex: mail handler for sending out mail and snmp handler for snmp-trap
 a designated directory and with a name prefixed with notification medium name.
 ex: email_handler for mail notification in the directory
 alerting/tendrl/alerting/notification/
-*** Whenever a new handler is added, the first thing the handler is supposed to
-do is add itself as a means to list of supported notification mechanisms in
-etcd in '/notification_medium' directory.
+*** During the init of notification handlers, plugin framework after loading
+plugins will upload the supported notification medium list to etcd in the path
+'/alerts/notification_medium'.
 *** The alerting module will expose apis for managing configurations and
 subscriptions for each of the notification medium which will be proxied to by
 tendrl-api.
@@ -120,10 +134,11 @@ dispatched to act as source(from) of all mail notifications.
 ***** Presence of all mandatory fields in config mandated by the respective
 handler.
 **** Notification meta-data:
-***** Each configuration will include a field 'entitlements' which can
-hold possible values '*' to receive all notifications for the configuration
-or list of clusters which means destination which configuration corresponds to
-likes to receive all notifications for the clusters in the list.
+***** Each configuration will include a field 'alert_subscriptions' which can
+hold possible values {empty}* to receive all alerts of the clusters in list of
+cluster ids captured under tag 'clusters'.The possible value for tag 'clusters'
+can be list of cluster ids or {empty}* to indicate all clusters and even nodes not
+belonging to any clusters.
 ***** A field 'notify_low_sig_alert' which is by default false but the config
 can be edited to receive even the alerts marked as low significant.
 
@@ -207,6 +222,22 @@ and for a status based alert:
   'acked': False,
   'significance': 'HIGH',
 }
+----
+
+The notification configuration will contain the folowing fields in addition to
+the fields specific to the particular notification medium:
+
+----
+  'alert_subscriptions': {
+      'detail': '* for all alerts. Or list of required types of alerts'
+                'Not required for admin user(is_admin: True)',
+      'type': "String(for '*') or List of alert types"
+  },
+  'clusters': {
+    'detail': '* to receive all alerts or list of clusters'
+              'Not required for admin user(is_admin: True)',
+    'type': "String(for '*') or List of cluster-ids"
+  }
 ----
 
 The severity levels can be 'Critical', 'Info' or 'Warning'.
@@ -344,7 +375,62 @@ Status: 200 OK
 
   ** API to post configuration
 ----
-Note: API format to be worked through
+Note: API format to be worked through in separate specs as they are very much
+      handler specific and cannot be generalised. Separate specs will be raised
+      for each handler detailing out its specifics.
+----
+
+  ** API to list alert types
+
+----
+GET /monitoring/alert_types
+
+Sample Response:
+
+Status: 200 OK
+{
+  alert_types: [
+    'performance_monitoring' : {
+      cpu': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },
+      'swap': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },
+      'memory': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },....
+    },
+    'ceph-integration': {
+      'osd_status': {
+        'In',
+        'Out',
+        'Paused',
+        .
+        .
+        .
+      },
+      'cluster_status': {
+        .
+        .
+        .
+      }
+    }
+  ]
+}
+
 ----
 
 ==== Tendrl/common impact:
