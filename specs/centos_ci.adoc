@@ -35,6 +35,11 @@ cover new features.
 
 * CentOS CI host provisioning system will be utilized for testing machines
   provisioning.
+  https://wiki.centos.org/QaWiki/CI/[CentOS CI] uses
+  https://wiki.centos.org/QaWiki/CI/Duffy[Duffy project], which is utilized
+  by our own https://github.com/mkudlej/usmqe-centos-ci[ansible playbooks].
+  To get access to the CentOS CI hosts, you need to have account there and be
+  part of the Tendrl project.
 
 * Installation and configuration of all Tendrl components should be automated
   via ansible playbooks/roles from
