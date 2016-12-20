@@ -3,7 +3,7 @@
 = CentOS CI
 
 We need to make sure that new code doesn't break existing codebase and check
-that new features works as early as possible. This can be done by running
+that new features work as early as possible. This can be done by running
 acceptance integration tests automatically, using CentOS CI infrastructure.
 
 == Problem description
@@ -118,7 +118,7 @@ Other contributors:
 
 == Dependencies:
 
-Nightly copr builds. Details of nightl copr build workflow should be specified.
+Nightly copr builds. Details of nightly copr build workflow should be specified.
 
 == Testing:
 
