@@ -33,10 +33,6 @@ utilization data
 * Introduce a collectd plug-in which collects the pools utilization data from
 the underlying cluster and pushes the same graphite time series DB
 
-* Enhance the monitoring module in Tendrl to update the instant value of pool
-utilization data to cluster's pool inventory in central store. This would be
-applicable only if monitoring in enabled for Tendrl
-
 * Enhance the ceph cluster sync logic in Tendrl's ceph integration module to
 fetch process and update the pool utilization data to central store with
 cluster's pool inventory.
@@ -79,9 +75,6 @@ Status: 200 OK
 * Add a collectd plug-in in monitoring module for getting the pool utilization
 data and pushing it to time series DB
 
-* Enhance monitoring module to set the instant values for the pool utilization
-data associated with pool inventory in central store
-
 ==== Tendrl/common impact:
 
 None
@@ -106,9 +99,11 @@ utilization details
 
 === Performance impact:
 
-* We might need to figure out the impact of running `ceph df` command on ceph
-storage node (mon only) for getting the pool utilization data. Accordingly the
-collectd plug-in frequency should be set.
+* As confirmed by ceph team, the execution of `ceph df` command on leader mon is
+not resource intensive.
+
+* The collectd plug-in frequency should not be set to anything less than 5
+seconds as ceph cluser itself syncs data at this interval
 
 === Other deployer impact:
 
@@ -122,14 +117,17 @@ as well and shown properly
 == Implementation:
 
 * Add a collectd plug-in to execute `ceph df` command to fetch the pool
-utilization data and push to time series database
+utilization data and push to time series database. The execution of `ceph df`
+command on a mon node is not heavy and as per suggestions from ceph team the
+connection to the mon could be kept open and every few seconds (not less than 5
+seconds as ceph itself syncs data at this interval) the pool utilization data
+could be pushed to time series DB
 
 * Make sure this plug-in gets activated only when monitoring is enabled for
 Tendrl and this plug-in should be enabled only on mon nodes of the cluster. The
 monitoring module changes to be done to activate the plug-in only on mon nodes.
-
-* Enhance monitoring module to update central store with pool specific
-utilization instant data
+Also the ceph pool utilization plug-in should work on leader mon node only, to
+minimize the load on cluster
 
 * Enhance the ceph integration module's cluster data syncing logic to fetch the
 instant pool utilization details and save along-with the pool inventory in
@@ -148,9 +146,6 @@ Other contributors:
 
 * Add a collectd plug-in to fetch pool utilization data and push it to time
 series database
-
-* Monitoring module changes to push the instant values of pool utilization to
-central store for specific pools
 
 * Changes in monitoring module to deploy the pool utilization module only on
 monitor nodes of the ceph cluster
