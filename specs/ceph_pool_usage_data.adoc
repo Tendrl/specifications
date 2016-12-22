@@ -160,6 +160,11 @@ as well and shown properly
 instant pool utilization details and save along-with the pool inventory in
 central store
 
+* Out of above mentioned two options under alternatives, option-1 would be
+preferable here as we directly talk to rados module and we can keep the
+connection open to rados mon module and keep running command `df` again and
+again each sync time.
+
 === Assignee(s):
 
 Primary assignee:
