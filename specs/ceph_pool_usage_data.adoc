@@ -1,11 +1,8 @@
 = Gather and populate ceph pool usage data to Tendrl
 
 The ceph integration module in Tendrl synchronizes the cluster data to its
-central store. The cluster data should contain the pool utilization data as well
-and store the same in central store.
-
-Additionally trending graphs as well are required for pool utilization data to
-help administrators to decide on expansion of the cluster.
+central store at regular interval. The cluster data should contain the pool
+utilization data as well and store the same in central store.
 
 
 == Problem description
@@ -15,31 +12,76 @@ central store. The cluster data should also contain the pool utilization data
 fetched and maintained with cluster so that same can be projected in UI for more
 help to administrator.
 
-In addition to instant pool utilization data maintained with cluster data, the
-time series data also should be maintained in Tendrl for rendering the trending
-graphs for pool utilizations.
-
 
 == Use Cases
-
-* This specification covers the Trending graphs in Tendrl for ceph pool
-utilization data
 
 * The cluster details should contain pool utilization data as well
 
 
 == Proposed change
 
-* Introduce a collectd plug-in which collects the pools utilization data from
-the underlying cluster and pushes the same graphite time series DB
-
 * Enhance the ceph cluster sync logic in Tendrl's ceph integration module to
-fetch process and update the pool utilization data to central store with
-cluster's pool inventory.
+fetch and update the pool utilization data to central store with cluster's pool
+inventory.
 
 === Alternatives
 
-None
+* There are different ways to achieve the reading of pool utilization data
+
+* Option-1: Use rados module directly to invoke mon_command `df` to fetch the
+pool utilization data. A connection to rados could be kept open and keep running
+`df` command for getting details
+
+```
+import time
+import rados
+import json
+
+def get_pool_utilization(r):
+    cmd = {"prefix":"df", "format":"json"}
+    ret, buf, errs = r.mon_command(json.dumps(cmd), b'', timeout=5)
+    result = json.loads(buf)
+    return result
+
+try:
+    r = rados.Rados(conffile="/etc/ceph/ceph.conf")
+    r.connect()
+
+    for i in range(1000):
+        print(get_pool_utilization(r))
+        time.sleep(1)
+except KeyboardInterrupt:
+    pass
+finally:
+    if r is not None:
+        r.shutdown()
+```
+
+* Option-2: The other option is to use execute command `ceph df` as a process
+and parse the output for data
+
+```
+import json
+import subprocess
+
+cluster = 'my_cluster'
+cmd = [
+    'ceph',
+    '--cluster',
+    cluster,
+    '-f',
+    'json-pretty',
+    'df'
+]
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+out, err = process.communicate()
+ret_code = process.poll()
+if ret_code:
+    print "command %s exited with non-zero status: %d" % (cmd, ret_code)
+    return
+
+df = json.loads(out)
+```
 
 === Data model impact:
 
@@ -72,8 +114,9 @@ Status: 200 OK
 
 ==== Notifications/Monitoring impact:
 
-* Add a collectd plug-in in monitoring module for getting the pool utilization
-data and pushing it to time series DB
+* Would be covered in a separate PR
+
+* Raised https://github.com/Tendrl/performance_monitoring/issues/14 to track
 
 ==== Tendrl/common impact:
 
@@ -102,9 +145,6 @@ utilization details
 * As confirmed by ceph team, the execution of `ceph df` command on leader mon is
 not resource intensive.
 
-* The collectd plug-in frequency should not be set to anything less than 5
-seconds as ceph cluser itself syncs data at this interval
-
 === Other deployer impact:
 
 None
@@ -116,19 +156,6 @@ as well and shown properly
 
 == Implementation:
 
-* Add a collectd plug-in to execute `ceph df` command to fetch the pool
-utilization data and push to time series database. The execution of `ceph df`
-command on a mon node is not heavy and as per suggestions from ceph team the
-connection to the mon could be kept open and every few seconds (not less than 5
-seconds as ceph itself syncs data at this interval) the pool utilization data
-could be pushed to time series DB
-
-* Make sure this plug-in gets activated only when monitoring is enabled for
-Tendrl and this plug-in should be enabled only on mon nodes of the cluster. The
-monitoring module changes to be done to activate the plug-in only on mon nodes.
-Also the ceph pool utilization plug-in should work on leader mon node only, to
-minimize the load on cluster
-
 * Enhance the ceph integration module's cluster data syncing logic to fetch the
 instant pool utilization details and save along-with the pool inventory in
 central store
@@ -139,19 +166,11 @@ Primary assignee:
   shtripat
 
 Other contributors:
-  anmolbabu - monitoring module
   anivargi - API module
 
 === Work Items:
 
-* Add a collectd plug-in to fetch pool utilization data and push it to time
-series database
-
-* Changes in monitoring module to deploy the pool utilization module only on
-monitor nodes of the ceph cluster
-
-* Enhance the ceph integration module for fetching and maintaining pool
-utilization data with pool
+* https://github.com/Tendrl/specifications/issues/80
 
 == Dependencies:
 
@@ -163,8 +182,6 @@ None
 
 * Verify the pool listing API to make sure utilization details are listed
 
-* Verify if the time series DB is getting pool utilization data populated
-
 == Documentation impact:
 
 * REST api documentation to update the pool listing results and add utilization
@@ -172,4 +189,4 @@ data as well
 
 == References:
 
-*
+* https://github.com/Tendrl/ceph_integration/issues/64
