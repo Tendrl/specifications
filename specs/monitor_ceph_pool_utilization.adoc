@@ -19,13 +19,14 @@ pools.
 == Proposed change
 
 * Introduce a collectd plugin which collects the ceph pool utilization data from
-underlying cluster and pushes it to time series DB at regular intervals.
+underlying cluster
 
-* Enhance the monitoring module to set required thresholds for the ceph pool
-utilization
+* Introduce a template to configure the above mentioned collectd plugin with
+details such as cluster name and thresholds
 
-* Enhance the monitoring module to frame and raise required alerts while breach
-of threshold limits
+* Introduce threshold handlers on the alerting module to custom handle the
+pool(and cluster as well as ceph df itself provides both) utilization threshold
+breach
 
 === Alternatives
 
@@ -94,8 +95,7 @@ None
 
 ==== Tendrl API impact:
 
-* API module to support the fetching of ceph pool utilization data as well as
-part of listing generic monitoring data using resources
+None
 
 ==== Notifications/Monitoring impact:
 
@@ -120,13 +120,13 @@ None
 
 === Other end user impact:
 
-* Th trending graphs of ceph pool utilization data would help administrators to
+* The trending graphs of ceph pool utilization data would help administrators to
 decide on bringing in additional storage capacity in system based on warning and
 critical threshold breaches depicted clearly in Tendrl UI
 
 === Performance impact:
 
-* As confirmed by eph team running of `ceph df` command on mon nodes doesnt have
+* As confirmed by ceph team running of `ceph df` command on mon nodes doesnt have
 any major impact as its not heavy and fetches details from in memory mon details
 
 === Other deployer impact:
@@ -153,7 +153,8 @@ ceph mon use this intervals for fetching details from underlying cluster. So in
 ideal situation the interval for this plugin should be anything but more than 5
 seconds
 
-* Configure this plugin only if monitoring feature is enabled for Tendrl
+* Configure this plugin only if monitoring feature is enabled for Tendrl while
+cluster creation.
 
 * Deploy the plugin only on the mon nodes
 
