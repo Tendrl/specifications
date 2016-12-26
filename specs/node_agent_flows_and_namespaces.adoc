@@ -1,0 +1,140 @@
+// vim: tw=79
+:toc:
+
+= Node Agent Flows and Namespaces
+
+This specification is an overarching specification to denote the scope of the
+operations or responsibilities of the node agent.
+
+
+== Problem Description
+
+Node agent serves as the component that is responsible for invoking and/or
+executing operations that are part of the global Tendrl scope. Such operations
+include, but are not limited to:
+
+* node specific hardware and network inventory
+* disk and process management
+* provisioning operations against storage systems that need to be invoked in
+  Tendrl's global scope
+
+Tendrl officially supports specific storage systems (ceph and gluster
+presently). However, Tendrl also aims to be a framework that provides some
+essential capabilities and interfaces so that it is easy to add support to
+storage systems not officially supported by Tendrl at any point in time. To an
+administrator, Tendrl also seeks to provide a seamless experience where Tendrl
+can auto-detect existing deployments and out of the box sane defaults for
+laying out the storage systems and managing them.
+
+Given these goals, it is impossible to define a completely generic system,
+since some specifics about the storage systems must always be known to Tendrl.
+At the same time, Tendrl's interfaces need to be defined in such a way that
+there can be a clean abstraction between pluggable storage system support and
+Tendrl components. Given it's responsibilities, stated above, node agent is the
+component where this abstraction needs to be.
+
+
+== Use Cases
+
+This specification addresses the core node agent scope and impacts multiple
+specifications pertaining to the node agent capabilities:
+
+* Allow node agent to run on any node, including nodes where Tendrl components
+  are deployed. This would be achieved by tagging and tag based job routing,
+  https://github.com/Tendrl/specifications/issues/44[#44].
+* Automatic detection of services running on a node, including Tendrl and
+  storage system components,
+  https://github.com/Tendrl/specifications/issues/46[#46]. This functionality
+  also impacts the import cluster workflow to enable automatic detection of the
+  storage cluster version and layout,
+  https://github.com/Tendrl/specifications/issues/54[#54].
+* Provisioning support for ceph,
+  https://github.com/Tendrl/specifications/issues/48[#48], and gluster
+  https://github.com/Tendrl/specifications/issues/49[#49].
+* Various provisioning flows,
+  https://github.com/Tendrl/specifications/issues/47[#47],
+  https://github.com/Tendrl/specifications/issues/51[#51],
+  https://github.com/Tendrl/specifications/issues/52[#52].
+
+
+== Proposed Changes
+
+=== Platform Detection Modules
+
+Node agent must be able to indentify the base system type (centos, rhel, ubuntu
+etc.) and it's version. This information would later be used to determine which
+specific storage systems and/or their specific versions are supported and can
+thus be deployed on the platform.
+
+* Node agent needs to define a directory from which it can load the modules.
+* Each module should contain an interface method to be called to invoke it's
+  functionality.
+* Each module must contain the logic to ascertain only one specific platform
+  type and version.
+* Once a specific module detects a platform, the operation can be terminated
+  without invoking the remaining detection modules.
+* The supported platform types and versions would need to be hardcoded and
+  shipped with Tendrl.
+
+=== Storage System Integration Modules
+
+It is necessary to ship a part of the officially supported storage system
+specific integration namespace with the node agent itself. However, this should
+only be a "bootstrap" namespace, necessary to detect and provision the rest of
+the namespace and components.
+
+* By default, two types of integration modules need to be shipped with the node
+  agent:
+** Service detection modules, which have been covered in the <<Service Detection Modules>> section.
+** Provisioning modules to deploy the integration bridges or provisioning
+   systems (gdeploy, ceph-ansible etc.) for a specific storage system, which
+   have been covered in the <<Provisioning Modules>> section.
+* For both types of modules, node agent needs to define a separate directory
+  from where the specific type of integration provisioning modules can be loaded.
+* The modules can be python classes with a specific interface method to be
+  called.
+
+==== Service Detection Modules
+
+Storage system specific detection modules cater primarily to the cluster import
+scenario. In addition, modules that detect Tendrl's own components enable
+various deployment and self-provisioning scenarios, which would be covered in
+future specifications.
+
+* All of the detected modules must be executed on startup.
+* It must be possible to define flows to invoke specific detection modules. The
+  commons library should provide an atom to invoke the service detection
+  functionality. The parameter to this atom would be the specific module to be
+  invoked. The atom must defined in the global node agent namespace.
+* When available as flows, it would be the detection modules would be invoked
+  via jobs. The job can indicate a specific module to be executed. If the job
+  doesn't specify all the modules must be executed. It is not necessary to
+  define the flows currently, but the code must enable support to write such
+  flows in the future.
+* The detection modules should be able to detect the various Tendrl components:
+  api and the central store by default, plus the Tendrl integration bridges for
+  any officially supported storage system for along with these storage systems'
+  services such as glusterd instances, ceph mon and osd processes etc.
+* Storage sytem specific modules would be able to detect the roles of the
+  specific nodes in the cluster. In such a case, additional queries should be
+  run against the detected storage system service to gather a list of all the
+  nodes in the cluster, and their roles.
+
+==== Provisioning Modules
+
+In the cluster creation It is necessary to be able to provision the
+provisioning system itself in cluster creation workflows. The modules shipped
+with the node agent must contain the necessary code to allow the provisioning
+system to be provisioned and not the entire provisioning system itself.
+
+* Bootstrap part of the integration namespace to be shipped with the node agent
+  would be supplied by these modules. On startup, the namespaces should be
+  loaded from the detected modules and pushed to the central store.
+* These namespaces would contain flows that enable the provisioning system to
+  be deployed. The atoms in these flows could be as simple as yum or pip
+  invocations that install the provisioning system.
+
+NOTE: Additional flows may need to be shipped in the global node agent
+namespace to enable full provisioning support. However that will be covered as
+part of the provisioning specifications.
+
