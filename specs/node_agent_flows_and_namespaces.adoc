@@ -33,6 +33,10 @@ there can be a clean abstraction between pluggable storage system support and
 Tendrl components. Given it's responsibilities, stated above, node agent is the
 component where this abstraction needs to be.
 
+In addition to the storage systems, Tendrl's own pluggable stack such as the
+monitoring stack need to be deployable against an existing Tendrl deployment.
+These stacks would be handled the same way as support for an storage system.
+
 
 == Use Cases
 
@@ -137,4 +141,11 @@ system to be provisioned and not the entire provisioning system itself.
 NOTE: Additional flows may need to be shipped in the global node agent
 namespace to enable full provisioning support. However that will be covered as
 part of the provisioning specifications.
+
+
+=== Pluggable Tendrl Stacks
+
+Every pluggable stack would need to supply it's own service detection,
+provisioning and, if applicable, integration modules. Each of these modules
+need to add the appropriate flows.
 
