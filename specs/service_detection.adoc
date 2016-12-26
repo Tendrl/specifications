@@ -1,0 +1,149 @@
+// vim: tw=79
+
+= Service Detection Module for Node Agent
+
+Node agents need to ship with modules that can detect various services already
+present on the nodes
+
+== Problem description
+
+This specification describes service detection module to manage the services
+present in the nodes and populate the details; to and from the central store.
+The list could then be presented to the administrator via the API and the UI
+to allow selection of the nodes for monitoring, service operation and
+troubleshoting.
+
+== Use Cases
+
+* Tendrl detects services like ceph/gluster and its related services details
+  of the storage node and store them in etcd and present it through an API.
+
+  ** User selects a service of a purticular node
+     presented to the administrator via APIs
+  ** From the selected service user can watch the status
+
+== Proposed change
+
+Node Agents related changes:
+* Add a module which fetches the service details like service-name, execution
+path, executing script, status, how much cpu percentage it takes, how much
+memory it consumes, number of io counts on read and write, open files,
+number of threads for the ceph and gluster related services.
+
+* Create a new class for service details in persistence module and
+  add required functions and update all necessary changes in the node-agent
+  manager class.
+
+* Create a function to get the service list from the configuration
+  or to provide a default services which are related to ceph or gluster
+  serevices like glusterd, sshd, tendrl-node-agent, tendrl-api,
+  tendrl-gluster-integration, tendrl-ceph-integration, httpd, ceph-mon,
+  ceph-osd, ceph-mds and puma.
+
+* Create a function to detect the services details from the
+  tendrl-service-module and update on any changes into centerl store.
+
+* Create an object in tendrl_definitions_node_agent for service details.
+
+=== Alternatives
+None
+
+=== Data model impact:
+* Add services details in centrl store with key nodes/node_id/Services
+/service_name.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+None. Service details will be displayed as part of node list.
+
+==== Notifications/Monitoring impact:
+Can consume the api to get service details, can raise a seperate spec
+for that.
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+* Add a module to collects the service details like service-name, execution
+path, executing script, status, how much cpu percentage it takes, how much
+memory it consumes, number of io counts on read and write, open files,
+number of threads for the ceph or gluster related services.
+
+* Add a new function to get the list of services defined in config file
+  in addition to the default service list.
+
+* Create a new class for service details in persistence module and
+  add required functions and update all necessary changes in the node-agent
+  manager class.
+
+* detect the services details from the tendrl-service-module and update
+  on any changes into centerl store.
+
+* Create an object in tendrl_definitions_node_agent for service details.
+
+following is the data models to be pushed to the central store for
+Services:
+
+{"nodename": [{
+                "name": "service name",
+		"command": "executing script",
+		"exe_path": "execution path",
+		"status": "service status",
+		"cpu-use-percent": "how much cpu percentage it uses",
+		"mem-use-percent": "how much memory it consumes",
+		"fds_count": "number of fd count",
+		"threads_count": "threads count",
+		"open_files_count": "number of open files count"
+
+==== Sds integration impact:
+None
+
+=== Security impact:
+None
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+None
+
+=== Other deployer impact:
+None
+
+=== Developer impact:
+None
+
+== Implementation:
+Package python-psutil is used to find the service details.
+* Add python-psutil package as dependency.
+* Add a new module named "service_detction" to fetch service details
+  and update those details into node_inventory list.
+* Create a class called "Service" in persistence module to
+  keep service details.
+* Add update_service function in persister and do the necessary changes
+  in manager to save or update service details in etcd.
+* Create an object in tendrl_definitions_node_agent for service details.
+
+=== Assignee(s):
+
+Primary assignee:
+    tjeyasin@redhat.com
+
+=== Work Items:
+git hub issue: https://github.com/Tendrl/node_agent/issues/108
+
+== Dependencies:
+Package python-psutil is the only dependency to get the
+service details.
+
+== Testing:
+Check service details and the sanity check for node details flow
+
+== Documentation impact:
+None
+
+== References:
+
+https://github.com/Tendrl/specifications/issues/46
+https://github.com/Tendrl/specifications/issues/54
