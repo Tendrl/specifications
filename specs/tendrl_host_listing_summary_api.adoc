@@ -6,7 +6,7 @@
 
 The host listing page displays the following details per host:
 
-* Hostname
+* Hostname and status
 * Storage used, total and percentage used
 * Cpu percentage used
 * Memory used, total and percentage used
@@ -40,10 +40,14 @@ sources for these information.
   statistics in time-series db for aggregations at cluster and system levels.
   At the same time, it can push the host level details to etcd to the path
   '/monitoring/nodes/node-id/summary'.
-* Whenever a new alert that is related to the node is detected in the alerting
-  module, along with notifying the alert to configured destinations, the alert
-  counter in etcd in '/monitoring/nodes/node-id/summary' will also be
-  incremented if the path exists in etcd already.
+* Whenever a new alert(with severity 'CRITICAL' or 'WARNING') that is related
+  to the node is detected in the alerting module, along with notifying alert
+  to configured destinations, the alert counter in etcd in
+  '/monitoring/nodes/node-id/summary' will also be incremented if path exists
+  in etcd already. Also, when there is an alert clearance(i.e, when an 'info'
+  alert is observed against a previously existing 'CRITICAL' or 'WARNING' alert
+  ), the alert counter in '/monitoring/nodes/node-id/summary' of etcd will be
+  decremented accordingly.
 * The performance-monitoring application will accordingly expose following apis
   ** API to get the summary stored in '/monitoring/nodes/node-id/summary' for
      all nodes with ids passed as parameter to the api. If no parameter is
@@ -161,7 +165,8 @@ Primary assignee:
 
 === Work Items:
 
-
+* https://github.com/Tendrl/performance_monitoring/issues/15
+* https://github.com/Tendrl/performance_monitoring/issues/16
 
 == Dependencies:
 
