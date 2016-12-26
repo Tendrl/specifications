@@ -196,7 +196,11 @@ GET /monitoring/nodes/<node_id>/<resource_name>/stats?from=1997-07-16T19:20+01:0
 ----------
 
 ----
-Note: The time used in the above api needs to abide the iso8601 format
+Note:
+* The time used in the above api needs to abide the iso8601 format
+* Time zone conversions from input iso8061 format user specified timezone to
+  graphite server timezone for queries to graphite db will be handled
+  internally by the api.
 ----
 
 To get the latest stat use:
