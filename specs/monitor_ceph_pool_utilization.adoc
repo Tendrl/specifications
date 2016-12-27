@@ -161,7 +161,7 @@ cluster creation.
 === Assignee(s):
 
 Primary assignee:
-  TBD
+  * anmolbabu
 
 Other contributors:
   * anivargi - API module
@@ -188,4 +188,8 @@ None
 
 == References:
 
-*
+* https://github.com/Tendrl/ceph_integration/issues/64
+
+* https://github.com/Tendrl/performance_monitoring/issues/14
+
+* https://github.com/Tendrl/alerting/issues/16
