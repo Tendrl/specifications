@@ -1,0 +1,185 @@
+= Import cluster workflow by using tendrl-frontend UI
+
+The intent of import cluster workflow is to provide a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management using tendrl-frontend UI.
+
+* Assumption: Only one cluster can be imported at a time using the Import Cluster workflow.
+
+== Problem description
+
+This specification describes import cluster workflow using UI which is a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management. This specification addresses the import use-cases of both ceph and gluster storage.
+
+== Use Cases
+
+This addresses the use case of importing existing clusters(ceph. gluster etc.) into tendrl for management.
+
+The workflow is as follows:
+
+* "Import Cluster" can be triggered from 
+
+    - Landing page (First Time Experience) if no cluster is present in tendrl
+      (https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198042644)
+
+    - Cluster List View if minimum one cluster is present in tendrl.
+      (https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/185937524)
+
+* User clicks on "Import Cluster".
+
+* It will move to next page where a dropdown will be displayed for the clusters available for importing. Clusters will be autodetected  
+  by backend service.
+
+* User will select the cluster from the dropdown which he wants to import.
+
+* User can see the hosts associated with the selected cluster.
+  (https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198042641)
+
+* The host list can be -
+
+    * filtered by name, IP address and role(if available for ceph)
+    * sorted by name, IP address and role(if available for ceph)
+
+* User will click on "Import" button.
+
+* On success, a successful message will be displayed to user.
+  (https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198651334)
+
+== Proposed change
+
+Front-end related changes:
+
+    * Create views for Landing page (First Time Experience), Import cluster page and page where successful message will be displayed.
+    * Send API call for getting the details of cluster and its associated host at the initialization of app which will be imported.
+    * Send API call for fetching the updated data of hosts present in cluster whenever user clicks "Refresh" button.
+    * Show total count of hosts present in the cluster.
+    * Implement client side filter and sorting functionality using angular's filter and orderby components.
+    * When user clicks on "Import" button, a POST API call will trigger with the data of cluster and hosts.
+    * When user clicks on "Cancel" button, the operation should be stopped and user will be landed to - 
+        * Landing page (First Time Experience) if no cluster is present in tendrl.
+        * Cluster List View if minimum one cluster is present in tendrl.
+    * Primary navigation should be hidden until user completes import cluster operation.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+API to get the list of available clusters for importing -
+
+    * /api/GetNodeList
+    * Response - 
+
+    {
+        "nodes": [..],
+        "clusters":[{
+            "cluster_id":"49f878e3-e253-4fad-a947-cb987bba503d",
+            "node_ids":[
+                "3038c577-b233-4513-926d-a8a1ac63b0a3",
+                "7a880068-bf5e-465f-a083-0c23aeaf30f4",
+                "027db80d-eee9-40b6-8e59-8c81b80aa655"
+            ]
+        }, {
+            "cluster_id":"",
+            "node_ids":[
+                "9847aeef-a47c-4737-8a1e-059b9ebeafe9",
+                "c6b9df01-1c73-42f9-93bc-0ccc21005984"
+            ]
+        }, {
+            "cluster_id":"7121abf8-abff-4d37-87ca-a0a32e005277",
+            "node_ids":[
+                "5cb04cdd-d2d8-4a92-965d-27af9b648ce5"
+            ]
+        }]
+    }
+
+API to post the data for import cluster -
+
+    * api/ImportGlusterCluster/ with data -
+     
+        {
+            "cluster_id":"49f878e3-e253-4fad-a947-cb987bba503d",
+            "node_ids":[
+                "3038c577-b233-4513-926d-a8a1ac63b0a3",
+                "7a880068-bf5e-465f-a083-0c23aeaf30f4",
+                "027db80d-eee9-40b6-8e59-8c81b80aa655"
+            ]
+        }
+
+    * Response -
+        {job_id: XXXXXXXXXX}
+
+==== Tendrl frontend impact:
+
+   * Needs to add one more routing for import cluster view.
+   * Needs to be update the test case according code changes.
+
+==== Tendrl Backend impact:
+
+This is discussed in a different specification - https://github.com/Tendrl/specifications/issues/54
+
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  kamleshverma1, gnehapk
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/tendrl_frontend/issues/63
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/issues/54
+
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+* Should set the initialization properties correct.
+* Should set the details of imported cluster from the view.
+* Should display proper notification message once import cluster workflow initiated.
+
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198042644
+* https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/185937524
+* https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198042641
+* https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198651334
