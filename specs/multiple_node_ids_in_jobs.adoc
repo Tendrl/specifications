@@ -1,0 +1,119 @@
+= Pass multiple node-ids in a job submitted to central store job queue
+
+Currently a job can be targeted to a specific node by explicitly setting the
+attribute `node_id` in job structure. The matching the node-id picks up and
+processes the job from central store job queue.
+
+We should be able to submit job targeted to a set of nodes rather submitting to
+a specific node. This feature would implicitly enable targeting of a job to
+specific node anyway.
+
+== Problem description
+
+The job targeted to a single node restricts user and also it becomes a single
+point of failure. Additionally in case of `ceph` certain jobs can be and should
+be picked of any of the mon nodes in the cluster and we should not be
+restricting to a specific node.
+
+User should be able to pass set of node-ids in job and any one of the storage
+nodes underlying should pick and process this job.
+
+== Use Cases
+
+* Job execution by storage nodes from central store job queue
+
+== Proposed change
+
+* Enhance the job execution modules in Tendrl to looks for the job-ids list from
+the fetched job out of central store job queue, and process only if current
+node's id matches one in the list
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+* Update the job definition to include an optional node-ids list rather than a
+specific node-id (sample job)
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* If API decides to target the job to a specific set of nodes, it should set the
+`node_ids` attribute for the job while submitting to job queue as a list of node
+ids
+
+==== Notifications/Monitoring impact:
+
+* None
+
+==== Tendrl/common impact:
+
+* Enhance the rpc job process handler to look for the `node_ids` attribute and
+make sure if the current node id falls under the list then only pick and process
+the job
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+* Enhance the rpc job process handler in common module to look for the
+`node_ids` attribute and of the current node's id fals under this list then only
+pick and process the job
+
+* Update the sample job structure to include `node_ids` attribute
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/102
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Verify if a job targeted at specific nodes is picked by one of them only
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/common/issues/86
