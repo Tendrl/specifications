@@ -1,0 +1,141 @@
+= Tag based job routing using node agent tags
+
+
+Add provision in tendrl job management framework to target jobs to specific
+nodes using tags.
+
+== Problem description
+
+Currently in tendrl there is no way to target a job to be picked up by
+particular set of node(s). This will be necessary when we introduce features
+like provisioning, monitoring etc. in tendrl, where we will need some jobs
+to be picked up by a certain type of node like monitor nodes in case of ceph
+or a provisioning node in case of gluster.
+
+To accommodate things mentioned above we should enhance out job management
+framework to provide more control to run jobs on specific set of nodes.
+
+== Use Cases
+
+* Jobs which needs to be targeted on specific type of nodes can make use of
+this feature.
+example:
+monitoring job to get ceph cluster related detail can use this feature
+to target such jobs to be executed on monitor node
+
+== Proposed change
+
+We can solve the above problem by introducing tagging to our job management
+framework.
+
+Each node will have a list of tags attached to it(can be empty as well). We
+will introduce an attribute under node_context called tags to hold the list
+of tags. This tags list can be populated during initial node-detection(when
+node agent service is started for first time) or subsequently during creation
+of cluster or importing of cluster.
+
+Every flow will have a list of tags attributed to it, which indicates the
+preference of the node on which that flow has to be executed. We will introduce
+an attribute called preferred_tags that holds a list of tags(this can be empty
+if there is no preference for the flow) which indicates the type of node on
+which the flow has to be executed
+
+The API layer must use the preferred_tags field in flow definition to generate
+the job, which will now include an extra field called targeted_tags that will
+have same tags as mentioned in the preferred_tags field of flow definition
+file for that flow.
+
+To summarize, API will assign tags to jobs after referring the flow definition
+file. And the job framework will make sure that a job with certain set of tags
+is picked up only by the nodes with those tags.
+
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+* Addition of tags attribute under node_context for all nodes
+
+* Addition of preferred_tags attribute under all flows.
+
+* Addition of a field called targeted tags to the job structure.
+
+=== REST API impact
+
+No direct impact to REST end point, but the API layer must make sure the job
+format is as per the newly defined format.
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+Monitoring related flows can make use of this framework change to target jobs
+to specific nodes
+
+=== Other end user impact
+
+None
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+None
+
+=== Developer impact
+
+* Developers must honor and/or utilize the newly added attributes related to
+tags in the flow definition, job structure and node context.
+
+== Implementation
+
+=== Assignee(s)
+
+nnDarshan
+
+Primary assignee:
+nnDarshan
+
+Other contributors:
+None
+
+=== Work Items
+
+* Change the flow definition file to include the new attribute related to
+tagging.
+
+* Change the node context object to include tagging related attribute.
+
+* Modify API layer to include tags as meta-data while generating jobs.
+
+* Modify job routing framework to route jobs based on tags, and make sure
+that jobs intended to be run on a particular type of node is run on such
+nodes only.
+
+== Dependencies
+
+This specification has some changes that might overlap with the following
+spec: https://github.com/Tendrl/specifications/pull/104
+
+== Testing
+
+End to end testing has to be done for verifying this feature. ie An API that
+executes a flow(make sure this flow is using this feature) has to be invoked
+and seen that the job that is created by API is run on only the intended
+node(s).
+
+== Documentation Impact
+
+None
+
+== References
+
+https://github.com/Tendrl/specifications/issues/44
+
+https://github.com/Tendrl/specifications/pull/104
