@@ -68,7 +68,7 @@ flows:
       - tendrl.ceph_integration.objects.pool.atoms.create
     description: "Create Ceph Pool"
     preferred_tags:
-      - Monitor
+      - "monitor"
     enabled: true
     inputs:
       mandatory:
