@@ -4,8 +4,8 @@ Currently a job can be targeted to a specific node by explicitly setting the
 attribute `node_id` in job structure. The matching the node-id picks up and
 processes the job from central store job queue.
 
-We should be able to submit job targeted to a set of nodes rather submitting to
-a specific node. This feature would implicitly enable targeting of a job to
+We should be able to submit job targeted to a set of nodes rather than submitting
+to a specific node. This feature would implicitly enable targeting of a job to
 specific node anyway.
 
 == Problem description
@@ -24,7 +24,7 @@ nodes underlying should pick and process this job.
 
 == Proposed change
 
-* Enhance the job execution modules in Tendrl to looks for the job-ids list from
+* Enhance the job execution modules in Tendrl to look for the `node_ids` list from
 the fetched job out of central store job queue, and process only if current
 node's id matches one in the list
 
