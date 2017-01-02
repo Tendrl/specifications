@@ -152,6 +152,8 @@ need to add the appropriate flows.
 
 == Data Model Impact
 
+=== Master Definition File
+
 The structure of the definition files would need to be updated to support
 provisioning and auto-detection functionality.
 
@@ -242,239 +244,380 @@ https://github.com/Tendrl/specifications/issues/39[#39].
         parameters:
           - module: Module
             parameters: Hash
-    namespace.tendrl.integrations.ceph:
-      provisioners:
-        # provisioner_type: provisioner specific namespace
-        ceph-installer: namespace.tendrl.integrations.ceph.provisioner.ceph_installer
-        ceph-ansible: namespace.tendrl.integrations.ceph.provisioner.ceph_ansible
-      integration:
-        installation_sources:
-          # Sections that define a list of things don't need the `type`
-          # attribute. Essentially, a definition section simply lists
-          # alternatives and their details. A section somewhere later then
-          # references one of the defined objects. In such a scenario, it's a
-          # specific instantiation of the definition and requires a `type`
-          # attribute.
-          git+pip_requirements:
-            parameters:
-              ceph_integration_version: namespace.tendrl.installation_sources.git.TagVersion
-            repository_path: https://github.com/Tendrl/ceph_integration.git
-            reference: $ceph_integration_version
-            requirements_file: requirements.txt
-            invocation:
-              # Here, the invocation section instantiates a specific type of
-              # object from the available ones defined in the global
-              # invocations list. Hence, the `type` attribute is required. Only
-              # one specific object can be instantiated via `type`, so the
-              # parameters are automatically applied to that specific object.
-              # The invocation section contains an ordered list of invocations to
-              # be executed one time, post installation.
-              - type: cli
-                parameters:
-                  - command: 'bin/ceph_integration'
-                    success_exit_code: [0]
-          yum_repository+yum:
-            parameters:
-              repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
-            repository_path: http://tendrl.org/repos/ceph-integration/yum/$repo_system_version/
-            packages: [tendrl-integration-ceph]
-            invocation:
-              - type: service
-                parameters:
-                  name: tendrl-ceph-integration.service
-                  start-action: start
-                  stop-action: stop
-      versions:
-        # Versions can be with or without the .x wildcard. Without the
-        # wildcard, specific version will be matched.
-        2.0:
-          # Keys must reference the keys from the platforms section.
-          ubuntu:
-            # Versions can use comparators, along with the values from the
-            # list of supported versions from the platform type.
-            >=15.04:
-              provisioner:
-                # The type is used to resolve to the appropriate namespace
-                # based on the `provisioners` section.
-                type: ceph-ansible
-                installation:
-                  # The installation section here would provide the variables
-                  # required by the installation_sources section in the
-                  # provisioner's namespace.
-                  type: git
-                  parameters:
-                    provisioner_version: 2.0
-              integration:
-                installation:
-                  type: git+pip_requirements
-                  parameters:
-                    ceph_integration_version: 1.0.x
-          centos:
-            =6.x:
-              provisioner:
-                type: ceph-installer
-                installation:
-                  type: yum_repository+yum
-                  parameters:
-                    repo_system_version: el6
-              integration:
-                installation:
-                  type: yum_repository+yum
-                  parameters:
-                    repo_system_version: el6
-        2.1.x:
-          ubuntu:
-            # The + operator has been used to combine multiple versions to
-            # create a range.
-            >=15.10+<=16.04:
-              provisioner:
-                type: ceph-ansible
-                installation:
-                  type: git
-                  parameters:
-                    provisioner_version: 2.1.x
-              integration:
-                installation:
-                  type: git+pip_requirements
-                  parameters:
-                    ceph_integration_version: 1.2.x
-          centos:
-            # The .x wildcard here has been used to ensure that any versions
-            # in the 7 series only, above 7.4, will be supported.
-            >=7.4.x:
-              provisioner:
-                type: ceph-installer
-                installation:
-                  type: yum_repository+yum
-                  parameters:
-                    repo_system_version: el7
-              integration:
-                installation:
-                  type: yum_repository+yum
-                  parameters:
-                    repo_system_version: el7
-    namespace.tendrl.integrations.ceph.provisioner.ceph_installer:
+    storage_system_types:
+      ceph: namespace.tendrl.integrations.ceph
+      gluster: namespace.tendrl.integrations.gluster
+  namespace.tendrl.integrations.ceph:
+    node_roles:
+      - mon
+      - osd
+    detection_roles:
+      # detection module: role to be assigned if detected
+      ceph_mon: mon
+      ceph_osd: osd
+    provisioners:
+      # provisioner_type: provisioner specific namespace
+      ceph-installer: namespace.tendrl.integrations.ceph.provisioner.ceph_installer
+      ceph-ansible: namespace.tendrl.integrations.ceph.provisioner.ceph_ansible
+    integration:
       installation_sources:
+        # Sections that define a list of things don't need the `type`
+        # attribute. Essentially, a definition section simply lists
+        # alternatives and their details. A section somewhere later then
+        # references one of the defined objects. In such a scenario, it's a
+        # specific instantiation of the definition and requires a `type`
+        # attribute.
+        git+pip_requirements:
+          parameters:
+            ceph_integration_version: namespace.tendrl.installation_sources.git.TagVersion
+          repository_path: https://github.com/Tendrl/ceph_integration.git
+          reference: $ceph_integration_version
+          requirements_file: requirements.txt
+          invocation:
+            # Here, the invocation section instantiates a specific type of
+            # object from the available ones defined in the global
+            # invocations list. Hence, the `type` attribute is required. Only
+            # one specific object can be instantiated via `type`, so the
+            # parameters are automatically applied to that specific object.
+            # The invocation section contains an ordered list of invocations to
+            # be executed one time, post installation.
+            - type: cli
+              parameters:
+                - command: 'bin/ceph_integration'
+                  success_exit_code: [0]
         yum_repository+yum:
           parameters:
             repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
-          repository_path: http://ceph-installer.org/repos/yum/$repo_system_version/x86_64/
-          packages: [ceph_installer]
+          repository_path: http://tendrl.org/repos/ceph-integration/yum/$repo_system_version/
+          packages: [tendrl-integration-ceph]
           invocation:
-            # Invocations are referenced from the global `invocations`
-            # declarations. Invocation sections are necessary in cases where a
-            # a one-time post installation activity is needed, such as a
-            # service to be started. The actual integration and interaction
-            # with the system is coded in the wrapper based on the flows.
-            - type: module
-              parameters:
-                - module: Tendrl.Provisioning.SetupSsh
-                  parameters: `tendrl_context.nodes`
             - type: service
               parameters:
-                name: ceph-installer.service
-                start_action: start
-                stop_action: stop
-        git:
-          parameters:
-            provisioner_version: namespace.tendrl.installation_sources.git.TagVersion
-          repository_path: https://github.com/ceph/ceph-installer.git
-          reference: $provisioner_version
-          invocation:
-            - type: cli
-              parameters:
-                - command: 'bin/ceph-installer setup'
-                  success_exit_code: [0]
-                - command: 'bin/ceph-installer start'
-                  success_exit_code: [0]
-            - type: module
-              parameters:
-                - module: Tendrl.Provisioning.SetupSsh
-                  parameters: `tendrl_context.nodes`
-    namespace.tendrl.integrations.ceph.provisioner.ceph_ansible:
+                name: tendrl-ceph-integration.service
+                start-action: start
+                stop-action: stop
+    versions:
+      # Versions can be with or without the .x wildcard. Without the
+      # wildcard, specific version will be matched.
+      2.0:
+        # Keys must reference the keys from the platforms section.
+        ubuntu:
+          # Versions can use comparators, along with the values from the
+          # list of supported versions from the platform type.
+          >=15.04:
+            provisioner:
+              # The type is used to resolve to the appropriate namespace
+              # based on the `provisioners` section.
+              type: ceph-ansible
+              installation:
+                # The installation section here would provide the variables
+                # required by the installation_sources section in the
+                # provisioner's namespace.
+                type: git
+                parameters:
+                  provisioner_version: 2.0
+            integration:
+              installation:
+                type: git+pip_requirements
+                parameters:
+                  ceph_integration_version: 1.0.x
+        centos:
+          =6.x:
+            provisioner:
+              type: ceph-installer
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+      2.1.x:
+        ubuntu:
+          # The + operator has been used to combine multiple versions to
+          # create a range.
+          >=15.10+<=16.04:
+            provisioner:
+              type: ceph-ansible
+              installation:
+                type: git
+                parameters:
+                  provisioner_version: 2.1.x
+            integration:
+              installation:
+                type: git+pip_requirements
+                parameters:
+                  ceph_integration_version: 1.2.x
+        centos:
+          # The .x wildcard here has been used to ensure that any versions
+          # in the 7 series only, above 7.4, will be supported.
+          >=7.4.x:
+            provisioner:
+              type: ceph-installer
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+  namespace.tendrl.integrations.ceph.provisioner.ceph_installer:
+    installation_sources:
+      yum_repository+yum:
+        parameters:
+          repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+        repository_path: http://ceph-installer.org/repos/yum/$repo_system_version/x86_64/
+        packages: [ceph_installer]
+        invocation:
+          # Invocations are referenced from the global `invocations`
+          # declarations. Invocation sections are necessary in cases where a
+          # a one-time post installation activity is needed, such as a
+          # service to be started. The actual integration and interaction
+          # with the system is coded in the wrapper based on the flows.
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+          - type: service
+            parameters:
+              name: ceph-installer.service
+              start_action: start
+              stop_action: stop
+      git:
+        parameters:
+          provisioner_version: namespace.tendrl.installation_sources.git.TagVersion
+        repository_path: https://github.com/ceph/ceph-installer.git
+        reference: $provisioner_version
+        invocation:
+          - type: cli
+            parameters:
+              - command: 'bin/ceph-installer setup'
+                success_exit_code: [0]
+              - command: 'bin/ceph-installer start'
+                success_exit_code: [0]
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+  namespace.tendrl.integrations.ceph.provisioner.ceph_ansible:
+    installation_sources:
+      git:
+        repository_path: https://github.com/ceph/ceph-ansible.git
+        reference: $provisioner_version
+        # The lack of an invocation section means there's no invocation to be
+        # done post installation. The actual integration wrapper code
+        # implements all the necessary actions to integrate with the 
+        invocation:
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+          - type: cli
+            parameters:
+              - command: 'bin/setup'
+                success_exit_code: [0]
+  namespace.tendrl.integrations.gluster:
+    node_roles:
+      - glusterd
+    detection_roles:
+      # detection module: role to be assigned if detected
+      glusterd: glusterd
+    provisioners:
+      gdeploy: namespace.tendrl.integrations.gluster.provisioner.gdeploy
+    integration:
       installation_sources:
-        git:
-          repository_path: https://github.com/ceph/ceph-ansible.git
-          reference: $provisioner_version
-          # The lack of an invocation section means there's no invocation to be
-          # done post installation. The actual integration wrapper code
-          # implements all the necessary actions to integrate with the 
-          invocation:
-            - type: module
-              parameters:
-                - module: Tendrl.Provisioning.SetupSsh
-                  parameters: `tendrl_context.nodes`
-            - type: cli
-              parameters:
-                - command: 'bin/setup'
-                  success_exit_code: [0]
-    namespace.tendrl.integrations.gluster:
-        provisioners:
-          gdeploy: namespace.tendrl.integrations.gluster.provisioner.gdeploy
-        integration:
-          installation_sources:
-            yum:
-              parameters:
-                repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
-              repository_path: http://tendrl.org/repos/gluster_integration/yum/$repo_system_version/
-              packages: [tendrl-integration-gluster]
-              invocation:
-                - type: service
-                  parameters:
-                    name: tendrl-gluster-integration.service
-                    start-action: start
-                    stop-action: stop
-        versions:
-          3.x:
-            centos:
-              =6.x:
-                provisioner:
-                  type: gdeploy
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el6
-                integration:
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el6
-          4.x:
-            centos:
-              =6.x:
-                provisioner:
-                  type: gdeploy
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el6
-                integration:
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el6
-              =7.x:
-                provisioner:
-                  type: gdeploy
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el7
-                integration:
-                  installation:
-                    type: yum_repository+yum
-                    parameters:
-                      repo_system_version: el7
-    namespace.tendrl.integrations.gluster.provisioner.gdeploy:
-      installation_sources:
-        yum_repository+yum:
+        yum:
           parameters:
             repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
-          repository_path: http://gdeploy.org/repos/yum/$repo_system_version/
-          packages: [gdeploy]
+          repository_path: http://tendrl.org/repos/gluster_integration/yum/$repo_system_version/
+          packages: [tendrl-integration-gluster]
           invocation:
-            - type: module
+            - type: service
               parameters:
-                - module: Tendrl.Provisioning.SetupSsh
-                  parameters: `tendrl_context.nodes`
+                name: tendrl-gluster-integration.service
+                start-action: start
+                stop-action: stop
+    versions:
+      3.x:
+        centos:
+          =6.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+      4.x:
+        centos:
+          =6.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+          =7.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+  namespace.tendrl.integrations.gluster.provisioner.gdeploy:
+    installation_sources:
+      yum_repository+yum:
+        parameters:
+          repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+        repository_path: http://gdeploy.org/repos/yum/$repo_system_version/
+        packages: [gdeploy]
+        invocation:
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+
+
+
+==== Version as a Data Type
+
+A global Version object would need to be implemented. This object would contain
+the logic to be able to resolve the .x wildcards and have some comparison logic
+implemented. This object is expected to be inherited and overriden in any
+namespace that requires it's own implementation logic. This way Version becomes
+a valid data type.
+
+Examples of some of the Version sub-types from the above definition file
+structure include:
+
+namespace.tendrl.installation_sources.git.TagVersion::
+This type of Version would need to be able to get a list of all the tags in the
+repository and match one of them. To implement the .x wildcard, the latest from
+the list of tags that match the non-wildcard part of the version string would
+need to be picked.
+
+namespace.tendrl.platforms.centos.RepoVersionString::
+This type of Version would probably be a hardcoded mapping of distro version
+strings to the actual versions. For example:
+
+  6.x: el6
+  7.x: el7
+
+This example is a bit contrived, however. The parameter's value has been
+directly specified. A `String` data type would probably suffice in this
+scenario.
+
+
+=== Node States
+
+At any point in time, a node can be in one of the following states:
+
+Detected::
+A node agent is running on the node, the node inventory is being imported.
+
+Managed::
+The node agent has finished pulling in all the inventory details for the node
+and is able to accept jobs for the node.
+
+Import Pending::
+A Managed node which has been detected to be running one or more supported
+storage system components.
+
+Importing::
+A cluster import operation is in progress which the Managed node is a part of.
+
+Imported::
+A Managed node that is part of a cluster which has been imported.
+
+Provisioning::
+A Managed node that is part of a create cluster operation.
+
+
+==== States for a node with existing cluster components, pre-import
+. Detected
+. Managed
+. Import Pending
+
+==== States for a node with existing cluster components, during import
+. Importing
+
+==== States for a node with existing cluster components, post-import
+. Imported
+
+==== States for a node with no existing cluster components
+. Detected
+. Managed
+
+==== States for a node on which a cluster is being provisioned
+. Provisioning
+. Importing
+
+==== States for a node on which a cluster has been created
+. Imported
+
+
+The above states need to be stored as values under an object `node_state` under
+each node's directory.
+
+
+=== Existing Cluster Detection
+
+Each node in any state `Import Pending` is expected to contain a
+`detected_cluster` object. This object would contain the following details
+regarding the detected cluster components:
+
+type::
+One of the values from the `storage_system_types` from `namespace.tendrl`.
+
+version::
+Detected cluster version.
+
+role::
+Role the node plays in the cluster. Must be one of the `node_roles` from the
+storage system's integration namespace. Depending upon which detection module
+return a success, this role is assigned based on the mapping in
+`detection_roles` in the same namespace.
+
+id::
+A temporary id used to identify all the nodes that may belong to the same
+cluster. For ceph, this could be the fsid. A mechanism would need to be devised
+for gluster. This id is just for the temporary purpose of allowing the
+  administrator to identify a group of nodes belonging to the same cluster.
+
+The API would attach this metadata, if it exists, to each of the nodes it returns.
+
+
+=== Nodes Part of an Imported Cluster
+
+During the import process, the following would be done:
+
+* A cluster id is generated and the corresponding cluster namespace is created
+  under `/clusters`.
+* A `cluster_id` object is created in each of the nodes participating in
+  the cluster. This object simply contains the generated cluster id.
+* A `cluster_role` object is created in each of the nodes participating in the
+  cluster. This object contains the role assigned to the node. As before, must
+  be one of the roles from the `node_roles` list in the storage system
+  namespace.
+* A `cluster_attributes` object is also created in each of the nodes. This
+  object contains administrator defined, and storage system specific attributes
+  such as name, fsid etc.
 
