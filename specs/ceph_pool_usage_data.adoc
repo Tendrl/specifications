@@ -195,3 +195,5 @@ data as well
 == References:
 
 * https://github.com/Tendrl/ceph_integration/issues/64
+
+* https://github.com/Tendrl/usmqe-tests/issues/19
