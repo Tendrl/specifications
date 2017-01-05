@@ -1,0 +1,223 @@
+= Specification for adding disk details in node hardware inventory
+
+Add disk details also as a part of node hardware inventory
+
+== Problem description
+
+Hardware inventory details are used to show exact status of the particular
+node. Currently disk details are missing in node hardware inventory. Add all possible
+disk details in node hardware inventory and store it in etcd.
+
+== Use Cases
+
+Tendrl should show the current status of disk.
+
+== Proposed change
+* From node agent collect all possible disk details in node inventory list and store
+  it in etcd. (Detailed information in implementation section).
+
+== Alternatives
+
+* hdparm is also giving some disk details like serial number and firmware but it
+  works only for ATA disks types. For SCSI disk we have to use sdparm.
+
+== Data model impact
+
+* Add used disks id in etcd with key nodes/node_id/Disks/Used.
+* Add free disks id in etcd with key nodes/node_id/Disks/Free.
+* Add all disks details in etcd with key nodes/node_id/Disks.
+* There needs to be one object per disk, which contains all the information about
+  the disk. This needs to be in the disks directory. The object's key needs to be
+  the id that's guaranteed to always be available.
+* The objects under used and free directories under disks, need to be empty
+  objects with their key being the id of the disk object under disks.
+```
+     list: nodes/$Node_context.node_id/Disks
+     list: nodes/$Node_context.node_id/Disks/Used
+     list: nodes/$Node_context.node_id/Disks/Free
+```
+
+== Impacted modules
+
+== Tendrl API impact:
+
+None
+
+=== Tendrl/common impact
+
+None
+
+=== Tendrl/node_agent impact
+
+* Add a new function in pull_hardware_inventory to collect disk details.
+* Create a class Disk in persistence module.
+* Modify the manager to retrieve inventory details from tendrl-node-inventory
+  file and compare it with node_inventory list, If any changes then populate the
+  disk details in class instance and store it in etcd.
+* Add three different object in tendrl definitions for disks, used disks and
+  free disks.
+* Commands used to retrieve disk details are:
+```
+1. columns = 'NAME,FSTYPE,MOUNTPOINT,UUID,SIZE,ROTA
+   lsblk --all --bytes --noheadings --output='%s' --path --raw" % columns
+2. hwinfo --block (It will give disk, partitons, cdrom information. For disk
+   details disk and partitions are enough).
+```
+* Expected disk details output format form  hardware inventory list is:
+```
+{"disks": [{"disk_id": "",
+            "parent_id": "",
+            "disk_type": "",
+            "model": "",
+            "vendor": "",
+            "serial_no": "",
+            "device_name": "",
+            "sysfs_id": "",
+            "sysfs_busid": "",
+            "sysfs_device_link": "",
+            "driver_modules": "",
+            "driver": "",
+            "device_files": "",
+            "device_number": "",
+            "device": "",
+            "drive_status": "",
+            "rmversion": "",
+            "bios_id": "",
+            "geo_bios_edd": "",
+            "geo_bios_legacy": "",
+            "geo_logical": ""
+            "disk_kernel_name": ""
+            "parent_name": "",
+            "major_to_minor_no": "",
+            "fstype": "",
+            "mount_point": "",
+            "label": "",
+            "fsuuid": "",
+            "read_ahead": "",
+            "read_only": "",
+            "removable_device":"",
+            "size": "",
+            "state": "",
+            "owner": "",
+            "group": "",
+            "mode": "",
+            "alignement": "",
+            "min_io_size": "",
+            "optimal_io_size": "",
+            "phy_sector_size": "",
+            "log_sector_size": "",
+            "disk_type": "",
+            "ssd": "",
+            "scheduler_name": "",
+            "req_queue_size": "",
+            "discard_align_offset": "",
+            "discard_granularity": "",
+            "discard_max_bytes": "",
+            "discard_zeroes_data": "", ...]
+  "free": [disk_id,...],
+  "used": [disk_id,.....]...}
+```
+
+=== Tendrl/gluster_integration impact
+
+None
+
+=== Tendrl/ceph_integration impact
+
+None
+
+
+== Security impact
+
+None
+
+== Notifications/Monitoring impact
+
+None
+
+
+== Other end user impact
+
+None
+
+== Performance Impact
+
+None
+
+== Other deployer impact
+
+None
+
+== Developer impact
+
+None
+
+== Implementation
+
+* "hwinfo" and "lsblk" to find the disk details.
+* lsblk is not sufficient to find all disk details, So we have to use hwinfo also.
+* From node_agent add a new function in pull_hardware_inventory to find disk
+  details and update those details into node_inventory list.
+* Add all possible disk details in hardware inventory list.
+```
+  (disk_id, device_name, internal_kernel_device_name, parent_id, parent_name,
+  maj_to_min_device_number, fs_type, mount_point, label, fs_uuid, read_ahead,
+  read_only, removable_device, model, size, state, owner, group, mode, alignement,
+  min_io_size, optimal_io_size, physical_sector_size, logical_sector_size, ssd,
+  scheduler_name, request_queue_size, disk_type, discard_alignment_offset,
+  discard_granularity, discard_max_bytes, discard_zeroes_data, vendor, serial_no,
+  firmware_version, sysfs_id, sysfs_busid, sysfs_device_link, driver, driver_modules,
+  device_files, device_number, bios_id, geometry_logical, geometry_bios_legacy).
+```
+* Create a class called  Disks  in persistence module to keep all disk details.
+* Modify the manager to retrieve inventory details from tendrl-node-inventory
+  file and compare it with node_inventory list, If any changes then populate the
+  disk details in class instance and store it in etcd.
+```
+- Populate all disk details in Disks class instance and store it in etcd.
+- store free disks id keys with empty object in etcd
+- store used disks id keys with empty object in etcd.
+```
+* Store disk class instance in etcd with key.
+* Create objects in tendrl definition for disks, used disks and free disks.
+* Disks structure in etcd:
+```
+/nodes/node_id/Disks
+   <disk_id1> # object with all the details for disk_id1
+   <disk_id2> # object with all the details for disk_id2
+
+/nodes/node_id/Disks/used
+   <disk_id1> # empty object
+
+/nodes/node_id/Disks/free
+   <disk_id2> #empty object
+```
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+Other contributor(s): TODO
+
+== Work Items
+
+* git-hub issue: https://github.com/Tendrl/node_agent/issues/78
+
+== Dependencies
+
+Add hwinfo to retrieve disk details (pip package is not required for these two,
+It is used for system command). hwinfo is not available for rhel and epel, we
+have to build this.
+
+== Testing
+
+* Sanity check for flow.
+* Check all disk details are persisted successfully.
+
+== Documentation impact
+
+None
+
+== References
+
+None
