@@ -18,7 +18,7 @@ troubleshoting.
 * Tendrl detects services like ceph/gluster and its related services details
   of the storage node and store them in etcd and present it through an API.
 
-  ** User selects a service of a purticular node
+  ** User selects a service of a particular node
      presented to the administrator via APIs
   ** From the selected service user can watch the status
 
@@ -36,7 +36,7 @@ number of threads for the ceph and gluster related services.
 
 * Create a function to get the service list from the configuration
   or to provide a default services which are related to ceph or gluster
-  serevices like glusterd, sshd, tendrl-node-agent, tendrl-api,
+  services like glusterd, sshd, tendrl-node-agent, tendrl-api,
   tendrl-gluster-integration, tendrl-ceph-integration, httpd, ceph-mon,
   ceph-osd, ceph-mds and puma.
 
@@ -55,7 +55,30 @@ None
 === Impacted Modules:
 
 ==== Tendrl API impact:
-None. Service details will be displayed as part of node list.
+Service details will be displayed as part of node list. In addition to
+that, API to get service details
+
+----
+
+GET /1.0/nodes/{id}/services/{service-name}
+
+Sample Response:
+
+{
+"service": {
+        "node_id": "357a4f0b-4531-6727-b708-158c3d98f312",
+	"name": "httpd",
+	"exe_path": "/usr/bin/",
+	"status": "running",
+	"cpu-use-percent": "10",
+	"mem-use-percent": "39",
+	"fds_count": "120",
+	"threads_count": "1200",
+	"open_files_count": "50"
+        }
+}
+
+----
 
 ==== Notifications/Monitoring impact:
 Can consume the api to get service details, can raise a seperate spec
@@ -65,7 +88,7 @@ for that.
 None
 
 ==== Tendrl/node_agent impact:
-* Add a module to collects the service details like service-name, execution
+* Add a module to collect the service details like service-name, execution
 path, executing script, status, how much cpu percentage it takes, how much
 memory it consumes, number of io counts on read and write, open files,
 number of threads for the ceph or gluster related services.
@@ -85,7 +108,7 @@ number of threads for the ceph or gluster related services.
 following is the data models to be pushed to the central store for
 Services:
 
-{"nodename": [{
+{"services": [{
                 "name": "service name",
 		"command": "executing script",
 		"exe_path": "execution path",
@@ -117,7 +140,7 @@ None
 == Implementation:
 Package python-psutil is used to find the service details.
 * Add python-psutil package as dependency.
-* Add a new module named "service_detction" to fetch service details
+* Add a new module named "service_detection" to fetch service details
   and update those details into node_inventory list.
 * Create a class called "Service" in persistence module to
   keep service details.
