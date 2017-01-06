@@ -60,13 +60,14 @@ that, API to get service details
 
 ----
 
-GET /1.0/nodes/{id}/services/{service-name}
+
+GET /1.0/nodes/<id>/GetServiceList
 
 Sample Response:
 
-{
-"service": {
-        "node_id": "357a4f0b-4531-6727-b708-158c3d98f312",
+[
+    {
+	"node_id": "357a4f0b-4531-6727-b708-158c3d98f312",
 	"name": "httpd",
 	"exe_path": "/usr/bin/",
 	"status": "running",
@@ -75,7 +76,25 @@ Sample Response:
 	"fds_count": "120",
 	"threads_count": "1200",
 	"open_files_count": "50"
-        }
+    },
+        ................
+]
+
+
+GET /1.0/nodes/<id>/services/<name>
+
+Sample Response:
+
+{
+	"node_id": "357a4f0b-4531-6727-b708-158c3d98f312",
+	"name": "httpd",
+	"exe_path": "/usr/bin/",
+	"status": "running",
+	"cpu-use-percent": "10",
+	"mem-use-percent": "39",
+	"fds_count": "120",
+	"threads_count": "1200",
+	"open_files_count": "50"
 }
 
 ----
@@ -108,16 +127,19 @@ number of threads for the ceph or gluster related services.
 following is the data models to be pushed to the central store for
 Services:
 
-{"services": [{
-                "name": "service name",
-		"command": "executing script",
-		"exe_path": "execution path",
-		"status": "service status",
-		"cpu-use-percent": "how much cpu percentage it uses",
-		"mem-use-percent": "how much memory it consumes",
-		"fds_count": "number of fd count",
-		"threads_count": "threads count",
-		"open_files_count": "number of open files count"
+{"services": [
+	        {
+                   "name": "service name",
+		   "command": "executing script",
+		   "exe_path": "execution path",
+		   "status": "service status",
+		   "cpu-use-percent": "how much cpu percentage it uses",
+		   "mem-use-percent": "how much memory it consumes",
+		   "fds_count": "number of fd count",
+		   "threads_count": "threads count",
+		   "open_files_count": "number of open files count"
+		}, ...
+	     ]}
 
 ==== Sds integration impact:
 None
