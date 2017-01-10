@@ -1,0 +1,171 @@
+// vim: tw=avored-markdown/preview.ht79
+
+# Changes in tendrl modules after introduction of new logging module in common
+
+Since a new logging module is being introduced in Tendrl-common(https://github.com/Tendrl/specifications/pull/94), after its implementation
+there will be requirement of changes in all the modules of Tendrl where logging is used.
+This file proposes all those changes and how they will be made.
+
+
+## Problem description
+
+Many modules in Tendrl have a functionality of logging different types of situations/use cases such as logging (info, errors, warning etc.).
+Till now these were implemented by importing the Python standard library's logging module then calling logger functions to handle the logging.
+After implementation of new logging module there will be requirement of changes in all the modules of Tendrl where logging is used.
+
+#### Use Cases
+
+There will be 3 classes(use cases) that will be provided by the common logging module:
+
+ * Log - Will write logs to log files.
+ * Alert - Will send the alert messages to the node agent socket and write the same to the log files.
+ * Operations - Will write operation log to log files.
+
+#### Proposed change
+
+Earlier there was only provision of writing to log files, now this functionality in being diversified and extended.
+
+The following are the key points to be noted:
+
+* Introduction of alert and operations along with logs and all these will be treated as messages emitted by Tendrl modules.
+
+* There will 3 classes of messages that will be provided and will be used to achieve the required purpose:
+
+ ... Log - Will write logs to log files.
+ ... Alert - Will send the alert messages to the node agent socket and write the same to the log files.
+ ... Operations - Will write operation log to log files.
+
+* *Importing logging and calling logger functions* will be replaced by importing the respective class from the common for the desired functionality
+and calling the message handler function provided with the same.
+
+*_Example change :_*
+
+----
+import logging
+
+LOG = logging.getLogger(__name__)
+
+LOG.info("%s complete" % self.__class__.__name__)
+----
+*Replaced by :*
+----
+from tendrl.commons.new_logging import Log, Alert, Operations
+
+message = Log(parameters)
+
+message.handler()
+----
+
+#### Alternatives
+
+None
+
+#### Data model impact:
+
+None
+
+#### Impacted Modules:
+
+#### Tendrl/common impact
+
+Similar changes like _example change_ mentioned above will be required in following modules :
+
+* /commons/etcdobj/etcdobj.py
+* /commons/flows/base_flow.py
+* /commons/manager/manager.py
+* /commons/manager/rpc_job_process.py
+* /commons/persistence/persister.py
+* /commons/utils/ansible_module_runner.py
+* /commons/utils/command.py
+* /commons/utils/package_installer.py
+* /commons/utils/service.py
+* /commons/config.py
+* /commons/log.py
+
+#### Tendrl/node_agent impact
+
+Similar changes like _example change_ mentioned above will be required in following modules :
+
+* /node_agent/manager/manager.py
+* /node_agent/manager/pull_hardware_inventory.py
+* /node_agent/manager/utils.py
+
+#### Tendrl/gluster_integration impact
+
+Similar changes like _example change_ mentioned above will be required in following modules :
+
+* /gluster_integration/manager/manager.py
+
+#### Tendrl/ceph_integration impact
+
+Similar changes like _example change_ mentioned above will be required in following modules :
+
+* /ceph_integration/manager/cluster_monitor.py
+* /ceph_integration/manager/crud.py
+* /ceph_integration/manager/crush_node_request_factory.py
+* /ceph_integration/manager/eventer.py
+* /ceph_integration/manager/manager.py
+* /ceph_integration/manager/pool_request_factory.py
+* /ceph_integration/manager/server_monitor.py
+* /ceph_integration/manager/user_request.py
+* /ceph_integration/manager/utils.py
+
+#### Tendrl/alerting impact
+
+None
+
+#### Tendrl/performance_monitoring impact
+
+None
+
+#### Security impact:
+None
+
+#### Notifications/Monitoring impact
+
+None
+
+#### Other end user impact:
+
+None
+
+#### Performance impact:
+
+None
+
+#### Other deployer impact:
+
+None
+
+#### Developer impact:
+
+None
+
+#### Implementation:
+
+
+#### Assignee(s):
+
+Primary assignee: anmolsachan
+
+Other contributors:
+
+#### Work Items:
+
+
+#### Dependencies:
+
+https://github.com/Tendrl/specifications/pull/94
+
+#### Testing:
+
+
+#### Documentation impact:
+
+None
+
+#### References:
+
+* https://github.com/Tendrl/specifications/pull/94
+* https://github.com/Tendrl/specifications/issues/55
+* https://github.com/Tendrl/specifications/blob/master/specs/pluggable_alert_delivery.adoc
