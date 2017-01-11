@@ -1,0 +1,260 @@
+// vim: tw=79
+
+= SDS detection modules in node_agent
+
+Node agent serves as the component that is responsible for invoking and/or
+executing operations that are part of global Tendrl scope.
+
+Tendrl officially supports specific storage systems (ceph and gluster). However
+Tendrl also aims to be a framework that provides some essential capabilities
+and interfaces so that it is easy to add support for storage systems that are
+not officially supported.
+
+For this Tendrl should be able to auto-detect existing deployments and out of
+the box sane defaults for laying out the storage system and managing them.
+
+== Problem description
+
+Tendrl need to provide a pluggable model using which auto-detection modules
+for different storage systems can be deployed in pre-defined locations and
+Tendrl can load and execute certain generic APIs on these modules to figure the
+underlying pre-existing storage system. This can become the pre-requisite which
+gets executed as part of starting node agent on the storage nodes and helps
+import cluster flow in Tendrl to decide what kind of cluster is getting imported
+. This also would help deciding on deployment of corresponding Tendrl
+integration module for managing the cluster seamlessly.
+
+== Use Cases
+
+This specification covers the import cluster flow in Tendrl and auto detection
+of underlying storage systems on storage nodes.
+
+== Proposed change
+
+We try to introduce a pluggable set of modules (for officially supported storage
+systems from Tendrl) which could deployed in a standard Tendrl defined location
+and would be executed as part of node agent start on nodes. These modules would
+auto detect the underlying storage systems and its related details. These
+details would be tagged with storage nodes so that while import cluster Tendrl
+would be able to decide on deployment of corresponding integration modules on
+the storage systems.
+
+A summary of proposed changes are
+
+* Define a standard path from where all the available storage detection modules
+would be loaded
+
+* While starting the node agent service on the storage nodes, execute these
+plugins and auto detect the storage systems (if any) on underlying storage nodes
+
+* Tag the dectected details (if any) with the storage nodes details
+
+* Enhance the import cluster flows in node agent component to decide on what
+Tendrl integration module gets deployed on the underlying storage nodes
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* API layer should attach the storage system specific auto-detected details of
+the nodes and list as part of node listing
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+* Common module should define a generic interface for plugins which would
+be extended by different auto-detection modules specific interfaces. The
+structure of the generic interface could be as below
+
+```
+class AutoDetectPlugin(object):
+
+    @abstractmethod
+    def initialize(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def destroy(self):
+        raise NotImplementedError()
+```
+
+The class which takes care of mounting a plugin would be something like
+
+```
+class PluginMount(type):
+    def __init__(cls, name, bases, attrs):
+        if not hasattr(cls, 'plugins'):
+            cls.plugins = []
+        else:
+            cls.register_plugin(cls)
+
+    def register_plugin(cls, plugin):
+        instance = plugin()
+        cls.plugins.append(instance)
+        instance.initialize()
+```
+
+==== Tendrl/node_agent impact:
+
+* The node agent component need to define interfaces which extend from commons
+AutoDetectPlugin and add specific functions as below
+
+```
+class SDSDetectPlugin(AutoDetectPlugin):
+    @abstractmethod
+    def detect_storage_system(self):
+        raise NotImplementedError()
+```
+
+* The node agent component would introduce two python modules for ceph and
+gluster. These would be specific classes which extend from above SDSDetectPlugin
+and provide the actual implementation for the function
+
+```
+class DetectCephStorageSystem(SDSDetectPlugin):
+    def detect_storage_system(self):
+        # Implement the logic to get the details of underlying storage system
+        # 1. Figure out if ceph bits installed and set the type accordingly
+        # 2. Figure the version of ceph bits installed and accordingly set the
+        # version
+        # 3. Figure out the role of the storage node (by figuring out if MON or
+        # OSD processes are running) and accordingly set the role for the node
+        # 4. Generate (or read FSID in case of ceph) and assign a temporary
+        # cluster id. Write the this detail to a defined path as well on node
+```
+
+* Similary another implementation to be introduced for gluster as well
+
+* Enhance the node agent component to load these SDS detection plugins for pre-
+defined path (tendrl/node_agent/sds_detection/plugins) to mount them
+
+* While starting the node agent service execute the SDS detection plugins and
+tag the details to the storage node
+
+* If one plugin execution succeeds stop further execution
+
+==== Sds integration impact:
+
+* No impact as such on SDS integration modules due to auto detection and their
+role comes as usual for other management activities once cluster is imported in
+Tendrl system
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+* While import cluster flow, the underlying SDS details would be auto-detected
+and manifested in UI for displaying layout (nodes, roles, storage system version
+etc) of the cluster beforehand
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* API layer to take care of listing the tagged additional storage system details
+while listing the nodes for import cluster flow
+
+== Implementation:
+
+* The details of implementation are briefed in individual component impact
+sections already.
+
+* To summarize
+
+** Commons component to add a base interface for `AutoDetectPlugin`
+
+** Node agent component to extend the `AutoDetectPlugin` and define specific
+interface for SDS detection
+
+** Node agent to implement `SDSDetectPlugin` and add modules for `ceph` and
+`gluster`
+
+** Node agent to mount the SDS detection plugins while starting the service and
+execute these plugins one by one to figure out the details of the underlying
+storage system. Tag the figured out details with the storage nodes in central
+store
+
+* SDS Detect plugin for `ceph`
+
+** Execute the command `ceph version` to figure out if ceph bits are installed
+and figure out the version details well
+
+** Check the running status of mon and osd processes on the storage nodes and
+decide the role of the storage node accordingly
+
+** Get the FSID of the underlying cluster and tag the same as cluster_id. Store
+the details in pre-defined location (say /etc/tendrl/tendrl_context) as
+clsuter_id
+
+* SDS Detect plugin for `gluster`
+
+** Execute the command `gluster --version` to figure out if gluster bits are
+installed on the storage node. Also get the version details and tag with the
+node in central store
+
+** Default assign the role as `glusterd` for all the storage nodes
+
+** Execute the command `gluster pool list` and calculate as hash out of node
+UUIDs of the nodes in the trusted storage pool. Tag this as cluster_id for the
+nodes. Storage the details in pre-defined location (say
+/etc/tendrl/tendrl_context) as cluster_id
+
+* Enhance the node agent starting logic to execute the above mentioned plugins
+one by one and tag the details to the storage nodes. Once a plugin is
+successfully executed, stop execution for others
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+  None
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/113
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/pull/100
+
+* https://github.com/Tendrl/specifications/pull/60
+
+* https://github.com/Tendrl/specifications/pull/73
+
+== Testing:
+
+* Verify if all the underlying cluster details like type, version, role and
+cluster_id are populated for the storage nodes after starting the node agent
+(only if these is an underlying cluster available)
+
+* Verify if import cluster flow works semlessly and cluster gets imported with
+all the details successfully
+
+== Documentation impact:
+
+None
+
+== References:
+
+TODO
