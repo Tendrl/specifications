@@ -1,0 +1,311 @@
+// vim: tw=79
+
+= Expose a way for tendrl-api to expose data from time series db
+
+== Introduction
+
+A small introduction to the components part of this spec
+(borrowed from Tendrl/documentation):
+
+=== Tendr/tendrl-api
+
+* Frontend/northbound API.
+* This is the integration point for any external management system/frontend
+  with Tendrl, including the Tendrl UI.
+* The App has the necessary logic to understand the state definitions stored in
+  the Central Store and present them over it’s API.
+* The App has the necessary logic to be able to invoke Operations through the
+  Central Store’s Job Queue implementation.
+* The App is completely stateless. All the state is stored in the Central
+  Store. The App essentially acts as a translation proxy between an external
+  system (including Tendrl UI) and the Central Store.
+* The App is intended to be primarily used for systems integration. As such,
+  the API is completely generic and self descriptive. The intended use case is
+  that any system wishing to leverage Tendrl uses the API’s descriptive
+  responses to construct targeted queries for a specific cluster instances
+  being managed by Tendrl.
+
+=== Tendrl Performance (performance_monitoring)
+
+It is a separate service that runs outside tendrl core stack and it relies on
+the state information in tendrl’s central store for its functioning. Typically
+it can be co-resident with tendrl application but nothing necessiates this.
+Following are its sub-components based on the functionalities:
+
+* Api Layer : This layer will serve the following responsibilities.
+** Serve the time series data stored in time series database.
+** The apis internally use a plugin based approach for querying the
+   time-series performance data which eases the task of supporting multiple
+   time-series databases.
+* Aggregator : This module aggregates atomic stats(ex: cluster utilization) to
+  composite(system utilization) stats which will be required by UI for the
+  dashboards.
+
+== Problem description
+
+Tendrl/tendrl-api(a part of tendrl-core) is agnostic of time-series db(a part
+of monitoring stack of tendrl) and its specifics but needs to be able to expose
+data in the time series db if the monitoring stack is installed.
+
+== Use Cases
+
+* If monitoring stack is installed by user, the user should be able to seamlessly
+  access tendrl maintained time series performance data over specified
+  time-ranges.
+
+== Proposed change
+
+* Tendrl/performance-monitoring will expose apis to access performance data in
+  time-series db. This is achieved by:
+** Interface to time-series db is designed in the form of plugins specific to
+   a time-series db.
+*** This means that to support a new time-series db, all it takes is the
+    addition of its specific interface as a plugin and doesn't require touching
+    any other part of the code.
+*** The way the plugins work is :
+**** The interfaces to time-series db are added under the directory
+     time_series_db/dbplugins of tendrl/performance-monitoring.
+**** These plugins inherit from a common interface and hence all of them follow
+     a similar basic skeletal structure.
+**** The plugin framework uses python's meta-class approach and they get
+     registered with the framework when everything in the plugin path is
+     imported but only the plugin configured in trendrl's conf will be used to
+     interface to the time-series db. The way this works is as follows:
+***** A singleton manager looks for all/any plugins in directory
+      time_series_db/dbplugins and imports them all.
+***** The moment they are imported the meta-class registers an instance of the
+      plugin with itself.
+***** The singleton manager then stores the instance of required time-series db
+      plugin which will be henceforth used for all interactions with the
+      time-series db.
+***** Since the manager is a singleton, there is only one instance of it
+      throughout the life of Tendrl/performance-monitoring application which
+      means all this house-keeping is done only once during the lifecycle of
+      the application.
+* The following apis will be exposed by Tendrl/performance-monitoring:
+** An api to list the monitored resources of a particular entity
+** An api to get statistics of any monitored resource from list in above api
+   for a particular entity.
+* The Tendrl/tendrl-api proxies to these apis and remains agnostic of the
+  time-series db specifics.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+Data in time-series db is stored as key-value pairs(utilization to timestamp)
+in its specific collection/table named by the fully qualified resource name
+and this is very specific to the way collectd's plugins send metrics to time
+series db and hence not much control can be exercised here unless we use
+custom collectd plugins rather than the collectd provided ones
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The tendrl-api interfaces to the apis mentioned above under the section
+"Proposed change" and detailed below under "Notifications/Monitoring impact".
+Making call's to the monitoring app is via a http client programatically. The
+tendlr-api will define its own url's, somewhat similar to what API's from the
+monitoring app. We need to take this approach since we need to have one point
+of interaction.
+
+==== Notifications/Monitoring impact:
+
+The api list to be exposed will grow with time. Currently, the following apis
+can be considered:
+
+To explore the resources that are monitored, we can use the api described
+below.
+
+Sample Request
+
+----------
+GET /monitoring/nodes/<node_id>/monitored_types
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+
+[{
+  type: string,
+  description: the resource name,
+}]
+
+ex:
+['resource_1', 'resource_2', ...]
+----------
+
+The above response which is an array of resource name strings gives different
+statistics that tendrl's monitoring stack maintains in its time series db.
+
+
+Sample Request
+
+----------
+GET /monitoring/nodes/<node_id>/<resource_name>/stats
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+[
+  {
+    "target": {
+      type: string,
+      description: full qualified name of the resource including the
+        node name, a default prefix which gives a namespace to the stats in
+        graphite and name of the resource.
+    },
+    "datapoints": [
+      [{
+          type: float,
+          description: Instant value of target
+        }, {
+          type: long,
+          description: Timestamp at which the value was observed
+      }],....
+    ]
+  }
+]
+
+ex: [
+  {
+    "target": "{graphite_prefix.host_name.metric_name}",
+    "datapoints": [
+      [5.50091681946991, 1478495700],....
+    ]
+  }
+]
+----------
+
+The above response gives the statistics for last 24 hours corresponding to the
+'resource_name' passed to it. If a time range is passed as optional arguements
+to the above api, then the api responds with the statistics for that time
+range.
+
+To get the statistics for a given time-range:
+
+----------
+GET /monitoring/nodes/<node_id>/<resource_name>/stats?from=1997-07-16T19:20+01:00&to=1997-07-18T19:20+01:00
+----------
+
+----
+Note:
+* The time used in the above api needs to abide the iso8601 format
+* Time zone conversions from input iso8061 format user specified timezone to
+  graphite server timezone for queries to graphite db will be handled
+  internally by the api.
+----
+
+To get the latest stat use:
+
+----------
+GET /monitoring/nodes/<node_id>/<resource_name>/stats?duration=latest
+----------
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+The apis exposed by Tendrl/performance-monitoring although are only getters,
+need to be covered by a layer of authentication. This is achieved as:
+
+* Flask-Login provides user session management for Flask. It handles the common
+  tasks of logging in, logging out, and remembering users’ sessions over
+  extended periods of time.
+* It will:
+** Store active user’s ID in the session, and lets log them in and out easily.
+** Handle the normally-tricky “remember me” functionality.
+** Help protect users’ sessions from being stolen by cookie thieves.
+* It does not:
+** Impose a particular database or other storage method. How users are loaded
+   is entirely upto flask user.
+** Handle permissions beyond “logged in or not.”
+** Handle user registration or account recovery.
+
+So in accordance with above, the approach we will be taking is:
+
+* Add a default user admin with a configurable password(admin by default).
+* The default login auth cookie is alive for 365 days unless user explicitly
+  logged out. But this cookie alive period is exposed for configuration by
+  flask as a field by name 'REMEMBER_COOKIE_DURATION'.
+
+----
+Note:
+
+* The configuration of admin password, and addition of any more possible users
+  will be handled by user management as admin will also be moved to users in
+  etcd once tendrl has user-management.
+* The configuration of 'REMEMBER_COOKIE_DURATION' field will be exposed for
+  configuration via an api that handles the similar case for tendrl-api as both
+  the apis can share a common configurable field in etcd.
+* To track the authentication part a separate spec will be raised. And that
+  spec will fix https://github.com/Tendrl/specifications/issues/89
+----
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+This has extensive impact on 2 modules tendrl-api and performance-monitoring
+and hence warrants a very high collaboration between the owners of the
+2 modules
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  performance_monitoring part: anmolbabu
+  tendrl-api part: Anup(anivargi)
+
+=== Work Items:
+
+* https://github.com/Tendrl/performance_monitoring/issues/7
+
+== Dependencies:
+
+None
+
+== Testing:
+
+This spec introduces new apis as described above in 'Proposed changes' and
+detailed in the section 'Notifications/Monitoring impact' which need to be
+tested.
+
+== Documentation impact:
+
+This spec introduces new apis as described above in 'Proposed changes' and
+detailed in the section 'Notifications/Monitoring impact' which need to be
+documented.
+
+== References:
+
+None
