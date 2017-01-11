@@ -157,6 +157,19 @@ None
 
 == Implementation:
 
+The calculations are as under:
+
+* Storage utilization is calculated as summation of all mount point
+  utilizations in node.
+* Cpu utilization is calculated as sum of percentage cpu used by system
+  processes and percentage cpu used by user processes.
+* Memory utilization is same as the utilization detected by collectd.
+
+----
+Note:
+The data required in the above mentioned calculation procedure are fetched
+from time-series db(graphite) directly.
+----
 
 === Assignee(s):
 
