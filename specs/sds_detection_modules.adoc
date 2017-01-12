@@ -47,10 +47,7 @@ would be loaded
 * While starting the node agent service on the storage nodes, execute these
 plugins and auto detect the storage systems (if any) on underlying storage nodes
 
-* Tag the dectected details (if any) with the storage nodes details
-
-* Enhance the import cluster flows in node agent component to decide on what
-Tendrl integration module gets deployed on the underlying storage nodes
+* Tag the detected details (if any) with the storage nodes details
 
 === Alternatives
 
@@ -58,14 +55,71 @@ None
 
 === Data model impact:
 
-None
+* The entity model for `Node_context` in node-agent would look as below
+
+```
+class NodeContext(EtcdObj):
+    __name__ = 'nodes/%s/Node_context'
+
+    node_id = fields.StrField("node_id")
+    machine_id = fields.StrField("machine_id")
+    fqdn = fields.StrField("fqdn")
+    cluster_id = fields.StrField("cluster_id")
+    sds_pkg_name = fields.StrField("sds_pkg_name")
+    sds_pkg_version = fields.StrField("sds_pkg_version")
+    roles = fields.StrField("roles")
+    cluster_attrs = fields.DictField("cluster_attrs", {'str': 'str'})
+
+    def render(self):
+        self.__name__ = self.__name__ % self.node_id
+        return super(NodeContext, self).render()
+```
+
+* The definitions file would get additional details for detected SDS details as
+below for Node_context
+
+```
+data = """---
+namespace.tendrl.node_agent:
+  objects:
+    Cpu:
+    ........
+    Node_context:
+      attrs:
+        machine_id:
+          help: "Unique /etc/machine-id"
+          type: String
+        fqdn:
+          help: "FQDN of the Tendrl managed node"
+          type: String
+        node_id:
+          help: "Tendrl ID for the managed node"
+          type: String
+        cluster_id:
+          help: Id of the cluster to which node belongs to
+          type: String
+        sds_pkg_name:
+          help: Storage system package name
+          type: String
+        sds_pkg_version:
+          help: Storage system package version
+          type: String
+        roles:
+          help: Roles of the node
+          type: String
+        cluster_attrs:
+          help: Additional cluster specific attributes
+          type: json
+      enabled: true
+      value: nodes/$Node_context.node_id/Node_context
+    ...............
+```
 
 === Impacted Modules:
 
 ==== Tendrl API impact:
 
-* API layer should attach the storage system specific auto-detected details of
-the nodes and list as part of node listing
+None
 
 ==== Notifications/Monitoring impact:
 
@@ -73,23 +127,8 @@ None
 
 ==== Tendrl/common impact:
 
-* Common module should define a generic interface for plugins which would
-be extended by different auto-detection modules specific interfaces. The
-structure of the generic interface could be as below
-
-```
-class AutoDetectPlugin(object):
-
-    @abstractmethod
-    def initialize(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def destroy(self):
-        raise NotImplementedError()
-```
-
-The class which takes care of mounting a plugin would be something like
+* Common module should define a generic class which takes care of mounting a
+plugin would be something like
 
 ```
 class PluginMount(type):
@@ -102,7 +141,6 @@ class PluginMount(type):
     def register_plugin(cls, plugin):
         instance = plugin()
         cls.plugins.append(instance)
-        instance.initialize()
 ```
 
 ==== Tendrl/node_agent impact:
@@ -137,7 +175,7 @@ class DetectCephStorageSystem(SDSDetectPlugin):
 * Similary another implementation to be introduced for gluster as well
 
 * Enhance the node agent component to load these SDS detection plugins for pre-
-defined path (tendrl/node_agent/sds_detection/plugins) to mount them
+defined path (tendrl/node_agent/sds_detection) to mount them
 
 * While starting the node agent service execute the SDS detection plugins and
 tag the details to the storage node
@@ -180,10 +218,13 @@ sections already.
 
 * To summarize
 
-** Commons component to add a base interface for `AutoDetectPlugin`
+** Commons component to add a utility `PluginMount` which is a meta class for
+plugins to be defined for auto detection
 
-** Node agent component to extend the `AutoDetectPlugin` and define specific
-interface for SDS detection
+** Node agent component to define an interface `SDSDetectPlugin` with meta class
+`PluginMount` from commons. This interface defines the contract
+`detect_storage_system` which should be implemented by concrete SDS detection
+plugins
 
 ** Node agent to implement `SDSDetectPlugin` and add modules for `ceph` and
 `gluster`
@@ -213,7 +254,7 @@ node in central store
 
 ** Default assign the role as `glusterd` for all the storage nodes
 
-** Execute the command `gluster pool list` and calculate as hash out of node
+** Execute the command `gluster pool list` and calculate a hash out of node
 UUIDs of the nodes in the trusted storage pool. Tag this as cluster_id for the
 nodes. Storage the details in pre-defined location (say
 /etc/tendrl/tendrl_context) as cluster_id
