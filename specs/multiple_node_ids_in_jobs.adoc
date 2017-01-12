@@ -26,7 +26,11 @@ nodes underlying should pick and process this job.
 
 * Enhance the job execution modules in Tendrl to look for the `node_ids` list from
 the fetched job out of central store job queue, and process only if current
-node's id matches one in the list
+node's id matches one in the list.
+
+This change still supports targeting the job to a specific node by setting only one node-id
+in parameter `node_ids`. If the job is to be picked by any node simply just dont set the
+parameter `job_ids` in job.
 
 === Alternatives
 
