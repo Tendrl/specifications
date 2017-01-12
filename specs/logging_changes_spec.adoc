@@ -15,11 +15,11 @@ After implementation of new logging module there will be requirement of changes 
 
 #### Use Cases
 
-There will be 3 classes(use cases) that will be provided by the common logging module:
+The 3 use cases that will be tackled are :
 
- * Log - Will write logs to log files.
- * Alert - Will send the alert messages to the node agent socket and write the same to the log files.
- * Operations - Will write operation log to log files.
+* Logging - Writing logs to log files.
+* Alerting - Sending the alert messages to the node agent socket and writing the same to the log files.
+* In flight Operations - Writing operation log to log files and also persisting to central store (etcd) under task data.
 
 #### Proposed change
 
@@ -33,7 +33,7 @@ The following are the key points to be noted:
 
  ... Log - Will write logs to log files.
  ... Alert - Will send the alert messages to the node agent socket and write the same to the log files.
- ... Operations - Will write operation log to log files.
+ ... Operations - Will write operation log to log files and will also persist to central store (etcd) under task data.
 
 * *Importing logging and calling logger functions* will be replaced by importing the respective class from the common for the desired functionality
 and calling the message handler function provided with the same.
@@ -68,47 +68,19 @@ None
 
 #### Tendrl/common impact
 
-Similar changes like _example change_ mentioned above will be required in following modules :
-
-* /commons/etcdobj/etcdobj.py
-* /commons/flows/base_flow.py
-* /commons/manager/manager.py
-* /commons/manager/rpc_job_process.py
-* /commons/persistence/persister.py
-* /commons/utils/ansible_module_runner.py
-* /commons/utils/command.py
-* /commons/utils/package_installer.py
-* /commons/utils/service.py
-* /commons/config.py
-* /commons/log.py
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
 
 #### Tendrl/node_agent impact
 
-Similar changes like _example change_ mentioned above will be required in following modules :
-
-* /node_agent/manager/manager.py
-* /node_agent/manager/pull_hardware_inventory.py
-* /node_agent/manager/utils.py
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
 
 #### Tendrl/gluster_integration impact
 
-Similar changes like _example change_ mentioned above will be required in following modules :
-
-* /gluster_integration/manager/manager.py
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
 
 #### Tendrl/ceph_integration impact
 
-Similar changes like _example change_ mentioned above will be required in following modules :
-
-* /ceph_integration/manager/cluster_monitor.py
-* /ceph_integration/manager/crud.py
-* /ceph_integration/manager/crush_node_request_factory.py
-* /ceph_integration/manager/eventer.py
-* /ceph_integration/manager/manager.py
-* /ceph_integration/manager/pool_request_factory.py
-* /ceph_integration/manager/server_monitor.py
-* /ceph_integration/manager/user_request.py
-* /ceph_integration/manager/utils.py
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
 
 #### Tendrl/alerting impact
 
