@@ -1,0 +1,121 @@
+= Task Details Page
+
+The intent of task details page is to provide a current status for a specific task which include submitted time, submitted by, progress bar, execution steps, events, logs into tendrl for track down the specific task or job.
+
+
+== Problem description
+
+This specification describes about task details page which will track down the current status for specific task.
+
+== Use Cases
+
+This addresses the use case of task details page into tendrl for track down the specific task.
+
+The workflow is as follows:
+
+* "Task Details page" can be triggered from 
+
+    - From left side navigation inside "Admin" menu as secondary navigation "Task".
+      (https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198651332)
+
+
+* Now, User can track down the specific task from task details page.
+
+
+== Proposed change
+
+Front-end related changes:
+
+	* Need to add one more menu name as "Admin" with submenu name as "task" inside navigation. 
+    * Need to create one more routing for task details page
+    * Create views for task details page.
+    * Now task details page contain the following information
+
+    	- Task submitted time
+    	- Submitted by (user name)
+    	- Progress bar to track down the currect status.
+    	- Execution steps: Call the appropriate api with id , to get the currect execution details
+    	- Events: it will log all error, warning, info related message.
+    	- Logs
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+API which provide information about the message metadata for task status updates on the UI - Required
+
+
+==== Tendrl frontend impact:
+
+   * Needs to add one more routing for task details view.
+   * Needs to be add one more menu inside navigation.
+
+==== Tendrl Backend impact:
+
+This is discussed in a different specification - https://github.com/Tendrl/specifications/pull/94
+
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  kamleshverma1, gnehapk
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/101
+
+== Dependencies:
+
+* https://github.com/Tendrl/specifications/issues/122
+
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+* Should set the initialization properties correct.
+* Should set the details of task details from the view.
+
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/6T900V2ZX#/screens/198651332
