@@ -1,0 +1,152 @@
+// vim: tw=avored-markdown/preview.ht79
+
+# Changes in tendrl modules after introduction of new logging framework
+
+Since a new logging framework is being introduced (https://github.com/Tendrl/specifications/pull/94), after its implementation
+there will be requirement of changes in all the modules of Tendrl where logging is used.
+This file proposes all those changes and how they will be made.
+
+
+## Problem description
+
+Many modules in Tendrl have a functionality of logging different types of situations/use cases such as logging (info, errors, warning etc.).
+Till now these were implemented by importing the Python standard library's logging module then calling logger functions to handle the logging.
+After implementation of new logging framework there will be requirement of changes in all the modules of Tendrl where logging is used.
+
+#### Use Cases
+
+Logs and operation logs need be treated as messages.
+
+#### Proposed change
+
+* *Importing logging and calling logger functions* will be replaced by:
+** Importing Message and Event class from commons
+** Introduce a try-except block and do :
+
+*** Create a Message object by passing the required arguments to it and then
+ pass this message object to the event class
+*** Catch the exception if the event instantiation fails.
+** There will be 3 arguments that will be mandatory to create the Message
+object:
+ *** priority
+ *** publisher
+ **** eg. CEPH-INTEGRATION, GLUSTER-INTEGRATION, NODE-AGENT, COMMONS, ALERTING, PERFORMANCE-MONITORING
+ *** payload   <Json>
+ **** If the message is for a normal log, then the payload should look like :
+
+ {
+    "message" : "User Message"
+ }
+
+ **** If the message is for operation updates, then mandatory parameters for payload are *flow_id and job_id*
+
+ {
+    "flow_id" : "Flow ID",
+    "job_id" : "Job_ID",
+    "message" :"User Message",
+    .
+    .Optional fields
+    .
+ }
+
+#### Alternatives
+
+None
+
+#### Data model impact:
+
+None
+
+#### Impacted Modules:
+
+#### Tendrl/common impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Tendrl/node_agent impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Tendrl/gluster_integration impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Tendrl/ceph_integration impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Tendrl/alerting impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Tendrl/performance_monitoring impact
+
+All the logging instances to be replaced by the new framework as mentioned in proposed change.
+
+#### Security impact:
+None
+
+#### Notifications/Monitoring impact
+
+None
+
+#### Other end user impact:
+
+None
+
+#### Performance impact:
+
+None
+
+#### Other deployer impact:
+
+None
+
+#### Developer impact:
+
+None
+
+#### Implementation:
+* Import Message and Event class from commons
+* Create a message object.
+* Pass the message object as an argument to make an Event Object.
+----
+from tendrl.commons.message import Message
+import tendrl.commons.event
+try:
+    payload={   "flow_id" : "Flow ID ",
+                "job_id"  : "Job ID",
+                "message" : "User message"
+            }
+    event.Event(Message(Message.priorities.PRIORITY,
+    Message.publishers.PUBLISHER,payload))
+except event.EventFailed:
+    print(traceback.format_exc())
+----
+
+#### Assignee(s):
+
+Primary assignee: anmolsachan
+
+Other contributors:
+
+#### Work Items:
+
+
+#### Dependencies:
+
+https://github.com/Tendrl/specifications/pull/94
+
+#### Testing:
+
+
+#### Documentation impact:
+
+None
+
+#### References:
+
+* https://github.com/Tendrl/specifications/pull/94
+* https://github.com/Tendrl/specifications/issues/55
+* https://github.com/Tendrl/specifications/blob/master/specs/pluggable_alert_delivery.adoc
+* https://github.com/Tendrl/node-agent/issues/192
