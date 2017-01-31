@@ -1,0 +1,183 @@
+= Tendrl-Gdeploy wrapper
+
+
+Tendrl should have a wrapper for gdeploy, so that provisioning features
+of gdeploy can be leveraged in tendrl.
+
+== Problem description
+
+gdeploy is an Ansible based deployment tool which can create physical volumes,
+volume groups, and logical volumes, install packages, subscribe to RHN channels,
+run shell commands, create GlusterFS volumes and lot more.
+
+Tendrl as a storage management platfrom will have to perform most of the above
+mentioned tasks. Therefore instead of reinventing the wheel, we can leverage the
+capabilities of gdeploy by having a wrapper on top of it.
+
+This wrapper should have a mechanism to generate the gdeploy config files for the
+tasks that tendrl intends to perform via gdeploy.
+
+== Use Cases
+
+* tendrl-gdeploy wrapper can be used for provisioning gluster nodes
+* It can be used for gluster performing volume management operations
+
+== Proposed change
+=== gdeploy
+* Move the subscription management and repository setup playbook out of gdeploy
+  and make available as a standalone project that both tendrl and gdeploy can use.
+* Confirm the remove node functionality with gluster team.
+* Enhance the logging so that specific updates and error details can be made
+  available to tendrl. This could possibly lead to the gdeploy ouptut being
+  machine parsable rather than the ansible-type output it currently produces.
+
+=== tendrl
+* Integrate the subscription management and repository setup playbook as
+  native execution flow.
+* Write a wrapper to generate the gdeploy configuration file, that can be
+  leveraged in the internal execution flow.
+
+=== Flows and List of Atoms
+
+The bold titles below indicate flows, while the numbered lists under them indicate
+what the individual atoms implement.
+Unless explicitly mentioned, each atom below talks about the wrapper implementation,
+to generate the specific sections of the gdeploy configuration file. After each
+configuration wrapper atom, the `gdeploy -c <config file>` atom always needs to be
+executed. This applies to each and every atom, so hasn’t been specifically listed
+below. This means that gdeploy will be executed possibly 4 times in the creation
+flow, eg.
+
+==== Gluster creation, applicable in any kind of gluster setup
+1. repository setup - tendrl’s native execution flow
+2. package installation: hosts, yum
+3. raid configuration/handling etc. (todo, possibly springfield)
+4. brick setup: hosts, backend-setup
+5. volume creation: hosts, volume
+6. import cluster - tendrl’s native execution flow
+7. volume configuration: hosts, snapshot, quota
+
+==== Expand gluster cluster
+
+===== Add brick
+1. hosts, backend-setup, volume (exit on error)
+
+===== Add node
+1. hosts, backend-setup, volume (exit on error)
+
+==== Shrink gluster cluster
+
+===== Remove brick
+1. hosts, volume
+
+==== Replace brick
+1. hosts, backend-setup, volume (exit on error)
+
+
+==== Replace gluster host (superset of replace brick)
+1. hosts, backend-setup, volume (exit on error)
+
+
+==== Volume configuration
+1. hosts, volume
+
+This flow covers:
+     * quota: on/off
+     * snapshot on/off
+     * and any volume features that can be configured directly
+       on the volume
+
+This flow does not cover:
+     * setting or changing quota options
+     * setting or changing snapshot options
+
+
+==== Quota configuration
+1. hosts, quota
+
+==== Snapshot configuration
+1. hosts, snapshot
+
+==== Virtual IP
+Is part of samba or nfs-ganesha. It doesn’t make sense on it’s own.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== REST API impact
+
+None
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+None
+=== Other end user impact
+
+None
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+Now one of the gluster nodes has to be picked as provisoner and that node
+has to accept all the gluster provisioning related tasks.
+
+=== Developer impact
+
+* Developpers who implement gluster related flows must try and make use of
+the features provided by gdeploy for performing the needed tasks.
+
+== Implementation
+
+=== Assignee(s)
+
+nnDarshan
+
+Primary assignee:
+nnDarshan
+
+Other contributors:
+None
+
+=== Work Items
+
+* Write a gdeploy config generator
+
+* Write gdeploy executor, which accepts config file mentioned in previous
+  step and wait for the results and update operation logs accordingly
+
+* tendrl-node-agent should have a flow which can deploy gluster provisoner
+  (gdeploy) on one of the chosen nodes and this flow has to tag the node
+  as "gluster/provisoner"
+  
+== Dependencies
+
+gdeploy
+
+== Testing
+
+End users cant directly test this feature, however the flows like
+gluster cluster creation, volume creation and other volume related
+operations will use this feature internally.
+
+Developers while implementing a flow must make sure that the wrapper
+is executing the intended task using gdeploy without any issue.
+
+== Documentation Impact
+
+None
+
+== References
+
+https://github.com/Tendrl/specifications/issues/49
