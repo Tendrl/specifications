@@ -62,25 +62,30 @@ None
 
 === Data model impact:
 
-Structure of summary object in etcd in path '/monitoring/nodes/node-id/summary'
-is as below:
+Structure of summary object is as below:
 
 ----
-summary: {
-  'cpu': {
-    'percent-used': '10',
-  },
-  'memory': {
-    'used': '429496729',
-    'total': '4294967296',
-    'percent-used': '10',
-  },
-  'storage': {
-    'used': '10737418240',
-    'total': '107374182400',
-    'percent-used': '10'
-  }
-}
+class PerformanceMonitoringSummary(PerformanceMonitoringBaseObject):
+    def __init__(self,
+                 node_id=None,
+                 cpu_usage=None,
+                 memory_usage=None,
+                 storage_usage=None,
+                 alert_count=None,
+                 *args,
+                 **kwargs
+                 ):
+        super(PerformanceMonitoringSummary, self).__init__(*args, **kwargs)
+        self.node_id = node_id
+        self.value = 'monitoring/summary/nodes/%s' % self.node_id
+        self._etcd_cls = _PerformanceMonitoringSummary
+        if cpu_usage is not None:
+            self.cpu_usage = cpu_usage
+        if memory_usage is not None:
+            self.memory_usage = memory_usage
+        if storage_usage is not None:
+            self.storage_usage = storage_usage
+        self.alert_count = alert_count
 ----
 
 === Impacted Modules:
@@ -95,7 +100,7 @@ Tendrl API merges summary data from api exposed by performance-monitoring app
 The api to expose summary data looks like:
 
 ----------
-GET /monitoring/nodes/summary?nodes=[<node_id>, ...]
+GET /monitoring/nodes/summary?nodes=<node_id>, ...
 ----------
 
 Sample Response
@@ -103,22 +108,29 @@ Sample Response
 ----------
 Status: 200 OK
 
-['11927f2f-39ec-450d-bf19-b2b00a53c394' : {
-  'cpu': {
-    'percent-used': '10',
-  },
-  'memory': {
-    'used': '429496729',
-    'total': '4294967296',
-    'percent-used': '10',
-  },
-  'storage': {
-    'used': '10737418240',
-    'total': '107374182400',
-    'percent-used': '10'
-  }
-}....]
-
+[
+	{
+		"cpu_usage": {
+			"percent_used": "0.06",
+			"updated_at": "2017-02-01T20:40:42.754404"
+		},
+		"memory_usage": {
+			"total": "1038860288.0",
+			"used": "99803136.0",
+			"percent_used": "9.61",
+			"updated_at": "2017-02-01T20:40:42.810406"
+		},
+		"storage_usage": {
+			"total": "21472567296.0",
+			"percent_used": "10.1337078236",
+			"used": "2175967232.0",
+			"updated_at": "2017-02-01T20:40:42.927079"
+		},
+		"alert_count": 0,
+		"node_id": "0b69e028-e784-4ab2-9b93-520c0073573a"
+	},
+  ...
+]
 ----------
 
 ==== Tendrl/common impact:
