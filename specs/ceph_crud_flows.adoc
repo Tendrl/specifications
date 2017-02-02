@@ -113,23 +113,30 @@ None
 
 == Implementation:
 
-* Update data model for pool and add an attribute for type
+* Update data model for pool and add additional attributes
 
 ```
 class Pool(objects.CephIntegrationBaseObject):
     def __init__(self, pool_id=None, type=None
                  pool_name=None, pg_num=None, min_size=None,
-                 used=None, percent_used=None, *args, **kwargs):
+                 used=None, percent_used=None,
+                 deleted=None, quota_max_objects=None,
+                 quota_max_bytes=None, type=None,
+                 erasure_code_profile=None, *args, **kwargs):
         super(Pool, self).__init__(*args, **kwargs)
 
         self.value = 'clusters/%s/Pools/%s'
         self.pool_id = pool_id
-        self.type = type
         self.pool_name = pool_name
         self.pg_num = pg_num
         self.min_size = min_size
         self.used = used
         self.percent_used = percent_used
+        self.deleted = deleted
+        self.quota_max_objects = quota_max_objects
+        self.quota_max_bytes = quota_max_bytes
+        self.type = type
+        self.erasure_code_profile = erasure_code_profile
 ```
 
 * Add data model for RBDs
