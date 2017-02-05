@@ -20,34 +20,19 @@ Logs and operation logs need be treated as messages.
 #### Proposed change
 
 * *Importing logging and calling logger functions* will be replaced by:
-** Importing Message and Event class from commons
-** Introduce a try-except block and do :
-
-*** Create a Message object by passing the required arguments to it and then
+** Import Message and Event class from commons.
+** Create a Message object by passing the required arguments to it and then
  pass this message object to the event class
-*** Catch the exception if the event instantiation fails.
 ** There will be 3 arguments that will be mandatory to create the Message
 object:
  *** priority
  *** publisher
  **** eg. CEPH-INTEGRATION, GLUSTER-INTEGRATION, NODE-AGENT, COMMONS, ALERTING, PERFORMANCE-MONITORING
  *** payload   <Json>
- **** If the message is for a normal log, then the payload should look like :
-
- {
-    "message" : "User Message"
- }
-
- **** If the message is for operation updates, then mandatory parameters for payload are *flow_id and job_id*
-
- {
-    "flow_id" : "Flow ID",
-    "job_id" : "Job_ID",
-    "message" :"User Message",
-    .
-    .Optional fields
-    .
- }
+ *** If the message is for operation updates then the following arguments will
+  also be required :
+  ***** request_id
+  ***** flow_id
 
 #### Alternatives
 
@@ -111,17 +96,18 @@ None
 * Create a message object.
 * Pass the message object as an argument to make an Event Object.
 ----
+from tendrl.commons.event import Event
 from tendrl.commons.message import Message
-import tendrl.commons.event
-try:
-    payload={   "flow_id" : "Flow ID ",
-                "job_id"  : "Job ID",
-                "message" : "User message"
-            }
-    event.Event(Message(Message.priorities.PRIORITY,
-    Message.publishers.PUBLISHER,payload))
-except event.EventFailed:
-    print(traceback.format_exc())
+
+Event(
+    Message(
+        priority="priority",
+        publisher=tendrl_ns.publisher_id, # Defined component wise
+        payload={"message": "message"}
+        requst_id="request_id",
+        flow_id="flow_id"
+    )
+)
 ----
 
 #### Assignee(s):
