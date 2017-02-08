@@ -1,0 +1,129 @@
+// vim: tw=79
+
+= Create and Edit Pool
+
+Write a functionality for creating and editing a Pool in Tendrl-Dashboard UI
+
+== Problem description
+
+For Creating the new Pool we need to Provide forms with different fields
+* Pool Name
+* Number of Pools to create
+* Type()
+* Replicas
+* Cluster it belongs
+* Journal configuration
+* OSD's
+* PG Count
+* Owner
+* Quotas
+
+For editing a Pool we can edit:
+* Pool Name
+* Replicas  
+* PG-count
+* Quotas
+
+== Use Cases
+
+The user should be able to create a new Pool with the UI and also Edit the values of Pool before confirming the pool creation.
+
+== Proposed change
+
+* Create a Form for Creating a new pool.
+* Create a new secondary side nav which will have(https://redhat.invisionapp.com/share/2T9LPMEEB#/screens/209774648)
+  - Basic setting
+  - Advance Configuration
+  - Quotas
+* Create a list view For the created pools(https://redhat.invisionapp.com/share/2T9LPMEEB#/screens/217733678)
+* Create review page with data list view.(https://redhat.invisionapp.com/share/2T9LPMEEB#/screens/217733679)
+* List view should have edit button through which we can edit the following item listed above.
+
+=== Alternatives
+
+The secondary nav is not available in patternfly so we need to create a new one.
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+Endpoints still to be given for the post calls
+
+==== Notifications/Monitoring impact:
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+
+- End user will be able to create and edit a pool. 
+
+=== Performance impact:
+
+=== Other deployer impact:
+
+=== Developer impact:
+
+=== Implementation:
+
+- Create a directive/component for create pool functionality
+- Create a review page using detail list view of patternfly
+
+
+=== Assignee(s):
+
+Primary assignee:
+  https://github.com/cloudbehl
+
+Other contributors:
+  https://github.com/gnehapk
+  https://github.com/kamleshverma1
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/130
+
+== Dependencies:
+https://github.com/Tendrl/dashboard/issues/131
+
+== Testing:
+
+Create Pool:
+- 1 or more pool(s) is created with desired PG and desired journal configuration in cluster user specifies.
+- Pool(s) created outside Tendrl do not interfere or fail to be discovered by Tendrl
+- Space usage calculations are updated immediately following the operation
+- A task will be generated when user submits the task to create Ceph pool(s).
+- All events and transactions (including user actions) will be logged by the System.
+- Pool(s) is immediately accessible upon successful pool creation.
+
+Edit Pool:
+- User is able to make modifications on pool attributes, e.g. replica count, pg count, and quotas.
+- Verify pool type and EC k+m values are not modifiable.
+- Verify pool name is editable
+- A task will be generated when user submits the task to edit the ceph pool.
+- All events and transactions (including user actions) will be logged by the System.
+- Should be able to modify pool name
+- Should be able to modify both size AND min_size
+- Should be able to modify 2.0+ flags if cluster is 2.0+
+  - nosizechange
+  - nodelete
+  - noscrub
+  - nodeep-scrub
+- Verify if pool value set with nosizechange flag, that user is not permitted to change the replica count.
+
+
+== Documentation impact:
+
+None
+
+== References:
+
+
+https://redhat.invisionapp.com/share/2T9LPMEEB#/screens/217733675
