@@ -142,6 +142,9 @@ implements the following steps:
 * `tendrl.provisioning.<type>.flows.CreateCluster` flow. `<type>` is the
   supported storage system type specified in the master definition file.
 
+NOTE: Parameters to be accepted by the flow are discussed in the <<api,API>>
+section below.
+
 ==== tendrl.provisioning.<type>
 
 This namespace implements storage system specific `CreateCluster` flows. The
@@ -150,9 +153,10 @@ provisioning the storage system, the `CreateCluster` flow is always invoked
 under this namespace. This flow is invoked on the node agent tagged as the
 provisioner for the cluster to be created. The storage system specific
 `CreateCluster` flow is the place to invoke the generic provisioning utilities
-provided by Tendrl, as mentioned in the <<tendrl.provisioning>> section above.
-The flow should ideally use the package installation atoms from the utilities
-to install the provisioner packages.
+provided by Tendrl, as mentioned in the
+<<tendrl-provisioning,tendrl.provisioning>> section above. The flow should
+ideally use the package installation atoms from the utilities to install the
+provisioner packages.
 
 Once the system setup is done, including any ansible related configuration, the
 flow should invoke the appropriate entry point method of the wrapper module to
@@ -172,4 +176,40 @@ the wrapper modules, eg. `ceph/ceph-installer`, `gluster/gdeploy`
 
 Any jobs can be routed to the provisioner by simply requiring a specifc tag,
 even from the integration namespace.
+
+
+== Impacted Modules
+
+=== API
+
+The generic CreateCluster endpoint would be exposed as follows:
+
+  POST /api/1.0/CreateCluster
+
+The parameters are as follows:
+
+  name: <String>
+  type: <String>
+  version: <String>
+  nodes:
+    node1_uuid:
+      role: <String>
+    node2_uuid:
+      role: <String>
+  parameters: <Hash>
+
+* *name*: _String_, Administrator chosen name of the cluster.
+* *type*: _String_, One of the supported storage system types from the master
+  definition file, currently `ceph` or `gluster`.
+* *version*: _String_, One of the supported versions for the storage system
+  type from the master definition file.
+* *nodes*: _Hash_, List of nodes to be part of the cluster. The keys are node
+  UUIDs. The value is a hash as well. Currently only one key is supported in
+  the value.
+** *role*: _String_, One of the supported tags for the storage system version.
+For example, `ceph/osd`, `gluster/peer`.
+* *parameters*: _Hash_, Additional storage system specific parameters. These
+  are documented in their respective specifications at
+  https://github.com/Tendrl/specifications/issues/48[#48] and
+  https://github.com/Tendrl/specifications/issues/49[#49].
 
