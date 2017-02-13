@@ -1,0 +1,212 @@
+// vim: tw=79
+
+= Host Listing Backend Support
+
+== Introduction
+
+The host listing page displays the following details per host:
+
+* Hostname and status
+* Storage used, total and percentage used
+* Cpu percentage used
+* Memory used, total and percentage used
+* Name of Cluster to which host belongs
+* Role of the node in the cluster
+* Alerts counter that drills down to alerts list filtered by hostname.
+
+The mock up of the UI can be found at:
+https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/199053039
+
+== Problem description
+
+All the details specified in the section under "Introduction" section are
+available at different locations like the following:
+
+* The hostname, Name of Cluster to which host belongs, Role of the node in the
+  cluster and alerts each in etcd.
+* The cpu, memory and storage usage details in time-series db.
+
+This necessiates either the UI to fetch each of the details from different
+sources by making multiple api calls or the tendrl-api looking at multiple
+sources for these information.
+
+== Use Cases
+
+* Host listing page in tendrl UI.
+
+== Proposed change
+
+* The performance-monitoring application anyway performs task of aggregating
+  statistics in time-series db for aggregations at cluster and system levels.
+  At the same time, it can push the host level details to etcd to the path
+  '/monitoring/nodes/node-id/summary'.
+* Whenever a new alert(with severity 'CRITICAL' or 'WARNING') that is related
+  to the node is detected in the alerting module, along with notifying alert
+  to configured destinations, the alert counter in etcd in
+  '/monitoring/nodes/node-id/summary' will also be incremented if path exists
+  in etcd already. Also, when there is an alert clearance(i.e, when an 'info'
+  alert is observed against a previously existing 'CRITICAL' or 'WARNING' alert
+  ), the alert counter in '/monitoring/nodes/node-id/summary' of etcd will be
+  decremented accordingly.
+* The performance-monitoring application will accordingly expose following apis
+  ** API to get the summary stored in '/monitoring/nodes/node-id/summary' for
+     all nodes with ids passed as parameter to the api. If no parameter is
+     passed as parameter, it sends data related to all nodes.
+* The alerting module will expose the folllowing apis:
+  ** API to expose alerts with filtering capability as briefed in:
+     https://github.com/Tendrl/specifications/pull/18
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+Structure of summary object is as below:
+
+----
+class PerformanceMonitoringSummary(PerformanceMonitoringBaseObject):
+    def __init__(self,
+                 node_id=None,
+                 cpu_usage=None,
+                 memory_usage=None,
+                 storage_usage=None,
+                 alert_count=None,
+                 *args,
+                 **kwargs
+                 ):
+        super(PerformanceMonitoringSummary, self).__init__(*args, **kwargs)
+        self.node_id = node_id
+        self.value = 'monitoring/summary/nodes/%s' % self.node_id
+        self._etcd_cls = _PerformanceMonitoringSummary
+        if cpu_usage is not None:
+            self.cpu_usage = cpu_usage
+        if memory_usage is not None:
+            self.memory_usage = memory_usage
+        if storage_usage is not None:
+            self.storage_usage = storage_usage
+        self.alert_count = alert_count
+----
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+Tendrl API merges summary data from api exposed by performance-monitoring app
+(described below under 'Notifications/Monitoring impact' section).
+
+==== Notifications/Monitoring impact:
+
+The api to expose summary data looks like:
+
+----------
+GET /monitoring/nodes/summary?nodes=<node_id>, ...
+----------
+
+Sample Response
+
+----------
+Status: 200 OK
+
+[
+	{
+		"cpu_usage": {
+			"percent_used": "0.06",
+			"updated_at": "2017-02-01T20:40:42.754404"
+		},
+		"memory_usage": {
+			"total": "1038860288.0",
+			"used": "99803136.0",
+			"percent_used": "9.61",
+			"updated_at": "2017-02-01T20:40:42.810406"
+		},
+		"storage_usage": {
+			"total": "21472567296.0",
+			"percent_used": "10.1337078236",
+			"used": "2175967232.0",
+			"updated_at": "2017-02-01T20:40:42.927079"
+		},
+		"alert_count": 0,
+		"node_id": "0b69e028-e784-4ab2-9b93-520c0073573a"
+	},
+  ...
+]
+----------
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+The proposed change involves a periodic fetch from time-series db and update
+to etcd. But the period of recurrence can be so adjusted that the impact is not
+recognizable.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+The calculations are as under:
+
+* Storage utilization is calculated as summation of all mount point
+  utilizations in node.
+* Cpu utilization is calculated as sum of percentage cpu used by system
+  processes and percentage cpu used by user processes.
+* Memory utilization is same as the utilization detected by collectd.
+
+----
+Note:
+The data required in the above mentioned calculation procedure are fetched
+from time-series db(graphite) directly.
+----
+
+=== Assignee(s):
+
+Primary assignee:
+  performance-monitoring and alerting modules: anmolbabu
+
+=== Work Items:
+
+* https://github.com/Tendrl/performance_monitoring/issues/15
+* https://github.com/Tendrl/performance_monitoring/issues/16
+
+== Dependencies:
+
+None
+
+== Testing:
+
+This spec introduces apis as described in 'Proposed change' section and
+'Notifications/Monitoring impact' which need to be tested.
+
+== Documentation impact:
+
+This spec introduces apis as described in 'Proposed change' section and
+'Notifications/Monitoring impact' which need to be tested.
+
+== References:
+
+None
