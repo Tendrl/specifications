@@ -51,18 +51,38 @@ None.
 
 Tendrl API provides an interface to create a Ceph cluster.
 
-Sample Request
+Sample JSON
 
 ----------
-curl -XPOST -H "Content-Type: application/json" -d
-'{"name":"MyCluster","sds_type":"ceph","sds_version":"10.2.5",
-  "nodes":[{"node_id":"4af9cdec-f106-4e4c-b702-fb3dfb4b09a7","role":"ceph/mon"
-  },{"node_id":"8538876e-af9d-4633-a9ae-a8cff4ecba13","role":"ceph/osd"}],
-  "parameters":{"nodes":[{"node_id:"4af9cdec-f106-4e4c-b702-fb3dfb4b09a7",
-  "storage_disks":[{"dev_name":"/dev/sda","fs_type":"xfs"}]}],
-  "networks":{"cluster":"10.10.10.0","public":"50.50.50.210"},
-  "disable_auto_expand":true,"journal_size":1024]}}'
-  http://127.0.0.1/api/1.0/CreateCluster
+POST '/api/v1/CreateCluster'
+
+{
+	"name": "MyCluster",
+	"sds_type": "ceph",
+	"sds_version": "10.2.5",
+	"nodes": [{
+		"node_id": "4af9cdec-f106-4e4c-b702-fb3dfb4b09a7",
+		"role": "ceph/mon"
+	}, {
+		"node_id": "8538876e-af9d-4633-a9ae-a8cff4ecba13",
+		"role": "ceph/osd"
+	}],
+	"parameters": {
+		"nodes": [{
+			"node_id": "4af9cdec-f106-4e4c-b702-fb3dfb4b09a7",
+			"storage_disks": [{
+				"dev_name": "/dev/sda",
+				"fs_type": "xfs"
+			}]
+		}],
+		"networks": {
+			"cluster": "10.10.10.0",
+			"public": "50.50.50.210"
+		},
+		"disable_auto_expand": true,
+		"journal_size": 1024
+	}
+}
 ----------
 
 Sample Response
