@@ -49,7 +49,48 @@ None.
 
 ==== Tendrl API impact:
 
-None.
+Tendrl API provides an interface to create a Ceph cluster.
+
+Sample JSON
+
+----------
+POST '/api/v1/CreateCluster'
+
+{
+	"name": "MyCluster",
+	"sds_type": "ceph",
+	"sds_version": "10.2.5",
+	"nodes": [{
+		"node_id": "4af9cdec-f106-4e4c-b702-fb3dfb4b09a7",
+		"role": "ceph/mon"
+	}, {
+		"node_id": "8538876e-af9d-4633-a9ae-a8cff4ecba13",
+		"role": "ceph/osd"
+	}],
+	"parameters": {
+		"nodes": [{
+			"node_id": "4af9cdec-f106-4e4c-b702-fb3dfb4b09a7",
+			"storage_disks": [{
+				"dev_name": "/dev/sda",
+				"fs_type": "xfs"
+			}]
+		}],
+		"networks": {
+			"cluster": "10.10.10.0",
+			"public": "50.50.50.210"
+		},
+		"disable_auto_expand": true,
+		"journal_size": 1024
+	}
+}
+----------
+
+Sample Response
+
+----------
+Status: 202 Accepted
+{ job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
+----------
 
 ==== Notifications/Monitoring impact:
 
@@ -65,7 +106,8 @@ None.
 
 ==== Sds integration impact:
 
-The ceph-integration bridge needs to enhanced to provide the wrapper functionality.
+The ceph-integration bridge needs to enhanced to provide the wrapper 
+functionality.
 
 ==== Tendrl frontend impact:
 
