@@ -1,0 +1,94 @@
+// vim: tw=79
+
+= Tendrl Definitions: Display list of clusters
+
+Display list of hosts list of ceph and gluster clusters. The list should have functionality for 
+
+* filtering by name and provider.
+* sorting by name, status and utilisation.
+
+== Problem description
+
+Tendrl should show list of ceph and gluster clusters present Tendrl along with their details.
+
+The details shown for each host in UI is -
+* fqdn
+
+== Use Cases
+
+Users can see the list of host present in Tendrl. They can als filter and sort the list. 
+
+== Proposed change
+
+* Create a view for listing host details. 
+* Filter parameter(i.e name or provider) should be sent to API to fetch the filtered list of host.
+* Sorting parameter(i.e. name or status or utilisation) should be sent to API to fetch sorted list of host.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+
+==== Notifications/Monitoring impact:
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+https://github.com/Tendrl/tendrl_frontend/issues/66
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Test whether hosts are correctly being displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/199053039
