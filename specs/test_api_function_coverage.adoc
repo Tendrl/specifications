@@ -1,0 +1,154 @@
+= API functions test coverage
+
+
+This specification goal is to describe changes needed for implement
+tracking of API functions test coverage.
+
+
+== Problem description
+
+
+There is test suite for testing Tendrl API functions. We need to know 
+which functions from Tendrl API are used in this test suite.
+Also there are lists of Tendrl API functions on couple of places.
+In ideal state these lists should be the same and we need to know if there
+is any difference.
+
+
+== Use Cases
+
+
+This change will be used for Tendrl API sanity testing.
+There is no direct impact on users. There is undirect impact on users - better 
+quality of Tendrl API.
+
+
+== Proposed change
+
+
+Tendrl API functions will be listed in code(API), code of "Flows" function, 
+dokumentation and testsuite code in unified format so it will be 
+easy to extract those list of functions and compare them.
+
+
+=== Alternatives
+
+
+None.
+
+
+=== Data model impact:
+
+
+None
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+ 
+  
+There will be unified format for implementation of API functions.
+By unified format I mean couple of simple rules which will be used
+for implementation API functions, documentation of APi functions and 
+for testing of API functions. For example if there is function definition
+it should be described on one line.
+
+  
+==== Notifications/Monitoring impact:
+
+
+None
+
+
+==== Tendrl/common impact:
+
+
+None
+
+
+==== Tendrl/node_agent impact:
+
+
+None
+
+
+==== Sds integration impact:
+
+None
+
+
+=== Security impact:
+
+
+None
+
+
+=== Other end user impact:
+
+
+None
+
+
+=== Performance impact:
+
+
+None
+
+
+=== Other deployer impact:
+
+
+None
+
+
+=== Developer impact:
+
+
+Developer should follow list of rules during API functions implementation,
+documentation and tester should follow similar rules for implementaion of
+API function tests.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  fbalak
+
+Other contributors:
+  mkudlej
+
+
+=== Work Items:
+
+https://github.com/fbalak/apistate
+https://github.com/Tendrl/usmqe-tests/issues/44
+
+
+== Dependencies:
+
+
+None
+
+
+== Testing:
+
+
+Result of this specification will be tested automatically every day
+for all related repositories: API, documentation, usmqe-tests.
+
+
+== Documentation impact:
+
+
+Documentation for API functions should follow agreed rules.
+
+
+== References:
+
+
+None
