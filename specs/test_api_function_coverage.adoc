@@ -2,7 +2,7 @@
 
 
 This specification goal is to describe changes needed for implement
-tracking of API functions test coverage.
+tracking of the API functions test coverage.
 
 
 == Problem description
@@ -11,23 +11,23 @@ tracking of API functions test coverage.
 There is test suite for testing Tendrl API functions. We need to know 
 which functions from Tendrl API are used in this test suite.
 Also there are lists of Tendrl API functions on couple of places.
-In ideal state these lists should be the same and we need to know if there
+In the ideal state these lists should be the same and we need to know if there
 is any difference.
 
 
 == Use Cases
 
 
-This change will be used for Tendrl API sanity testing.
+This change will be used for the Tendrl API sanity testing.
 There is no direct impact on users. There is undirect impact on users - better 
-quality of Tendrl API.
+quality of the Tendrl API.
 
 
 == Proposed change
 
 
-Tendrl API functions will be listed in code(API), code of "Flows" function, 
-dokumentation and testsuite code in unified format so it will be 
+Tendrl API functions will be listed in the code(API), in the code of "Flows" function, 
+in the documentation and in the testsuite code in unified format so it will be 
 easy to extract those list of functions and compare them.
 
 
@@ -48,10 +48,10 @@ None
 ==== Tendrl API impact:
  
   
-There will be unified format for implementation of API functions.
+There will be unified format for the implementation of API functions.
 By unified format I mean couple of simple rules which will be used
-for implementation API functions, documentation of APi functions and 
-for testing of API functions. For example if there is function definition
+for implementation API functions, documentation of API functions and 
+for testing of API functions. For example if there is a function definition
 it should be described on one line.
 
   
@@ -105,7 +105,7 @@ None
 === Developer impact:
 
 
-Developer should follow list of rules during API functions implementation,
+Developer should follow the list of rules during API functions implementation,
 documentation and tester should follow similar rules for implementaion of
 API function tests.
 
