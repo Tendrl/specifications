@@ -1,0 +1,281 @@
+= Flow Framework Refactoring
+
+== Introduction
+
+Current working procedure:
+
+* Any service/agent defining and implementing a flow pushes the corresponding
+  flow definitions to its specific definitions etcd directory.
+* The Agent/service flow framework reads its specific definition files and
+  does all validations and executes the flow.
+
+ex:
+
+* Node-agent pushes tendrl_definitions_node_agent to
+  /tendrl_definitions_node_agent in etcd, gluster integration pushes
+  tendrl_definitions_gluster_integration to
+  /tendrl_definitions_gluster_integration and so on...
+* node-agent is a service that reads flow definitions from
+  /tendrl_definitions_node_agent in etcd and gluster-integration is a process
+  that reads /tendrl_definitions_gluster_integration from etcd and "currently"
+  each of them replicates the flow definition parsing logic.
+
+== Problem description
+
+Any component requiring to define its own flows will then need to implement
+(currently followed)/extend(from a generic one in tendrl/common) the flow
+framework and this requires the component to be run as a service as the flow
+framework in each of these component will only and always read only its
+specific definition and whenever there is a job (intended for it) in the etcd
+queue.
+
+== Use Cases
+
+* Monitoring code cannot be part of any component of tendrl core stack.
+  The monitoring stack needs to provide a flow for configuring the monitoring
+  agents maintained by tendrl.
+
+== Proposed change
+
+* The node-agent pushes a master definition to /tendrl/definitions_main in
+  etcd which will be referred by the flow execution framework.
+* Every component desiring to push its respective definitions to etcd, will
+  push it to its specific directory under a common root directory say
+  /tendrl/integrations.d/definitions_<component_name>.
+* The master definition file will have an includes statement to include all
+  definitions under the common definitions root directory.
+  ex: include /tendrl/integrations.d/definitions_*
+* The master definitions file will have sections for detection of system
+  resources, integration version mappings and also provisioning options.
+
+ex:
+
+* The node_agent on its start will push a master definitions file to etcd in
+  /tendrl/definitions_main.
+  ex:
+
+  namespace.tendrl.detect:
+    objects:
+      Cpu:
+        attrs:
+          architecture:
+            type: String
+          cores_per_socket:
+            type: String
+          cpu_count:
+            type: String
+          cpu_family:
+            type: String
+          cpu_op_mode:
+            type: String
+          model:
+            type: String
+          model_name:
+            type: String
+          vendor_id:
+            type: String
+        enabled: true
+        value: nodes/$Node_context.node_id/Cpu
+      Memory:
+        attrs:
+          total_size:
+            type: String
+          total_swap:
+            type: String
+        enabled: true
+        value: nodes/$Node_context.node_id/Memory
+      Node:
+        atoms:
+          cmd:
+            enabled: true
+            inputs:
+              mandatory:
+                - Node.cmd_str
+            name: "Execute CMD on Node"
+            run: tendrl.node_agent.atoms.node.cmd.Cmd
+            type: Create
+            uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c3
+          check_node_up:
+            enabled: true
+            inputs:
+              mandatory:
+                - Node.fqdn
+            outputs:
+              - Node.status
+            name: "check whether the node is up"
+            run: tendrl.node_agent.atoms.node.check_node_up
+            type: Create
+            uuid: eda0b13a-7362-48d5-b5ca-4b6d6533a5ab
+        attrs:
+          cmd_str:
+            type: String
+          fqdn:
+            type: String
+          status:
+            type: Boolean
+        enabled: true
+        value: nodes/$Node_context.node_id/Node
+      OS:
+        attrs:
+          kernel_version:
+            type: String
+          os:
+            type: String
+          os_varsion:
+            type: String
+          selinux_mode:
+            type: String
+        enabled: true
+        value: nodes/$Node_context.node_id/Os
+  namespace.tendrl.integration.ceph:
+    version_bindings:
+      ceph-x.a.b : ceph-integration-y.e.f
+      .
+      .
+      .
+    provisioning:
+      pip:
+        .
+        .
+        .
+  namespace.tendrl.integration.gluster:
+    version_bindings:
+      gluster-x.a.b : gluster-integration-y.e.f
+      .
+      .
+      .
+    provisioning:
+      pip:
+        .
+        .
+        .
+  namespace.tendrl.integration.monitoring:
+    version_bindings:
+      node_agent-x.a.b : node_monitoring-y.e.f
+      .
+      .
+      .
+    provisioning:
+      pip:
+        .
+        .
+        .
+  include /tendrl_integrations.d/*
+
+* Similarly
+  ** ceph-integration will load its definitions in
+     /tendrl/integrations.d/definitions_ceph_integration/
+  ** gluster-integration will load its definitions in
+     /tendrl/integrations.d/definitions_gluster_integration/
+  ** performance_monitoring will load its definitions in
+     /tendrl/integrations.d/definitions_monitoring_integration/
+* As part of execution of job in etcd, the flow execution framework in
+  node_agent reads the master definitions in /tendrl/definitions_main in etcd
+  and subsequently reads all definitions in /tendrl/integrations.d/ on
+  seeing the line "include /tendrl/integrations.d/definitions_*".
+
+
+=== Alternatives
+
+* Append monitoring related definitions yaml to node_agents definitions
+  directory in etcd.
+    ** Drawbacks
+		*** Any service requiring to do this will need to re-read whole flow
+            file append its own definitions and then push back complete set
+            again only in order to append its definitions.
+    	*** This requires the flow specifics implemented in node_agent which
+    	    is not correct
+* Implement the flow in corresponding agent and have it run as a service.
+    ** Drawbacks
+    	*** Every agent however minimal it is, needs to be run as a service
+    	    that handles its specific job.
+	  ** Note
+    	*** This is the current procedure.
+* The other alternative is:
+  ** Push all flow definitions to a path under a common root directory say for
+     ex: /tendrl/definitions_main in etcd
+  ** Now, when there's a job in the queue, the flow framework will make use of
+     either of the following:
+  ** A part of the full qualified package name in the run parameter of job
+  ** A separate field to indicate the definitions namespace(i.e, the name
+     under the /tendrl_definitions/ where the definition can be obtained)
+     to read definitions from appropriate etcd directory.
+     to create the definitions path instead of hard-coding it.
+  ** And from there the already existing flow framework as usual will extract
+     and execute the pre, post and the normal flow atoms.
+
+=== Data model impact
+
+The new flow structure would require externalising the provisioning commands
+and the integration version mappings to the master flow definitions in
+node_agent flow.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+tendrl/api parses the definitions file for dynamic generation of apis. Hence
+an impact of this change on api needs to be studied.
+
+==== Notifications/Monitoring impact:
+
+The performance_monitoring application will push its definitions to the path
+/tendrl/integrations.d/definitions_monitoring_integration
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+node_agent pushes its definitions to tendrl_definitions_node_agent currently
+it now needs to be the new decided /tendrl/definitions_main path in etcd and
+needs to have an include directory now to include all integrations definitions
+along with some refactoring.
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact
+
+None
+
+=== Performance impact
+
+Earlier the respective module used to handle its own respective definitions in
+etcd but now, its a parse of complete tree of definition files. The impact
+might not be very noticable. But the third alternative avoids that as well.
+
+=== Other deployer impact
+
+None
+
+
+=== Developer impact
+
+== Implementation
+
+=== Assignee(s)
+
+
+== Dependencies:
+
+None
+
+== Documentation impact
+
+None
+
+== Testing
+
+This involves changes in yaml definition formats and might warrant yaml
+validation related testing.
+
+== References
+
+https://www.redhat.com/archives/tendrl-devel/2016-November/msg00059.html
