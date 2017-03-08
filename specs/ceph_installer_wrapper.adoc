@@ -38,7 +38,7 @@ A wrapper needs to be created which abstracts the capabilities provided by the c
   ** Check task status
 
 
-== Data model impact:
+== Data model impact
 
 === IP to UUID index for nodes
 
@@ -57,7 +57,7 @@ systems to communicate with the node on.
 
 
 
-== Tendrl API impact:
+== Tendrl API impact
 
 .API Endpoint
 ----
@@ -361,7 +361,7 @@ UUID and IP based node identification.
 ----
 
 
-=== Tendrl/node_agent impact:
+== Tendrl/node_agent impact
 
 Since ceph installer does not support operating from a node inside the cluster,
 the node agent running on the API node needs to be designated as a provisioner
@@ -472,11 +472,12 @@ Only the `device` value.
 Multi-journal (implies dedicated journals)::
 Same `journal` device specified for multiple devices.
 
-== Implementation:
+
+== Implementation
 
 * https://github.com/Tendrl/specifications/issues/48
 
-=== Assignee(s):
+=== Assignee(s)
 
 Primary assignee:
 
@@ -484,27 +485,27 @@ nthomas-redhat
 
 Other contributor(s):
 
-=== Work Items:
+=== Work Items
 
 * https://github.com/Tendrl/ceph-integration/issues/106
 * https://github.com/Tendrl/node-agent/issues/202
 
-== Dependencies:
+== Dependencies
 
 
 None.
 
 
-== Testing:
+== Testing
 
 End users can't directly test this feature, however the flows like ceph cluster creation and expansion will use this feature internally.
 
 
-== Documentation impact:
+== Documentation impact
 
 None.
 
 
-== References:
+== References
 
 * http://docs.ceph.com/ceph-installer/docs/
