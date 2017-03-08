@@ -20,7 +20,7 @@ Ceph-installer provides a set of Rest APIs which allows one to install and confi
 * Task management
   A task is created when an action on a remote node is triggered. Tasks are used to track the progress of the operation.
 
-== Proposed change
+== Wrapper flows
 
 A wrapper needs to be created which abstracts the capabilities provided by the ceph-installer.
 
@@ -38,16 +38,16 @@ A wrapper needs to be created which abstracts the capabilities provided by the c
   ** Check task status
 
 
-=== Data model impact:
+== Data model impact:
 
-==== IP to UUID index for nodes
+=== IP to UUID index for nodes
 
 An index is required for resolving IP addresses to node UUIDs. Each IP address
 for the each of the nodes must be mapped to the corresponding UUID in a global
 index. This index is required for the API to be able to invoke jobs with a
 UUID, when IP addresses are provided as node identification in the request.
 
-==== Provisioning IP
+=== Provisioning IP
 
 In scenarios where the provisioning network is a separate network, the client
 would be able to provide the IP address of any node which is to be used for
@@ -57,7 +57,7 @@ systems to communicate with the node on.
 
 
 
-=== Tendrl API impact:
+== Tendrl API impact:
 
 .API Endpoint
 ----
@@ -71,6 +71,53 @@ Status: 202 Accepted
 { job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
 ----
 
+=== Ceph specific parameters
+
+==== Global parameters
+
+fsid:: String, optional
+ceph_conf_overrides:: Nested hash, optional. Each key corresponds to a section
+in `ceph.conf` file. Currently supported are:
++
+* global
+* osd
+* mon
++
+The values for the section keys are hashes, each containing specific
+`ceph.conf` parameters with their values.
+public_network:: Network address with netmask, mandatory.
+cluster_network:: Network address with netmask, mandatory.
+
+
+==== Parameters for each node in the cluster
+
+role:: ceph/mon or ceph/osd, mandatory
+provisioning_ip:: IP address, optional, IP for the provisioning system to
+communicate with the node on.
+
+.Monitor node specific parameters
+monitor_interface:: String, mandatory, mutually exclusive with `monitor_ip`.
+monitor_ip:: IP address, mandatory, mutually exclusive with
+`monitor_interface`.
+
+.OSD node specific parameters
+journal_size:: Integer (in megabytes), optional, defaults to 5GB.
+journal_colocation:: Boolean, mandatory, See the validations section for more
+information.
+
+.Journal configuration on OSD nodes
+storage_disks:: Array, mandatory, contains hashes describing device and journal
+configuration. Hash keys:
++
+* device
+* journal
++
+Both keys' values should be a single block device. The `journal_colocation`
+value determines the validations applied. See the validations section for more
+information.
+
+
+=== Example requests
 
 ==== Default, UUID based, request
 
@@ -83,13 +130,23 @@ The default node identification is via UUID.
   "sds_type": "ceph",
   "sds_version": "10.2.5",
   "name": "MyCluster",
+  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+  "public_network": "192.168.128.0/24",
+  "cluster_network": "192.168.220.0/24",
+  "ceph_conf_overrides": {
+    "global": {
+      "osd_pool_default_pg_num": 128,
+      "pool_default_pgp_num": 1
+    }
+  },
   "node_configuration": {
     "3a95fd96-876d-439a-a64d-70332c069aaa": {
-      "role": "ceph/mon"
+      "role": "ceph/mon",
+      "monitor_interface": "eth0"
     },
     "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
       "role": "ceph/osd",
-      "journal_size": 5192,  # Megabytes
+      "journal_size": 5192,
       "journal_colocation": "false",
       "storage_disks": [
         {
@@ -131,14 +188,24 @@ on the node.
   "sds_type": "ceph",
   "sds_version": "10.2.5",
   "name": "MyCluster",
+  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+  "public_network": "192.168.128.0/24",
+  "cluster_network": "192.168.220.0/24",
+  "ceph_conf_overrides": {
+    "global": {
+      "osd_pool_default_pg_num": 128,
+      "pool_default_pgp_num": 1
+    }
+  },
   "node_identifier": "ip",
   "node_configuration": {
     "10.0.0.24": {
       "role": "ceph/mon",
+      "monitor_ip": "192.168.128.22"
     },
     "10.0.0.29": {
       "role": "ceph/osd",
-      "journal_size": 5192,  # Megabytes
+      "journal_size": 5192,
       "journal_colocation": "false",
       "storage_disks": [
         {
@@ -180,16 +247,26 @@ UUID and IP based node identification.
   "sds_type": "ceph",
   "sds_version": "10.2.5",
   "name": "MyCluster",
+  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+  "public_network": "192.168.128.0/24",
+  "cluster_network": "192.168.220.0/24",
+  "ceph_conf_overrides": {
+    "global": {
+      "osd_pool_default_pg_num": 128,
+      "pool_default_pgp_num": 1
+    }
+  },
   "node_identifier": "uuid",
   "node_configuration": {
     "3a95fd96-876d-439a-a64d-70332c069aaa": {
       "role": "ceph/mon",
-      "provisioning_ip": "10.0.0.24"
+      "provisioning_ip": "10.0.0.24",
+      "monitor_interface": "eth0"
     },
     "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
       "role": "ceph/osd",
       "provisioning_ip": "10.0.0.29",
-      "journal_size": 5192,  # Megabytes
+      "journal_size": 5192,
       "journal_colocation": "false",
       "storage_disks": [
         {
@@ -225,16 +302,26 @@ UUID and IP based node identification.
   "sds_type": "ceph",
   "sds_version": "10.2.5",
   "name": "MyCluster",
+  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+  "public_network": "192.168.128.0/24",
+  "cluster_network": "192.168.220.0/24",
+  "ceph_conf_overrides": {
+    "global": {
+      "osd_pool_default_pg_num": 128,
+      "pool_default_pgp_num": 1
+    }
+  },
   "node_identifier": "ip",
   "node_configuration": {
     "10.0.0.24": {
       "role": "ceph/mon",
-      "provisioning_ip": "10.0.0.24"
+      "provisioning_ip": "10.0.0.24",
+      "monitor_interface": "eth0"
     },
     "10.0.0.29": {
       "role": "ceph/osd",
       "provisioning_ip": "10.0.0.29",
-      "journal_size": 5192,  # Megabytes
+      "journal_size": 5192,
       "journal_colocation": "false",
       "storage_disks": [
         {
@@ -293,15 +380,25 @@ empty `node_ids` array in the job payload.
       "3943fab1-9ed2-4eb6-8121-5a69499c4568",
       "b10e00e9-e444-41c2-9517-df2118b42731"
     ],
+    "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "ceph_conf_overrides": {
+      "global": {
+        "osd_pool_default_pg_num": 128,
+        "pool_default_pgp_num": 1
+      }
+    },
     "node_configuration": {
       "3a95fd96-876d-439a-a64d-70332c069aaa": {
         "role": "ceph/mon",
-        "provisioning_ip": "10.0.0.24"
+        "provisioning_ip": "10.0.0.24",
+        "monitor_interface": "eth0"
       },
       "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
         "role": "ceph/osd",
         "provisioning_ip": "10.0.0.29",
-        "journal_size": 5192,  # Megabytes
+        "journal_size": 5192,
         "journal_colocation": "false",
         "storage_disks": [
           {
