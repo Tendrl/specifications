@@ -37,25 +37,48 @@ A wrapper needs to be created which abstracts the capabilities provided by the c
   ** Add a new node
   ** Check task status
 
-=== Alternatives
-
-None.
 
 === Data model impact:
 
-None.
+==== IP to UUID index for nodes
 
-=== Impacted Modules:
+An index is required for resolving IP addresses to node UUIDs. Each IP address
+for the each of the nodes must be mapped to the corresponding UUID in a global
+index. This index is required for the API to be able to invoke jobs with a
+UUID, when IP addresses are provided as node identification in the request.
 
-==== Tendrl API impact:
+==== Provisioning IP
 
-Tendrl API provides an interface to create a Ceph cluster.
+In scenarios where the provisioning network is a separate network, the client
+would be able to provide the IP address of any node which is to be used for
+provisioning operations. The provisioning IP needs to be specifically stored
+for every node and used as the IP address for ansible based provisioning
+systems to communicate with the node on.
 
-Sample JSON
 
-----------
-POST '/api/1.0/CreateCluster'
 
+=== Tendrl API impact:
+
+.API Endpoint
+----
+POST /1.0/CreateCluster
+----
+
+[source,json]
+.Sample Response
+----
+Status: 202 Accepted
+{ job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
+----
+
+
+==== Default, UUID based, request
+
+The default node identification is via UUID.
+
+[source,json]
+.Sample JSON
+----
 {
   "sds_type": "ceph",
   "sds_version": "10.2.5",
@@ -84,26 +107,165 @@ POST '/api/1.0/CreateCluster'
       "journal_colocation": "true",
       "storage_disks": [
         {
-          "device": "/dev/sda",
+          "device": "/dev/sda"
         },
         {
-          "dev_name": "/dev/sdb",
+          "dev_name": "/dev/sdb"
         }
       ]
     }
   }
 }
+----
 
-----------
+==== IP based node identification
 
-Sample Response
+To use IP based node identification, a `node_identifier` parameter must be
+sent with the value `ip` and the key for every node needs to be an ip address
+on the node.
 
-----------
-Status: 202 Accepted
-{ job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
-----------
+[source,json]
+.Sample JSON
+----
+{
+  "sds_type": "ceph",
+  "sds_version": "10.2.5",
+  "name": "MyCluster",
+  "node_identifier": "ip",
+  "node_configuration": {
+    "10.0.0.24": {
+      "role": "ceph/mon",
+    },
+    "10.0.0.29": {
+      "role": "ceph/osd",
+      "journal_size": 5192,  # Megabytes
+      "journal_colocation": "false",
+      "storage_disks": [
+        {
+          "device": "/dev/sda",
+          "journal": "/dev/sdc"
+        },
+        {
+          "dev_name": "/dev/sdb",
+          "journal": "/dev/sdc"
+        }
+      ]
+    },
+    "10.0.0.30": {
+      "role": "ceph/osd",
+      "journal_colocation": "true",
+      "storage_disks": [
+        {
+          "device": "/dev/sda"
+        },
+        {
+          "dev_name": "/dev/sdb"
+        }
+      ]
+    }
+  }
+}
+----
 
-==== Tendrl/node_agent impact:
+==== Provisioning IP specification per node
+
+In scenarios where the provisioning network needs to be explicitly specified,
+the `provisioning_ip` parameter can be added to the node. This works with both
+UUID and IP based node identification.
+
+[source,json]
+.Provisioning IP specification with UUID based identification
+----
+{
+  "sds_type": "ceph",
+  "sds_version": "10.2.5",
+  "name": "MyCluster",
+  "node_identifier": "uuid",
+  "node_configuration": {
+    "3a95fd96-876d-439a-a64d-70332c069aaa": {
+      "role": "ceph/mon",
+      "provisioning_ip": "10.0.0.24"
+    },
+    "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+      "role": "ceph/osd",
+      "provisioning_ip": "10.0.0.29",
+      "journal_size": 5192,  # Megabytes
+      "journal_colocation": "false",
+      "storage_disks": [
+        {
+          "device": "/dev/sda",
+          "journal": "/dev/sdc"
+        },
+        {
+          "dev_name": "/dev/sdb",
+          "journal": "/dev/sdc"
+        }
+      ]
+    },
+    "b10e00e9-e444-41c2-9517-df2118b42731": {
+      "role": "ceph/osd",
+      "provisioning_ip": "10.0.0.30",
+      "journal_colocation": "true",
+      "storage_disks": [
+        {
+          "device": "/dev/sda"
+        },
+        {
+          "dev_name": "/dev/sdb"
+        }
+      ]
+    }
+  }
+}
+----
+
+.Provisioning IP specification with IP based identification
+----
+{
+  "sds_type": "ceph",
+  "sds_version": "10.2.5",
+  "name": "MyCluster",
+  "node_identifier": "ip",
+  "node_configuration": {
+    "10.0.0.24": {
+      "role": "ceph/mon",
+      "provisioning_ip": "10.0.0.24"
+    },
+    "10.0.0.29": {
+      "role": "ceph/osd",
+      "provisioning_ip": "10.0.0.29",
+      "journal_size": 5192,  # Megabytes
+      "journal_colocation": "false",
+      "storage_disks": [
+        {
+          "device": "/dev/sda",
+          "journal": "/dev/sdc"
+        },
+        {
+          "dev_name": "/dev/sdb",
+          "journal": "/dev/sdc"
+        }
+      ]
+    },
+    "10.0.0.30": {
+      "role": "ceph/osd",
+      "provisioning_ip": "10.0.0.30",
+      "journal_colocation": "true",
+      "storage_disks": [
+        {
+          "device": "/dev/sda"
+        },
+        {
+          "dev_name": "/dev/sdb"
+        }
+      ]
+    }
+  }
+}
+----
+
+
+=== Tendrl/node_agent impact:
 
 Since ceph installer does not support operating from a node inside the cluster,
 the node agent running on the API node needs to be designated as a provisioner
@@ -111,40 +273,64 @@ for ceph cluster. This would be accomplished by adding a tag for
 `provisioners/ceph`. The API would route jobs directly to this tag, with an
 empty `node_ids` array in the job payload.
 
-The following job parameters would be implemented:
-
-  {
-    "integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
-    "run": "tendrl.flows.CreateCluster",
-    "status": "new",
-    "type": "node",
+[source,json]
+.Job structure with all the possible parameters
+----
+{
+  "integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
+  "run": "tendrl.flows.CreateCluster",
+  "status": "new",
+  "type": "node",
+  "node_ids": [],
+  "tags": ["provisioner/ceph"],
+  "parameters": {
     "sds_type": "ceph",
     "sds_version": "10.2.5",
     "name": "MyCluster",
-    "node_ids": [],
-    "tags": ["provisioner/ceph"],
-    "parameters": {
-      "TendrlContext.integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
-      "Node[]": ["3943fab1-9ed2-4eb6-8121-5a69499c4568"],
-      "node_configuration": {
-        "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
-          "role": "ceph/osd",
-          "journal_size": 5192,  # Megabytes
-          "journal_colocation": "false",
-          "storage_disks": [
-            {
-              "device": "/dev/sda",
-              "journal": "/dev/sdc"
-            },
-            {
-              "dev_name": "/dev/sdb",
-              "journal": "/dev/sdc"
-            }
-          ]
-        }
+    "TendrlContext.integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
+    "Node[]": [
+      "3a95fd96-876d-439a-a64d-70332c069aaa",
+      "3943fab1-9ed2-4eb6-8121-5a69499c4568",
+      "b10e00e9-e444-41c2-9517-df2118b42731"
+    ],
+    "node_configuration": {
+      "3a95fd96-876d-439a-a64d-70332c069aaa": {
+        "role": "ceph/mon",
+        "provisioning_ip": "10.0.0.24"
+      },
+      "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+        "role": "ceph/osd",
+        "provisioning_ip": "10.0.0.29",
+        "journal_size": 5192,  # Megabytes
+        "journal_colocation": "false",
+        "storage_disks": [
+          {
+            "device": "/dev/sda",
+            "journal": "/dev/sdc"
+          },
+          {
+            "dev_name": "/dev/sdb",
+            "journal": "/dev/sdc"
+          }
+        ]
+      },
+      "b10e00e9-e444-41c2-9517-df2118b42731": {
+        "role": "ceph/osd",
+        "provisioning_ip": "10.0.0.30",
+        "journal_colocation": "true",
+        "storage_disks": [
+          {
+            "device": "/dev/sda"
+          },
+          {
+            "dev_name": "/dev/sdb"
+          }
+        ]
       }
     }
   }
+}
+----
 
 The validations to be carried out on these parameters are as follows, when the
 role of a node is `ceph/osd`:
