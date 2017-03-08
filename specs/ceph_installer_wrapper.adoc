@@ -64,12 +64,14 @@ systems to communicate with the node on.
 POST /1.0/CreateCluster
 ----
 
+
 [source,json]
 .Sample Response
 ----
 Status: 202 Accepted
 { job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
 ----
+
 
 === Ceph specific parameters
 
@@ -123,6 +125,7 @@ information.
 
 The default node identification is via UUID.
 
+
 [source,json]
 .Sample JSON
 ----
@@ -175,11 +178,13 @@ The default node identification is via UUID.
 }
 ----
 
+
 ==== IP based node identification
 
 To use IP based node identification, a `node_identifier` parameter must be
 sent with the value `ip` and the key for every node needs to be an ip address
 on the node.
+
 
 [source,json]
 .Sample JSON
@@ -234,11 +239,13 @@ on the node.
 }
 ----
 
+
 ==== Provisioning IP specification per node
 
 In scenarios where the provisioning network needs to be explicitly specified,
 the `provisioning_ip` parameter can be added to the node. This works with both
 UUID and IP based node identification.
+
 
 [source,json]
 .Provisioning IP specification with UUID based identification
@@ -296,6 +303,8 @@ UUID and IP based node identification.
 }
 ----
 
+
+[source,json]
 .Provisioning IP specification with IP based identification
 ----
 {
@@ -359,6 +368,7 @@ the node agent running on the API node needs to be designated as a provisioner
 for ceph cluster. This would be accomplished by adding a tag for
 `provisioners/ceph`. The API would route jobs directly to this tag, with an
 empty `node_ids` array in the job payload.
+
 
 [source,json]
 .Job structure with all the possible parameters
@@ -428,6 +438,9 @@ empty `node_ids` array in the job payload.
   }
 }
 ----
+
+
+=== Validations
 
 The validations to be carried out on these parameters are as follows, when the
 role of a node is `ceph/osd`:
