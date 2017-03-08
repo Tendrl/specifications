@@ -54,8 +54,45 @@ Tendrl API provides an interface to create a Ceph cluster.
 Sample JSON
 
 ----------
-POST '/api/v1/CreateCluster'
+POST '/api/1.0/CreateCluster'
 
+{
+  "sds_type": "ceph",
+  "sds_version": "10.2.5",
+  "name": "MyCluster",
+  "node_configuration": {
+    "3a95fd96-876d-439a-a64d-70332c069aaa": {
+      "role": "ceph/mon"
+    },
+    "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+      "role": "ceph/osd",
+      "journal_size": 5192,  # Megabytes
+      "journal_colocation": "false",
+      "storage_disks": [
+        {
+          "device": "/dev/sda",
+          "journal": "/dev/sdc"
+        },
+        {
+          "dev_name": "/dev/sdb",
+          "journal": "/dev/sdc"
+        }
+      ]
+    },
+    "b10e00e9-e444-41c2-9517-df2118b42731": {
+      "role": "ceph/osd",
+      "journal_colocation": "true",
+      "storage_disks": [
+        {
+          "device": "/dev/sda",
+        },
+        {
+          "dev_name": "/dev/sdb",
+        }
+      ]
+    }
+  }
+}
 
 ----------
 
