@@ -310,6 +310,13 @@ UUID and IP based node identification.
 ----
 
 
+==== Provisioning IP specification per node with provisioning IP
+
+Here, IP based node identifiers are used along with provisioning IPs for each
+of the nodes. The IP used for the node identifier need not be the same as the
+provisioning IP. The identifier IP could be any one of the IPs available on a
+node.
+
 [source,json]
 .Provisioning IP specification with IP based identification
 ----
