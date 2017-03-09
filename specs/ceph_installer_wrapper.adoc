@@ -460,6 +460,7 @@ role of a node is `ceph/osd`:
    be a valid block device on the node
 ** A device cannot be listed under both `device` and `journal` (across multiple
    hashes), per host
+** A block device cannot be listed more than once as a `device`.
 
 The following journal configurations are valid:
 
