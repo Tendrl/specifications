@@ -159,7 +159,7 @@ The default node identification is via UUID.
           "journal": "/dev/sdc"
         },
         {
-          "dev_name": "/dev/sdb",
+          "device": "/dev/sdb",
           "journal": "/dev/sdc"
         }
       ]
@@ -172,7 +172,7 @@ The default node identification is via UUID.
           "device": "/dev/sda"
         },
         {
-          "dev_name": "/dev/sdb"
+          "device": "/dev/sdb"
         }
       ]
     }
@@ -222,7 +222,7 @@ on the node.
           "journal": "/dev/sdc"
         },
         {
-          "dev_name": "/dev/sdb",
+          "device": "/dev/sdb",
           "journal": "/dev/sdc"
         }
       ]
@@ -235,7 +235,7 @@ on the node.
           "device": "/dev/sda"
         },
         {
-          "dev_name": "/dev/sdb"
+          "device": "/dev/sdb"
         }
       ]
     }
@@ -287,7 +287,7 @@ UUID and IP based node identification.
           "journal": "/dev/sdc"
         },
         {
-          "dev_name": "/dev/sdb",
+          "device": "/dev/sdb",
           "journal": "/dev/sdc"
         }
       ]
@@ -301,7 +301,7 @@ UUID and IP based node identification.
           "device": "/dev/sda"
         },
         {
-          "dev_name": "/dev/sdb"
+          "device": "/dev/sdb"
         }
       ]
     }
@@ -353,7 +353,7 @@ node.
           "journal": "/dev/sdc"
         },
         {
-          "dev_name": "/dev/sdb",
+          "device": "/dev/sdb",
           "journal": "/dev/sdc"
         }
       ]
@@ -367,7 +367,7 @@ node.
           "device": "/dev/sda"
         },
         {
-          "dev_name": "/dev/sdb"
+          "device": "/dev/sdb"
         }
       ]
     }
@@ -431,7 +431,7 @@ empty `node_ids` array in the job payload.
             "journal": "/dev/sdc"
           },
           {
-            "dev_name": "/dev/sdb",
+            "device": "/dev/sdb",
             "journal": "/dev/sdc"
           }
         ]
@@ -445,7 +445,7 @@ empty `node_ids` array in the job payload.
             "device": "/dev/sda"
           },
           {
-            "dev_name": "/dev/sdb"
+            "device": "/dev/sdb"
           }
         ]
       }
