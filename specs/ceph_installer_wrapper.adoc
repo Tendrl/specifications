@@ -132,14 +132,16 @@ The default node identification is via UUID.
 {
   "sds_type": "ceph",
   "sds_version": "10.2.5",
-  "name": "MyCluster",
-  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
-  "public_network": "192.168.128.0/24",
-  "cluster_network": "192.168.220.0/24",
-  "ceph_conf_overrides": {
-    "global": {
-      "osd_pool_default_pg_num": 128,
-      "pool_default_pgp_num": 1
+  "sds_parameters": {
+    "name": "MyCluster",
+    "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "ceph_conf_overrides": {
+      "global": {
+        "osd_pool_default_pg_num": 128,
+        "pool_default_pgp_num": 1
+      }
     }
   },
   "node_configuration": {
@@ -192,14 +194,16 @@ on the node.
 {
   "sds_type": "ceph",
   "sds_version": "10.2.5",
-  "name": "MyCluster",
-  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
-  "public_network": "192.168.128.0/24",
-  "cluster_network": "192.168.220.0/24",
-  "ceph_conf_overrides": {
-    "global": {
-      "osd_pool_default_pg_num": 128,
-      "pool_default_pgp_num": 1
+  "sds_parameters": {
+    "name": "MyCluster",
+    "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "ceph_conf_overrides": {
+      "global": {
+        "osd_pool_default_pg_num": 128,
+        "pool_default_pgp_num": 1
+      }
     }
   },
   "node_identifier": "ip",
@@ -253,14 +257,16 @@ UUID and IP based node identification.
 {
   "sds_type": "ceph",
   "sds_version": "10.2.5",
-  "name": "MyCluster",
-  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
-  "public_network": "192.168.128.0/24",
-  "cluster_network": "192.168.220.0/24",
-  "ceph_conf_overrides": {
-    "global": {
-      "osd_pool_default_pg_num": 128,
-      "pool_default_pgp_num": 1
+  "sds_parameters": {
+    "name": "MyCluster",
+    "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "ceph_conf_overrides": {
+      "global": {
+        "osd_pool_default_pg_num": 128,
+        "pool_default_pgp_num": 1
+      }
     }
   },
   "node_identifier": "uuid",
@@ -310,14 +316,16 @@ UUID and IP based node identification.
 {
   "sds_type": "ceph",
   "sds_version": "10.2.5",
-  "name": "MyCluster",
-  "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
-  "public_network": "192.168.128.0/24",
-  "cluster_network": "192.168.220.0/24",
-  "ceph_conf_overrides": {
-    "global": {
-      "osd_pool_default_pg_num": 128,
-      "pool_default_pgp_num": 1
+  "sds_parameters": {
+    "name": "MyCluster",
+    "fsid": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "ceph_conf_overrides": {
+      "global": {
+        "osd_pool_default_pg_num": 128,
+        "pool_default_pgp_num": 1
+      }
     }
   },
   "node_identifier": "ip",
