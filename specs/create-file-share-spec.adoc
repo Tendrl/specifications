@@ -1,0 +1,97 @@
+= Create file share workflow by using tendrl-frontend UI
+
+The intent of create file share workflow is to provide a mechanism to create a file share based on one of the following volume types: 2-way and 3-way distributed replicated and erasure coded/distributed dispersed(4+2 with minimum 6 bricks, 8+3 with minimum 11 bricks, or 8+4 with minimum 12 bricks).
+
+* Assumption: 
+
+    - Only following volume types will be supported 
+
+        * 2-way and 3-way distributed replicated
+
+        * Erasure coded/distributed dispersed (4+2 with minimum 6 bricks, 8+3 with minimum 11 bricks, or 8+4 with minimum 12 bricks)
+
+== Problem description
+
+This specification describes a mechanism to create file share workflow in tendrl.
+
+== Use Cases
+
+WIP
+
+== Proposed change
+
+WIP
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+    * API to create file share - Required
+
+    * API to get list of bricks - Required
+
+    * API to create brick - Required
+
+==== Tendrl Backend impact:
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/190
+
+== Dependencies:
+
+* API Github Issue
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+WIP
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/Q78YMAVDJ#/screens/217726640
