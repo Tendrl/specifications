@@ -1,0 +1,306 @@
+// vim: tw=79
+
+= Tendrl gdeploy Wrapper
+
+gdeploy is an utility which allows the administrator to provision and control
+the deployment of a gluster cluster easily. gdeploy work on top of Ansible
+to perform the tasks and Tendrl is expected to make use of these gdeploy helper
+calls for provisioning a gluster cluster and also the management of cluster
+entities like bricks, volumes, snapshots etc.
+
+== Problem description
+
+gdeploy provides easy to use mechanism for creation/provisioning of a gluster
+cluster. It makes use of Ansible playbooks internally for performing the jobs on
+the storage nodes. Tendrl is expected to leverage these functionalities from
+gdeploy for creation of gluster cluster and management of cluster entities.
+
+== Use Cases
+
+* Creating the gluster cluster
+  ** Install the packages
+  ** Form the gluster trusted pool of nodes
+* Expanding the gluster cluster
+  ** Install Packages(if a new host is added)
+  ** Add node to the trusted pool of the nodes
+* Create bricks out of disks on the
+  ** Based on disks provided in the lists format, partition and prepare a brick
+  out of the same
+  ** Mount the brick in configured path
+* CRUD operations for gluster volume
+* CRUD operations for volume bricks
+* Volume rebalance operation
+
+== Wrapper flows
+
+A wrapper needs to be created which abstracts the capabilities provided by
+gdeploy makes easier for Tendrl flows to invoke the various functionalities
+supported.
+
+=== Flows and atoms
+
+* Create gluster cluster
+  ** Package installation
+  ** Add the node to the trusted pool of nodes
+
+* Expand gluster cluster
+  ** Install packages if new node being brought in
+  ** Add new node to the trusted pool
+
+== Data model impact
+
+=== IP to UUID index for nodes
+
+An index is required for resolving IP addresses to node UUIDs. Each IP address
+for the each of the nodes must be mapped to the corresponding UUID in a global
+index. This index is required for the API to be able to invoke jobs with a
+UUID, when IP addresses are provided as node identification in the request.
+
+=== Provisioning IP
+
+In scenarios where the provisioning network is a separate network, the client
+would be able to provide the IP address of any node which is to be used for
+provisioning operations. The provisioning IP needs to be specifically stored
+for every node and used as the IP address for ansible based provisioning
+systems to communicate with the node on.
+
+== Tendrl API impact
+
+.API Endpoint
+----
+POST /1.0/CreateCluster
+----
+
+
+[source,json]
+.Sample Response
+----
+Status: 202 Accepted
+{ job_id: "5540ca6d-378c-4ce2-b632-46a43c5de835" }
+----
+
+==== Global parameters
+
+cluster_id:: String, optional
+
+==== Parameters for each node in the cluster
+
+provisioning_ip:: IP address, optional, IP for the provisioning system to
+communicate with the node on.
+
+=== Example requests
+
+==== Default, UUID based, request
+
+The default node identification is via UUID.
+
+
+[source,json]
+.Sample JSON
+----
+{
+  "sds_type": "glusterfs",
+  "sds_version": "3.2.1",
+  "sds_parameters": {
+    "name": "MyCluster",
+    "cluster_id": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24"
+    }
+  },
+  "node_configuration": {
+    "3a95fd96-876d-439a-a64d-70332c069aaa": {
+      "role": "gluster/node",
+      "storage_disks": ["/dev/sda", "/dev/sdb", "/dev/sdc", "/dev/sdd"]
+    },
+    "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+      "role": "gluster/node",
+      "storage_disks": ["/dev/sda", "/dev/sdb", "/dev/sdc", "/dev/sdd"]
+    },
+  }
+}
+----
+
+
+==== IP based node identification
+
+To use IP based node identification, a `node_identifier` parameter must be
+sent with the value `ip` and the key for every node needs to be an ip address
+on the node.
+
+
+[source,json]
+.Sample JSON
+----
+{
+  "sds_type": "glusterfs",
+  "sds_version": "3.2.1",
+  "sds_parameters": {
+    "name": "MyCluster",
+    "cluster_id": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+  },
+  "node_identifier": "ip",
+  "node_configuration": {
+    "10.0.0.29": {
+      "role": "gluster/node"
+    },
+    "10.0.0.30": {
+      "role": "gluster/node"
+    }
+  }
+}
+----
+
+==== Provisioning IP specification per node
+
+In scenarios where the provisioning network needs to be explicitly specified,
+the `provisioning_ip` parameter can be added to the node. This works with both
+UUID and IP based node identification.
+
+
+[source,json]
+.Provisioning IP specification with UUID based identification
+----
+{
+  "sds_type": "glusterfs",
+  "sds_version": "3.2.1",
+  "sds_parameters": {
+    "name": "MyCluster",
+    "cluster_id": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+  },
+  "node_identifier": "uuid",
+  "node_configuration": {
+    "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+      "role": "gluster/node",
+      "provisioning_ip": "10.0.0.29"
+    },
+    "b10e00e9-e444-41c2-9517-df2118b42731": {
+      "role": "gluster/node",
+      "provisioning_ip": "10.0.0.30"
+    }
+  }
+}
+----
+
+
+==== Provisioning IP specification per node with provisioning IP
+
+Here, IP based node identifiers are used along with provisioning IPs for each
+of the nodes. The IP used for the node identifier need not be the same as the
+provisioning IP. The identifier IP could be any one of the IPs available on a
+node.
+
+[source,json]
+.Provisioning IP specification with IP based identification
+----
+{
+  "sds_type": "glusterfs",
+  "sds_version": "3.2.1",
+  "sds_parameters": {
+    "name": "MyCluster",
+    "cluster_id": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+  },
+  "node_identifier": "ip",
+  "node_configuration": {
+    "10.0.0.29": {
+      "role": "gluster/node",
+      "provisioning_ip": "10.0.0.29"
+    },
+    "10.0.0.30": {
+      "role": "gluster/node",
+      "provisioning_ip": "10.0.0.30"
+    }
+  }
+}
+----
+
+== Tendrl/node_agent impact
+
+The node agent running on the API node needs to be designated as a provisioner
+for gluster cluster. This would be accomplished by adding a tag for
+`provisioners/gluster`. The API would route jobs directly to this tag, with an
+empty `node_ids` array in the job payload.
+
+
+[source,json]
+.Job structure with all the possible parameters
+----
+{
+  "integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
+  "run": "tendrl.flows.CreateCluster",
+  "status": "new",
+  "type": "node",
+  "node_ids": [],
+  "tags": ["provisioner/gluster"],
+  "parameters": {
+    "sds_type": "gluster",
+    "sds_version": "3.2.1",
+    "name": "MyCluster",
+    "TendrlContext.integration_id": "9a4b84e0-17b3-4543-af9f-e42000c52bfc",
+    "Node[]": [
+      "3a95fd96-876d-439a-a64d-70332c069aaa",
+      "3943fab1-9ed2-4eb6-8121-5a69499c4568",
+      "b10e00e9-e444-41c2-9517-df2118b42731"
+    ],
+    "cluster_id": "140cd3d5-58e4-4935-a954-d946ceff371d",
+    "public_network": "192.168.128.0/24",
+    "cluster_network": "192.168.220.0/24",
+    "node_configuration": {
+      "3943fab1-9ed2-4eb6-8121-5a69499c4568": {
+        "role": "gluster/node",
+        "provisioning_ip": "10.0.0.29"
+      },
+      "b10e00e9-e444-41c2-9517-df2118b42731": {
+        "role": "gluster/node",
+        "provisioning_ip": "10.0.0.30"
+      }
+    }
+  }
+}
+----
+
+=== Validations
+
+The validations to be carried out on these parameters are as follows, when the
+role of a node is `ceph/gluster`:
+
+== Implementation
+
+* https://github.com/Tendrl/specifications/issues/52
+
+=== Assignee(s)
+
+Primary assignee:
+
+shtripat
+
+Other contributor(s):
+ nnDarshan
+
+=== Work Items
+
+* https://github.com/Tendrl/commons/issues/264
+* https://github.com/Tendrl/node-agent/issues/230
+
+== Dependencies
+
+None.
+
+== Testing
+
+End users can't directly test this feature, however the flows like gluster
+cluster creation and expansion will use this feature internally.
+
+== Documentation impact
+
+None.
+
+== References
+
+NA
