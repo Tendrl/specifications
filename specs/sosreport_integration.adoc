@@ -1,0 +1,153 @@
+// vim: tw=79
+
+= SOS Report integration
+
+The propose of this file is to identify data-points and techniques for
+SOS Report integration with Tendrl components.
+
+== Problem description
+The current SOS report is not having any feature or plugin to analyze Tendrl components. Since the Tendrl components function as individual services, these components can be analysed with the help of SOS report in case of failures.
+
+== Use Cases
+
+One way to integrate SOS Report with Tendrl is creating plugin for each Tendrl component.
+
+* Usually SOS Report is run by an admin on each node to get the report. Assuming a multi-cluster environment with large number of nodes, two types of situations can come into picture here :
+
+** One or a few nodes fail and admin runs SOS-Report on them.
+
+** There is a multi-node failure. Will it feasible to let admin run SOS Report on all of the failed nodes?
+
+* Using policies in SOS Report it is decided how it will behave on a particular distribution. It has to be decided for which distributions the policies have to be written.
+
+== Proposed change
+
+For different Tendrl services their respective plugins have to be written.
+
+* Following are the data-points which can be used for the plugins:
+
+** Tendrl-node-agent
+*** Rpm versions for common and node-agent
+*** If tendrl-tendrl-epel-7.repo is enabled
+*** Configurations in /etc/tendrl/node-node/
+*** Status of tendrl-node-agent.socket service
+*** SELinux configurations
+*** Firewall status and configurations
+*** Package requirements
+
+** Tendrl-gluster-integration
+*** Rpm versions of commons, node-agent and gluster-integration
+*** Tendrl-node-agent service status
+*** Glusterd service status
+*** Gdeploy status
+*** Gluster peer status
+*** Configurations in /etc/tendrl/gluster-integration/
+*** Package requirements
+
+** Tendrl-ceph-integration
+*** Rpm versions of commons, node-agent and ceph-integration
+*** Tendrl-node-agent service status
+*** Ceph cluster health ("ceph -w"  or "ceph status || ceph -w")
+*** Node-agent service status
+*** Configuration in /etc/tendrl/ceph-integration/
+*** Package requirements
+
+** Tendrl-performance-monitoring
+*** Rpm versions of commons, node-agent and performance-monitoring
+*** Tendrl-node-agent service status
+*** GraphiteDB status and required permissions
+*** Carbon-cache service status
+*** Configurations in /etc/tendrl/performance-monitoring/
+*** Package requirements
+
+** Tendrl-api
+*** Installed ruby version
+*** Package requirements
+*** Gem dependencies
+*** Apache httpd process status and configurations
+*** Etcd connection configuration
+
+* Since logging is common for all the Tendrl services the logs can be captured from syslog.
+** According to current rsyslog config the log messages are present in /var/log/messages
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+None
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+None
+
+=== Assignee(s):
+
+Primary assignee:
+  anmolsachan
+
+=== Work Items:
+
+To be decided.
+
+== Dependencies:
+
+Listed in proposed change section.
+
+== Testing:
+
+None
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/documentation/wiki/Tendrl-Package-Installation-Reference
+* https://github.com/Tendrl/api#_deployment_requirements
