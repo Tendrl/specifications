@@ -1,0 +1,371 @@
+// vim: tw=79
+
+= Flow for generating journal mapping while create cluster workflow in Ceph
+
+A flow needs to added in `ceph-installer` provisioner of `tendrl-node-agent`
+which generates a possible journal mapping based on standard guidelines from
+Ceph. This mapping would be just a suggestion, and user can always change the
+mapping and pass on to create cluster flow.
+
+This helps end user to visualize how OSDs and their journals would be layout
+in the final cluster getting created. Using this visualization user can always
+change the maping based on his/her needs and submit for cluster creation flow.
+
+== Problem description
+
+While create cluster flow in case of Ceph user needs to visualize and form a
+mapping of OSDs and journals in case of dedicated journals and provide the
+details to create cluster flow.
+
+If Tendrl provides a suggestion based on Ceph standard guidelines it would be
+easier for end user to visualize how the journal mapping would look in final
+cluster. Also if user doesn't agree to the mapping, he can always change the
+same before submitting for cluster creation.
+
+== Use Cases
+
+Provide a visualization of journal mapping for OSDs while create cluster flow of
+Ceph.
+
+== Proposed change
+
+Below changes should be done to provide the above mentioned functionality in
+Tendrl -
+
+* An utility in `ceph-installer` provisioner of `tendrl-node-agent` which takes
+set of nodes with their devices details and outputs the mapping for OSDs and
+journals. This utility is purely stateless and provides output based on provided
+inputs only.
+
+The input structure of the utility would be as below
+
+```
+{
+    "node_configuration": {
+        "node_id_1": {
+            "storage_disks": [
+                {"device": "/dev/vdb", "size": bytes, "ssd": true },
+                {"device": "/dev/vdc", "size": bytes, "ssd": false},
+                ...
+            ]
+        },
+        "node_id_2": {
+            "storage_disks": [
+                {"device": "/dev/vdb", "size": bytes, "ssd": true },
+                {"device": "/dev/vdc", "size": bytes, "ssd": false},
+                ...
+            ]
+        },
+        .....
+    }
+}
+```
+
+The generated output from this utility would be as below
+
+```
+{
+        "node_id_1": {
+            "storage_disks": [
+                {"device": "/dev/vdb", "journal": "/dev/vdc" },
+                {"device": "/dev/vdd", "journal": "/dev/vde"},
+                ...
+            ],
+            "unallocated_disks": ["/dev/vdf", "/dev/vdg"]
+        },
+        "node_id_2": {
+            "storage_disks": [
+                {"device": "/dev/vdb", "journal": "/dev/vdc" },
+                {"device": "/dev/vdd", "journal": "/dev/vde"},
+                ...
+            ],
+            "unallocated_disks": ["/dev/vdf", "/dev/vdg"]
+         },
+         ...
+}
+```
+
+Note: The `unallocated_disks` in above output format represents any disks which
+are left out and not mapped due to odd number of disks in the input list.
+
+* Define a flow in `tendrl-node-agent` which wraps the above mentioned utility
+and calculates the journal mapping.
+
+The definition of the flow `GenerateJournalMapping` looks as below
+
+```
+namespace.node_agent:
+  flows:
+    GenerateJournalMapping:
+      help: "Generate journal mapping"
+      enabled: true
+      inputs:
+        mandatory:
+          - TendrlContext.integration_id
+          - Cluster.node_configuration
+      run: node_agent.flows.GenerateJournalMapping
+      type: Create
+      uuid: 2f94a48a-05d7-408c-b400-e27827f4eacc
+      version: 1
+  objects:
+    JournalMapping:
+      enabled: True
+      help: JournalMapping
+      value: _tmp/$TendrlContext.integration_id/journal_mapping/$node_id
+      attrs:
+        node_id:
+          type: String
+          help: Node id
+        storage_disks:
+          type: "Dict[]"
+          help: journal mapped storage disks
+        unallocated_disks:
+          type: "String[]"
+          help: un-allocated disks
+```
+
+* Define an object `JournalMapping` under `tendrl-node-agent` which holds the
+generated journal mapping for the set of nodes. This object would be used to
+write the generated details to etcd. The generated journal mapping details would
+be written to dir `/_tmp/{integration-id}/journal_mapping`. The `tendrl-api`
+reads the details from this directory.
+
+The structure of the object `JournalMapping` looks as below
+
+```
+class JournalMapping(objects.BaseObject):
+    def __init__(self, node_id=None, storage_disks=None,
+                 unallocated_disks=None, *args, **kwargs):
+        super(JournalMapping, self).__init__(*args, **kwargs)
+
+        self.value = '_tmp/%s/journal_mapping/%s'
+        self.node_id = node_id
+        self.storage_disks = storage_disks
+        self.unallocated_disks = unallocated_disks
+        self._etcd_cls = _JournalMapping
+
+
+class _JournalMapping(etcdobj.EtcdObj):
+    __name__ = '_tmp/%s/journal_mapping/%s'
+    _tendrl_cls = JournalMapping
+
+    def render(self):
+        self.__name__ = self.__name__ % \
+            (NS.TendrlContext.integration_id, self.node_id)
+        return super(_JournalMapping, self).render()
+~
+```
+
+* The generated journal mapping in etcd would look as below
+
+```
+{
+    "action": "get",
+    "node": {
+        "key": "/_tmp/{integration_id}}/journal_mapping/{node-id}/storage_disks",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/_tmp/{integration_id}}/journal_mapping/{node_id}/storage_disks/device",
+                "value": "/dev/vdb",
+                "modifiedIndex": 532429,
+                "createdIndex": 532429
+            },
+            {
+                "key": "/_tmp/{integration_id}}/journal_mapping/{node_id}/storage_disks/journal",
+                "value": "/dev/vdc",
+                "modifiedIndex": 532429,
+                "createdIndex": 532429
+            }
+        ],
+        "modifiedIndex": 530101,
+        "createdIndex": 530101
+    }
+}
+```
+
+```
+{
+    "action": "get",
+    "node": {
+        "key": "/_tmp/{integration_id}}/journal_mapping/{node-id}/unallocated_disks",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/_tmp/{integration_id}}/journal_mapping/{node_id}/unallocated_disks/device",
+                "value": "[\"/dev/vde\", \"/dev/vdg\"]",
+                "modifiedIndex": 532429,
+                "createdIndex": 532429
+            }
+        ],
+        "modifiedIndex": 530101,
+        "createdIndex": 530101
+    }
+}
+```
+
+=== Alternatives
+
+Alternatively the whole mappinglogic can be impleted within `tendrl-api` only
+
+=== Data model impact:
+
+* Add an object `JournalMapping`
+
+* Add a flow definition for `GenerateJournlaMapping`
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+NOne
+
+==== Tendrl/node_agent impact:
+
+* Add a flow definition for `GenerateJournlaMapping`
+
+* Add an object `JournalMapping`
+
+* Implement flow `GenerateJournalMapping`
+
+==== Sds integration impact:
+
+None
+
+==== Tendrl frontend impact:
+
+None
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+None.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None.
+
+== Implementation:
+
+* https://github.com/Tendrl/specifications/issues/151
+
+=== OSD journal mapping Algorithm
+
+The guidelines for using journals are -
+
+* Prefer SSD disks to be used as journals
+* Each SSD can be used as journal for at most 4 OSDs
+* Rotational disks can works as journal for at most 1 OSD only
+* If only rotational disks, smaller sized ones are preferred to be used journals
+(as long as enough space available based on journal size selected for the
+cluster)
+* Default journal size for Ceph clusters is 5GB
+* Journal disk for an OSD should reside on the same host
+
+==== Algorithm
+
+The algorithm which implements the mapping of journal for OSDs goes as below -
+
+** Case-1: If all the disks for a host are rotational in nature
+
+*** Sort the set of disks in descending order of their size
+*** If no of disks is odd, leave the last entry in the sorted list as journal
+mapping cannot be done for all the disks
+*** Start from the head of the sorted list of disks and map journals from the
+tail of the list
+*** For each OSD selected from the head of the list select one journal disk
+from the tail of the list
+*** Keep moving till reach the middle of the list and by this time all the OSDs
+to be created have got their journal disks assigned
+*** In case of odd no of disks, last disk is left out and the same should be
+reported under `unallocated_disks`
+
+** Case-2: If all the disks for a host are SSD in nature
+
+*** Sort the set of disks in descending order of their size
+*** Start from the head of the sorted list and map journals from the tails of
+the list
+*** A maximum of 4 disks (provided enough space is available left with the SSD
+disk based on journal size) should be mapped from head of the list to the same
+journal disk from tail of the list
+*** If no enough space left on the SSD in consideration for journal, move to
+one before that from tail of the list even if OSD count mapped to this SSD is
+not reached 4
+*** Keep doing this as long as no more disks left from head to be mapped to
+their journals
+
+** Case-3: If few of the disks are rotational and few are SSD in nature
+
+*** Segregate the set of rotational and SSD disks in two different lists
+*** Loop through the list of rotational disks and start mapping them with SSDs
+from the second list
+*** Map a maximum of 4 rotational disk to a single SSD to be used as journal
+(as long as enough space is available on SSD)
+*** If no more space available with SSD even if maximum no of 4 is not reached
+move to the next SSD for mapping journals
+*** Once done with either of rotational or SSDs list there could below two
+scenario possible
+
+** Case-3A: Few SSDs still left
+
+*** In this scenario for sure all the rotational disks are exhausted and we
+are left with only SSDs
+*** Sort the left out SSDs in descending order of size
+*** Follow the logic in case-2 to map journals within SSDs
+*** DONE!
+
+** Case-3B: Few rotational disks are still left
+
+*** In this scenario for sure we have exhausted the SSDs and left with few
+rotational disks only
+*** Sort the left out rotational disk in descending order of size
+*** Follow the logic in case-1 to map journals within rotational disks
+*** DONE!
+
+=== Assignee(s):
+
+Primary assignee:
+
+shtripat
+
+Other contributor(s):
+
+=== Work Items:
+
+<<Add the node-agent issue id here>>
+
+== Dependencies:
+
+None.
+
+== Testing:
+
+* Verify while create cluster flow for journal mapping availability for a set of
+nodes passed with devices.
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
