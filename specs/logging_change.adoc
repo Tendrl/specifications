@@ -15,7 +15,7 @@ After implementation of new logging framework there will be requirement of chang
 
 #### Use Cases
 
-Logs and operation logs need be treated as messages.
+Logs and job operations need be treated as messages.
 
 #### Proposed change
 
@@ -27,12 +27,10 @@ Logs and operation logs need be treated as messages.
 object:
  *** priority
  *** publisher
- **** eg. CEPH-INTEGRATION, GLUSTER-INTEGRATION, NODE-AGENT, COMMONS, ALERTING, PERFORMANCE-MONITORING
+ **** eg. CEPH-INTEGRATION, GLUSTER-INTEGRATION, NODE-AGENT, PERFORMANCE-MONITORING
  *** payload   <Json>
- *** If the message is for operation updates then the following arguments will
-  also be required :
-  ***** request_id
-  ***** flow_id
+ *** If the message is for operation updates the job_id will also be an mandatory parameter.
+** If an Exception has to be passed with the message then the ExceptionMessage object has to be passed to the Event class, not the Message object.
 
 #### Alternatives
 
@@ -92,20 +90,31 @@ None
 None
 
 #### Implementation:
-* Import Message and Event class from commons
+* Import Message or ExceptionMessage class from commons.
+* Import Event class from commons
 * Create a message object.
-* Pass the message object as an argument to make an Event Object.
+* Pass the message object as an argument to initialize Event class.
 ----
 from tendrl.commons.event import Event
+from tendrl.commons.message import ExceptionMessage
 from tendrl.commons.message import Message
 
 Event(
     Message(
         priority="priority",
-        publisher=tendrl_ns.publisher_id, # Defined component wise
+        publisher=NS.publisher_id, # Defined component wise
         payload={"message": "message"}
-        requst_id="request_id",
-        flow_id="flow_id"
+        job_id ="job_id"
+    )
+)
+
+Event(
+    ExceptionMessage(
+        priority="priority",
+        publisher=NS.publisher_id,
+        payload={"message": "error",
+                 "exception": ex
+                 }
     )
 )
 ----
