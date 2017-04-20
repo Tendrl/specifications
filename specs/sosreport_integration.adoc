@@ -38,9 +38,7 @@ For different Tendrl services their respective plugins have to be written.
 ** Tendrl-gluster-integration
 *** Rpm versions of commons, node-agent and gluster-integration
 *** Tendrl-node-agent service status
-*** Glusterd service status
 *** Gdeploy status
-*** Gluster peer status
 *** Configurations in /etc/tendrl/gluster-integration/
 *** Package requirements
 
@@ -70,9 +68,157 @@ For different Tendrl services their respective plugins have to be written.
 * Since logging is common for all the Tendrl services the logs can be captured from syslog.
 ** According to current rsyslog config the log messages are present in /var/log/messages
 
+* Sample code :
+
+[source, python]
+.tendrl-node-agent.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlNodeAgent(Plugin):
+    """Tendrl Node Agent
+    """
+    plugin_name = "tendrl_node_agent"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/node-agent/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["yum repolist | grep tendrl",
+                            "systemctl status tendrl-node-agent.socket"
+                             ])
+
+----
+
+[source, python]
+.tendrl-gluster-integration.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlGlusterIntegration(Plugin):
+    """Tendrl Gluster Integration
+    """
+    plugin_name = "tendrl_gluster_integration"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/gluster-integration/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output("systemctl status tendrl-node-agent")
+----
+
+[source, python]
+.tendrl-ceph-integration.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlCephIntegration(Plugin):
+    """Tendrl Ceph Integration
+    """
+    plugin_name = "tendrl_ceph_integration"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/ceph-integration/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output("systemctl status tendrl-node-agent")
+----
+
+[source, python]
+.tendrl-performance-monitoring.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlPerformanceMonitoring(Plugin):
+    """Tendrl Performance Monitoring
+    """
+    plugin_name = "tendrl_performance_monitoring"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/performance-monitoring/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["systemctl status tendrl-node-agent.socket",
+                             "systemctl status carbon-cache",
+                             "ls -la /var/lib/graphite-web/graphite.db"
+                             ])
+
+----
+
+[source, python]
+.tendrl-api.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlApi(Plugin):
+    """Tendrl Node Agent
+    """
+    plugin_name = "tendrl_node_agent"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.add_copy_spec("/etc/tendrl/etcd.yml")
+        self.add_cmd_output(["ruby -v",
+                             "gem --version"
+                             ])
+        self.add_cmd_output(["systemctl status httpd.service"])
+----
+
 === Alternatives
 
-None
+* Rather than creating different plugings for different tendrl services, a
+single plugin can also be taken into consideration.
+
+[source, python]
+.tendrl.py
+----
+from sos.plugins import Plugin
+
+class Tendrl(Plugin):
+    """Tendrl
+    """
+    plugin_name = "tendrl"
+    profiles = ('tendrl', 'storage')
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["yum repolist | grep tendrl",
+                             "systemctl status tendrl-node-agent.socket",
+                             "systemctl status tendrl-node-agent",
+                             "systemctl status carbon-cache",
+                             "ls -la /var/lib/graphite-web/graphite.db",
+                             "ruby -v",
+                             "gem --version",
+                             "systemctl status httpd.service"
+                             ])
+----
 
 === Data model impact:
 
