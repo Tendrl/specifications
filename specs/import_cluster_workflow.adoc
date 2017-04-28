@@ -1,0 +1,504 @@
+// vim: tw=79
+
+= Import cluster workflow
+
+The intent of import cluster workflow is to provide a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management.
+
+
+== Problem description
+
+This specification describes import cluster workflow which is a mechanism to add an existing storage cluster(gluster, ceph etc) into tendrl for management.
+This specification addresses the import use-cases of both ceph and gluster storage
+
+== Use Cases
+
+
+This addresses the use case of importing existing clusters(ceph. gluster etc.) into tendrl for management.
+
+The workflow is as follows:
+
+* Node Agents detect the capability of the storage nodes and pushes the details to central store.
+
+* The list of available nodes presented to the administrator via APIs
+  ** User selects one node in the cluster
+  ** Use the selected node to extract the details of the cluster
+  ** Submit import cluster request to nodes
+  ** On completion the cluster is expected to be imported into tendrl with all   objects(ceph pools, gluster volumes)
+
+* Sds integration components(ceph-integration, gluster-integration etc) pushes the cluster inventory to the central store
+
+== Proposed change
+
+
+Node Agents related changes:
+
+* Populate the node inventory(hardware, service etc) in the central store
+* Tendrl definitions - add necessary objects, atoms and flows for import cluster
+* Implement the atoms and flows for import cluster
+
+Tendrl API related changes:
+
+* API to get the cluster details. Input to this API would be:
+
+  ** Any node in the cluster in case of gluster
+  ** Any MON node in the cluster in case of ceph
+
+* API to import the cluster. Input to this API would be:
+
+  ** All the nodes in cluster(Retrieved by the API mentioned in the previous step)
+
+* Separate set of APIs required for ceph and gluster respectively
+
+Ceph integration related changes:
+
+* Populate the ceph cluster inventory in the central store
+
+Gluster integration related changes:
+
+* Populate the gluster cluster inventory in the central store
+
+
+=== Alternatives
+
+Tendrl API related changes:
+
+The solution discussed in the 'Proposed change' is a two step process(involves two API calls). Instead this can be combined into a single API as well where the API taken a single node as input and rest executed in one go. The downside with approach would be that the user will not a chance to verify the fetched cluster details are correct. Also there is an impact on the proposed UX design as well
+
+=== Data model impact:
+
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+Import cluster flow requires the below APIs to be exposed:
+
+* API to Get the gluster cluster details
+
+----
+
+GET /1.0/GlusterClusterDetails/<node_id>
+
+Sample Response:
+
+{
+"peers": [{
+        "fqdn": "dhcp43-44.lab.eng.blr.redhat.com",
+        "machine_id": "6406e485f01347f4884bf6e1981020b7",
+        "node_id": "194c4e0b-2541-4227-a808-358a3898f3c6"
+        }]
+"Tendrl_context.sds_name": "gluster",
+"Tendrl_context.sds_version": "3.8.3"
+}
+
+----
+
+* API to import gluster cluster
+
+----
+
+POST /1.0/GlusterImportCluster
+
+Sample Request:
+
+{
+    "Node[]":["027db80d-eee9-40b6-8e59-8c81b80aa655", "3038c577-b233-4513-926d-a8a1ac63b0a3"], "Tendrl_context.sds_name":"gluster",
+    "Tendrl_context.sds_version":"3.8.3"
+}
+
+----
+
+* API to Get the ceph cluster details
+
+----
+
+GET /1.0/CephClusterDetails/<node_id>
+
+Sample Response:
+
+{
+"servers": [{
+        "fqdn": "dhcp43-44.lab.eng.blr.redhat.com",
+        "machine_id": "6406e485f01347f4884bf6e1981020b7",
+        "node_id": "194c4e0b-2541-4227-a808-358a3898f3c6"
+        }]
+"Tendrl_context.sds_name": "ceph",
+"Tendrl_context.sds_version": "10.2.3"
+}
+
+----
+
+* API to import ceph cluster
+
+----
+
+POST /1.0/CephImportCluster
+
+Sample Request:
+
+{
+    "Node[]":["027db80d-eee9-40b6-8e59-8c81b80aa655"], "Tendrl_context.sds_name":"ceph",
+    "Tendrl_context.sds_version":"10.2.3"
+}
+
+----
+
+==== Notifications/Monitoring impact:
+None.
+
+==== Tendrl/common impact:
+None.
+
+==== Tendrl/node_agent impact:
+
+* Implement classes to pull the hardware inventory(OS, Memory, CPU etc) and populate in the central store. See below for various data models pushed to the central store
+
+----
+CPU :
+
+{"nodename": [{"Architecture":   "architecture",
+                   "CpuOpMode":      "cpuopmode",
+                   "CPUs":           "cpus",
+                   "VendorId":       "vendorid",
+                   "ModelName":      "modelname",
+                   "CPUFamily":      "cpufamily",
+                   "Model":          "Model",
+                   "CoresPerSocket": "corespersocket"}, ...], ...}
+Etcd path : 'nodes/%s/Cpu'
+
+Memory:
+
+{"nodename": [{"TotalSize": "totalsize",
+                   "SwapTotal": "swaptotal",
+                   "Type":      "type"}, ...], ...}
+Etcd path : 'nodes/%s/Memory'
+
+OS:
+
+{"nodename": [{"Name":   "name",
+                   "OSVersion":     "osversion",
+                   "KernelVersion": "kernelversion",
+                   "SELinuxMode":   "modelname",
+                   "FQDN":          "fqdn"}, ...], ...}
+Etcd path : 'nodes/%s/Os'
+
+Node context:
+
+{"nodename": [{"NodeId": "nodeid",
+                   "MachineId": "machineid",
+                   "FQDN":      "fqdn"}, ...], ...}
+
+Etcd path : 'nodes/%s/Node_context'
+
+Tendrl context:
+
+{"nodename": [{"NodeId": "nodeid",
+                   "SdsVersion": "sdsversion",
+                   "SdsName":    "sdsname",
+                   "ClusterId":  "clsueterid"}, ...], ...}
+
+Etcd path : 'nodes/%s/Tendrl_context'
+
+
+Disks:
+This is being addressed in a different specification please refer - https://github.com/Tendrl/specifications/issues/43
+
+Network:
+This is being addressed in a different specification please refer - https://github.com/Tendrl/specifications/issues/41
+
+----
+
+* Implement classes to pull the service inventory(ceph services, gluster services etc) and populate in the central store. This will be addressed in different specification. See the issue -  https://github.com/Tendrl/specifications/issues/46
+
+* To implement import cluster workflows, below mentioned flows and atoms to be implemented:
+
+----
+
+namespace.tendrl.node_agent.gluster_integration:
+  flows:
+    ImportCluster:
+      atoms:
+        - tendrl.node_agent.objects.Package.atoms.install
+        - tendrl.node_agent.gluster_integration.objects.Config.atoms.generate
+        - tendrl.node_agent.objects.File.atoms.write
+        - tendrl.node_agent.objects.Node.atoms.cmd
+      description: "Import existing Gluster Cluster"
+      enabled: true
+      inputs:
+        mandatory:
+          - "Node[]"
+          - Tendrl_context.sds_name
+          - Tendrl_context.sds_version
+          - Tendrl_context.cluster_id
+      post_run:
+        - tendrl.node_agent.gluster_integration.objects.Tendrl_context.atoms.check_cluster_id_exists
+      pre_run:
+        - tendrl.node_agent.objects.Node.atoms.check_node_up
+        - tendrl.node_agent.objects.Tendrl_context.atoms.compare
+      run: tendrl.node_agent.gluster_integration.flows.import_cluster.ImportCluster
+      type: Create
+      uuid: 2f94a48a-05d7-408c-b400-e27827f4edef
+      version: 1
+  objects:
+    Config:
+      atoms:
+        generate:
+          enabled: true
+          inputs:
+            mandatory:
+              - Config.etcd_port
+              - Config.etcd_connection
+          name: "Generate Gluster Integration configuration based on provided inputs"
+          outputs:
+            - Config.data
+            - Config.file_path
+          run: tendrl.node_agent.gluster_integration.objects.Config.atoms.generate.Generate
+          uuid: 807a1ead-bd70-4f55-99d0-dbd9d76d2a10
+      attrs:
+        data:
+          help: "Configuration data of Gluster Integration for this Tendrl deployment"
+          type: String
+        etcd_connection:
+          help: "Host/IP of the etcd central store for this Tendrl deployment"
+          type: String
+        etcd_port:
+          help: "Port of the etcd central store for this Tendrl deployment"
+          type: String
+        file_path:
+          default: /etc/tendrl/gluster_integration.conf
+          help: "Path to the Gluster integration tendrl configuration"
+          type: String
+      enabled: true
+namespace.tendrl.node_agent.ceph_integration:
+  flows:
+    ImportCluster:
+      atoms:
+        - tendrl.node_agent.objects.Package.atoms.install
+        - tendrl.node_agent.ceph_integration.objects.Config.atoms.generate
+        - tendrl.node_agent.objects.File.atoms.write
+        - tendrl.node_agent.objects.Node.atoms.cmd
+      description: "Import existing Ceph Cluster"
+      enabled: true
+      inputs:
+        mandatory:
+          - "Node[]"
+          - Tendrl_context.sds_name
+          - Tendrl_context.sds_version
+          - Tendrl_context.cluster_id
+      post_run:
+        - tendrl.node_agent.ceph_integration.objects.Tendrl_context.atoms.check_cluster_id_exists
+      pre_run:
+        - tendrl.node_agent.objects.Node.atoms.check_node_up
+        - tendrl.node_agent.objects.Tendrl_context.atoms.compare
+      run: tendrl.node_agent.ceph_integration.flows.import_cluster.ImportCluster
+      type: Create
+      uuid: 5a48d43b-a163-496c-b01d-9c600ea0a5db
+      version: 1
+  objects:
+    Config:
+      atoms:
+        generate:
+          enabled: true
+          inputs:
+            mandatory:
+              - Config.etcd_port
+              - Config.etcd_connection
+          name: "Generate Ceph Integration configuration based on provided inputs"
+          outputs:
+            - Config.data
+            - Config.file_path
+          run: tendrl.node_agent.ceph_integration.objects.Config.atoms.generate.Generate
+          uuid: 61959242-628f-4847-a5e2-2c8d8daac0cd
+      attrs:
+        data:
+          help: "Configuration data of Ceph Integration for this Tendrl deployment"
+          type: String
+        etcd_connection:
+          help: "Host/IP of the etcd central store for this Tendrl deployment"
+          type: String
+        etcd_port:
+          help: "Port of the etcd central store for this Tendrl deployment"
+          type: String
+        file_path:
+          default: /etc/tendrl/ceph_integration.conf
+          help: "Path to the Ceph integration tendrl configuration"
+          type: String
+      enabled: true
+
+----
+
+
+==== Sds integration impact:
+Ceph integration related changes:
+
+* Populate the ceph cluster inventory in the central store
+
+----
+
+Servers:
+
+{"clusterid": [{"FSID":        fsid",
+                   "FQDN":     "fqdn",
+                   "HostName": "hostname",
+                   "Managed":  "managed",
+                   "BootTime": "boottime"}, ...], ...}
+
+Etcd path : 'clusters/%s/servers/%s'
+
+Pools:
+
+{"clusterid": [{"ClusterId":    "clusterid",
+                   "PoolId":    "poolid",
+                   "PoolName":  "poolname",
+                   "PgNum":     "pgnum",
+                   "Updated":   "updated"}, ...], ...}
+
+Etcd path : 'clusters/%s/Pools/%s'
+
+Maps:
+
+{"clusterid": [{"Config":       "config",
+                   "Health":    "health",
+                   "MonMap":    "monmap",
+                   "MonStatus": "monstatus",
+                   "PgSummary": "pgsummary",
+                   "OsdMap":    "osdmap"}, ...], ...}
+
+Etcd path : 'clusters/%s/maps/%s'
+
+Tendrl context:
+
+{"clusterid": [{"SdsVersion": "sdsversion",
+                   "SdsName":    "sdsname",
+                   "ClusterId":  "clsueterid"}, ...], ...}
+
+Etcd path : 'clusters/%s/Tendrl_context'
+
+----
+
+Gluster integration related changes:
+
+* Populate the gluster cluster inventory in the central store
+
+----
+
+Peer :
+
+{"clusterid": [{"ClusterId":     "clusterid",
+                   "State":     "state",
+                   "HostName":  "hostname",
+                   "PeerUUID":  "peeruuid",
+                   "Updated":   "updated"}, ...], ...}
+Etcd path : 'clusters/%s/Peers/%s'
+
+volume :
+
+{"clusterid": [{"ClusterId":         "clusterid",
+                   "VolId":         "Volid",
+                   "VolType":       "Voltype",
+                   "Name":          "name",
+                   "Status":        "status",
+                   "BrickCount":    "brickCount",
+                   "Deleted":       "deleted"}, ...], ...}
+Etcd path : 'clusters/%s/Volumes/%s'
+
+Bricks :
+
+{"volumeid": [{"ClusterId":             "clusterid",
+                   "VolId":             "Volid",
+                   "Path":              "path",
+                   "HostName":          "hostname",
+                   "Status":            "status",
+                   "Port":              "port",
+                   "FileSystemType":    "filesystemtype",
+                   "MountOpts":         "mountopts"}, ...], ...}
+Etcd path : 'clusters/%s/Volumes/%s/Bricks/%s'
+
+Tendrl context:
+
+{"clusterid": [{"SdsVersion": "sdsversion",
+                   "SdsName":    "sdsname",
+                   "ClusterId":  "clsueterid"}, ...], ...}
+
+Etcd path : 'clusters/%s/Tendrl_context'
+----
+
+==== Tendrl Dashboard impact:
+This is discussed in a different specification - https://github.com/Tendrl/specifications/issues/56
+
+=== Security impact:
+
+
+None.
+
+=== Other end user impact:
+
+User gets a set of APIs for import cluster operation.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+Created the github issues to track the implementation:
+
+https://github.com/Tendrl/tendrl-api/issues/40
+https://github.com/Tendrl/ceph_integration/issues/61
+https://github.com/Tendrl/gluster_integration/issues/92
+
+=== Assignee(s):
+
+
+Primary assignee:
+  nthomas-redhat
+
+Other contributors:
+  <github-id or None>
+
+=== Work Items:
+
+Basic import cluster flows are already implemented. The changes with respect to auto discovering the cluster details as part import cluster needs to be implemented
+
+
+== Dependencies:
+
+
+* https://github.com/Tendrl/specifications/issues/46
+* https://github.com/Tendrl/specifications/issues/41
+* https://github.com/Tendrl/specifications/issues/43
+* https://github.com/Tendrl/specifications/issues/56
+
+
+== Testing:
+
+* Import Ceph cluster, check whether the cluster is imported with all the objects
+* Import gluster cluster, check whether the cluster is imported with all the objects
+
+== Documentation impact:
+
+
+New APIs needs to be documented in the Tendrl API documentation.
+
+
+== References:
+
+
+* https://github.com/Tendrl/specifications/issues/54
+* https://github.com/Tendrl/specifications/issues/56
+* https://github.com/Tendrl/specifications/issues/46
+* https://github.com/Tendrl/specifications/issues/41
+* https://github.com/Tendrl/specifications/issues/43
