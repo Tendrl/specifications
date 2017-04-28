@@ -1,0 +1,195 @@
+= Collect and process ceph pool utlization trending data
+
+The performance monitoring module if enabled in Tendrl, should collect and
+process the ceph pool utilization data in time series DB. This would help in
+creating trending charts in Tendrl UI which can help storage administrator to
+decide on requirement for additional storage in the system.
+
+== Problem description
+
+If ceph pool utilization trending is not available to administrator, they cannot
+easily decide how the pools are getting filled up and at what point in time more
+additional storage to be brought in and provisioned in the system.
+
+== Use Cases
+
+This PR addresses the trending charts use case in Tendrl for the ceph storage
+pools.
+
+== Proposed change
+
+* Introduce a collectd plugin which collects the ceph pool utilization data from
+underlying cluster
+
+* Introduce a template to configure the above mentioned collectd plugin with
+details such as cluster name and thresholds
+
+* Introduce threshold handlers on the alerting module to custom handle the
+pool(and cluster as well as ceph df itself provides both) utilization threshold
+breach
+
+=== Alternatives
+
+* There are different ways to achieve the reading of pool utilization data
+
+* Option-1: Use rados module directly to invoke mon_command `df` to fetch the
+pool utilization data. A connection to rados could be kept open and keep running
+`df` command for getting details
+
+```
+import time
+import rados
+import json
+
+def get_pool_utilization(r):
+    cmd = {"prefix":"df", "format":"json"}
+    ret, buf, errs = r.mon_command(json.dumps(cmd), b'', timeout=5)
+    result = json.loads(buf)
+    return result
+
+try:
+    r = rados.Rados(conffile="/etc/ceph/ceph.conf")
+    r.connect()
+
+    for i in range(1000):
+        print(get_pool_utilization(r))
+        time.sleep(1)
+except KeyboardInterrupt:
+    pass
+finally:
+    if r is not None:
+        r.shutdown()
+```
+
+* Option-2: The other option is to use execute command `ceph df` as a process
+and parse the output for data
+
+```
+import json
+import subprocess
+
+cluster = 'my_cluster'
+cmd = [
+    'ceph',
+    '--cluster',
+    cluster,
+    '-f',
+    'json-pretty',
+    'df'
+]
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+out, err = process.communicate()
+ret_code = process.poll()
+if ret_code:
+    print "command %s exited with non-zero status: %d" % (cmd, ret_code)
+    return
+
+df = json.loads(out)
+```
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+* Alerting module to handle the raising of appropriate alerts and notifications
+in case of threshold breaches of ceph pool utilization limits.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+* The trending graphs of ceph pool utilization data would help administrators to
+decide on bringing in additional storage capacity in system based on warning and
+critical threshold breaches depicted clearly in Tendrl UI
+
+=== Performance impact:
+
+* As confirmed by ceph team running of `ceph df` command on mon nodes doesnt have
+any major impact as its not heavy and fetches details from in memory mon details
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* API module owner(s) to take care of any API impacts
+
+* Alerting module owner(s) to take care handling of threshold breaches for ceph
+pool utilization
+
+== Implementation:
+
+* Add a collectd plugin which runs `ceph df` command at regular interval and
+pushes the data to time series DB
+
+* Out of two alternatives both are equally good, but in this scenario usage of
+option-2 would be more meaningful
+
+* Make sure interval for running this plugin is nothing less than 5 seconds as
+ceph mon use this intervals for fetching details from underlying cluster. So in
+ideal situation the interval for this plugin should be anything but more than 5
+seconds
+
+* Configure this plugin only if monitoring feature is enabled for Tendrl while
+cluster creation.
+
+* Deploy the plugin only on the mon nodes
+
+=== Assignee(s):
+
+Primary assignee:
+  * anmolbabu
+
+Other contributors:
+  * anivargi - API module
+  * anmolbabu - alerting module
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/97
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Verify if the ceph pool utilization data is getting populated properly in time
+series DB
+
+* Verify the API layer if monitoring data is able to fetched
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/ceph_integration/issues/64
+
+* https://github.com/Tendrl/performance_monitoring/issues/14
+
+* https://github.com/Tendrl/alerting/issues/16
