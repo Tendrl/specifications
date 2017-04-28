@@ -1,0 +1,97 @@
+// vim: tw=79
+
+= UI Table Component
+
+Thers should be an UI component for table which should accept the parameters for columns name and their data from controller.
+
+== Problem description
+
+There is no table component present currently which can be reused across the views.
+
+== Use Cases
+
+Developer can use this table component in their views to display the data in tabular format.
+
+== Proposed change
+
+Create a generic table directive which should accept columns name and their data from the controller.
+
+=== Alternatives
+
+Developer can create table for each view but it will be redundant and unmanageable.
+
+=== Data model impact:
+
+None.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None.
+
+==== Notifications/Monitoring impact:
+
+None.
+
+==== Tendrl/common impact:
+
+None.
+
+==== Tendrl/node_agent impact:
+
+None.
+
+==== Sds integration impact:
+
+None.
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+None.
+
+=== Assignee(s):
+
+Primary assignee:
+@gnehapk
+
+=== Work Items:
+
+https://github.com/Tendrl/tendrl_frontend/issues/65
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Test directive to work as expected.
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
+
