@@ -1,0 +1,101 @@
+= Grow PGs for a Ceph pool workflow by using tendrl-frontend UI
+
+The intent of grow PG workflow is to provide a mechanism to increase the PGs for one pool at a time in tendrl.
+
+* Assumption: 
+
+    - One or more Ceph cluster exists.
+
+    - One or more Ceph pools in the Ceph cluster exists.
+
+== Problem description
+
+This specification describes a mechanism to increase the PGs for one pool at a time in tendrl.
+
+== Use Cases
+
+WIP
+
+== Proposed change
+
+WIP
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+API to update pool -
+
+    * /api/1.0/8b0c637d-f5f7-40f6-acd9-50d5feb5f4b3/CephUpdatePool
+    * Request Body - 
+        '{"Pool.pool_id","Pool.poolname":"testPool","Pool.pg_num":200,"Pool.min_size":2}'
+    
+    * Response - 
+        Status: 202 Accepted
+        { job_id: "3784922e33e8bec939be5e626e21a174" }   
+
+==== Tendrl Backend impact:
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/151
+
+== Dependencies:
+
+* API Github Issue
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+WIP
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/THAEA6CEA#/screens/218370285
+* https://redhat.invisionapp.com/share/THAEA6CEA#/screens/218370284
+* https://redhat.invisionapp.com/share/THAEA6CEA#/screens/218370283
