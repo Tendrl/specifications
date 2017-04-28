@@ -1,0 +1,418 @@
+// vim: tw=79
+
+= Configuring collectd
+
+== Introduction
+
+Tendrl's monitoring stack uses the following components:
+
+* collectd
+  ** A daemon process that resides on tendrl managed nodes, collects
+     performance statistics and pushes them to time-series db for maintaining
+     historic data.
+  ** Everything in collectd is achieved through plugins.
+  ** Collectd activates those plugins that are loaded and/or configured in
+     collectd’s conf files.
+  ** Changes in conf files will be effected in collectd only on restart of
+     the collectd daemon.
+
+* graphite
+  ** Used by tendrl monitoring stack as time series db
+  ** It consists of three software components:
+    *** carbon - a high-performance service that listens for time-series data
+    *** whisper - a simple database library for storing time-series data
+    *** graphite-web - Graphite's user interface & API for rendering graphs
+        and dashboards
+  ** Metrics get fed into the stack via the Carbon service, which writes data
+     out to Whisper databases for long-term storage.
+
+== Problem Description
+
+Tendrl needs to configure collectd for it to start collecting the performance
+statistics at regular intervals of time. This process of configuring collectd
+should require no/minimal user intervention.
+
+== Use Cases
+
+The use cases addressed by this spec are:
+
+* Tendrl core and monitoring stack are installed and user starts node-agent on
+  nodes so that they can be managed by tendrl and the new node needs to be
+  monitored.
+* Tendrl core stack is installed and one/more nodes are managed by tendrl core.
+  Now the user decides to monitor his tendrl managed nodes by installing the
+  tendrl/performance_monitoring.
+* User plugs out the monitoring after using for a while.
+
+== Proposed change
+
+* The tendrl/performance_monitoring on start, checks the existence of
+  '/monitoring/defaults' directory in etcd and if its not present, it uploads
+  the default monitoring configuration and flows for generating the collectd
+  configurations.
+* The performance_monitoring application then looks into the etcd's '/nodes'
+  directory to see if there are any nodes that are currently managed by tendrl.
+  If there are any, it triggers the monitoring provisioning flow on every node
+  for node monitoring via the core API.
+  ** The provisioning flow for the monitoring stack installs collectd-related
+     pieces on every node and generates the configuration files from templates
+     shipped with the collectd plugins on nodes.
+* For any new node that is managed by tendrl, the performance_monitoring
+  application invokes a core api to intiate the monitoring provisioning flow
+  on that node.This api then loads a job with the api parameters as job
+  parameters along with the fqdn of the new node. The job is then executed by
+  node-agent residing on that node.
+* If the user decides not to have monitoring anymore, an api will be exposed
+  by the core API which will internally invoke a flow that does the following:
+  **  Stop collectd on every tendrl managed node
+  **  Stop performance-monitoring application
+  This means that even though the monitoring is turned off, the actual
+  monitoring related bits are only terminated from service and not removed from
+  existence
+* This spec requires implementation of the following:
+  ** The api to modify defaults which will only modify default configuration
+  values on the central store and will only be picked up for fresh
+  configurations and hence already configured nodes will not be affected by
+  modifications in default configurations. The api as exposed by the
+  performance-monitoring will look like:
+
+----
+
+GET /monitoring/actions
+
+Sample Response:
+
+Status: 200 OK
+{
+  'info': {
+    'type': 'get',
+    'url': '/monitoring/defaults/thresholds',
+    'method': GET
+  },
+  'edit': {
+    'type': 'action',
+    'url': '/monitoring/defaults/thresholds/edit',
+    'method': POST
+  },
+  'info': {
+    'type': 'info',
+    'url': '/monitoring/<cluster_name>/thresholds',
+    'method': GET
+  },
+  'info': {
+    'type': 'info',
+    'url': '/monitoring/<cluster_name>/thresholds/actions',
+    'method': GET
+  }
+}
+
+----
+
+  ** From the above api, we can see that /monitoring/defaults/thresholds/edit
+     needs to be used for editting the default thresholds. The parameters to
+     edit the current default values in etcd can be obtained as below:
+
+----
+
+POST /monitoring/defaults/thresholds/edit/attributes
+
+Sample Response:
+
+Status: 200 OK
+[
+  {
+    'plugin_name': {
+      type: String
+    },
+    'threshold': {
+      'critical': {
+        type: 'Integer'
+      },
+      'warning': {
+        type: 'Integer'
+      }
+    }
+  }...
+]
+
+----
+
+  ** An option to edit configuration of thresholds at cluster level (configure
+     thresholds on all nodes of a specific cluster) will also be made available
+     via a respective api. And when such an api is invoked, the api loads jobs
+     (one for each node of the cluster) onto etcd with configuration parameters
+     passed to the api which will be picked by the node-agents of the targeted
+     nodes and hence configuration will be done on all nodes of the cluster.
+
+----
+
+GET /monitoring/<cluster_name>/thresholds/actions
+
+Sample Response:
+
+Status: 200 OK
+{
+  'info': {
+    'type': 'get',
+    'url': '/monitoring/<cluster_name>/thresholds',
+    'method': GET
+  },
+  'edit': {
+    'type': 'action',
+    'url': '/monitoring/<cluster_name>/thresholds/edit',
+    'method': POST
+  }
+}
+
+----
+
+  ** From the above api, we can see that
+     /monitoring/<cluster_name>/thresholds/edit needs to be used for editing
+     the cluster level thresholds. the parameters to edit the current cluster
+     threshold values in etcd can be obtained as below:
+
+----
+
+POST /monitoring/<cluster_name>/thresholds/edit/attributes
+
+Sample Response:
+
+Status: 200 OK
+[
+  {
+    'plugin_name': {
+      type: String
+    },
+    'threshold': {
+      'critical': {
+        type: 'Integer'
+      },
+      'warning': {
+        type: 'Integer'
+      }
+    }
+  }...
+]
+
+----
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+The default monitoring configurations will be a dict of fields like below:
+
+----
+{
+  'interval': 60,
+  'thresholds': {
+    'cpu': {'Warning': 80, 'Failure': 90},
+    'mount_point': {'Warning': 80, 'Failure': 90},
+    'memory': {'Warning': 80, 'Failure': 90},
+    'swap': {'Warning': 50, 'Failure': 70}
+  }
+}
+----
+
+and they will be system wide default configuration that will reside in etcd's
+'/monitoring/defaults' directory and will be exposed for modification via apis
+exposed by Tendrl/performance-monitoring which will be proxied to by the
+Tendrl/tendrl-api.
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+This spec requires 2 kinds of new apis to be exposed:
+
+* API to proxy the performance monitoring apis briefed in the section under
+  "Proposed Change"
+* Api to stop monitoring
+
+==== Notifications/Monitoring impact:
+
+Implementation of flows and apis described in "Proposed change" section.
+The flow definition corresponding to this in Tendrl/performance_monitoring
+will look like:
+
+----
+namespace.tendrl.node_monitoring:
+  objects:
+    Tendrl_definition:
+      value: '/_tendrl/definitions/integrations.d/performance_monitoring/data'
+      attrs:
+        data:
+          help: "The flow definitions corresponding to performance_monitoring module"
+          type: json
+    Config:
+        value: '/_tendrl/config/performance_monitoring'
+        data:
+          help: "The flow definitions corresponding to performance_monitoring module"
+          type: json
+tendrl_schema_version: 0.3
+----
+
+* The performance_monitoring application on startup for example will have:
+
+----
+  flows:
+    ConfigureCollectd:
+      atoms:
+        - tendrl.node_agent.objects.Node.atoms.cmd
+      description: "Execute given command on given node"
+      enabled: true
+      inputs:
+        mandatory:
+          - Node.fqdn
+          - plugin_name
+          - plugin_conf_params
+          - Service.name
+      post_run:
+        - tendrl.node_agent.objects.Service.atoms.check_service_status
+      pre_run:
+        - tendrl.node_agent.objects.Node.atoms.check_node_up
+      run: tendrl.node_monitoring.flows.configure_collectd.ConfigureCollectd
+      type: Create
+      uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
+----
+
+in the 'data' attribute of 'Tendrl_definition' object.
+The 'data' attribute of 'Config' will contain:
+
+----
+{
+  'time_series' : {
+    'time_series_db': 'graphite',
+    'time_series_db_server': '0.0.0.0', # The graphite server addr
+    'time_series_db_port': 80
+  },
+  'tendrl_performance' : {
+    'performance_server_interface': '0.0.0.0',
+    'log_cfg_path': '/etc/tendrl/performance_monitoring_logging.yaml',
+    'log_level': 'DEBUG',
+  }
+}
+----
+
+* In the above flow definition, the flow ConfigureCollectd synthesises a
+  command string with command name and its parameters which will be executed
+  by the atom tendrl.node_agent.objects.Node.atoms.cmd. So, basically the logic
+  to generate collectd config files is implemented as a command that creates
+  conf files using:
+  ** Templates intended to be maintained at /etc/collectd_template directory
+     (done as part of node_monitoring application installation). The command
+     to generate conf file, collectd custom plugins and templates will be
+     maintained as part of Tendrl/performance_monitoring
+  ** The configuration parameters passed from the api and hence the job.
+
+==== Tendrl/common impact:
+
+A new atom 'check_service_status' is implemented and a correspondingly the
+definition will additionally have:
+
+----
+    Service:
+      atoms:
+        configure:
+          enabled: true
+          inputs:
+            mandatory:
+              - Service.config_path
+              - Service.config_data
+          name: "Configure Service"
+          post_run:
+            - tendrl.common.atoms.service.validations.check_service_running
+          run: tendrl.common.atoms.service.configure.Configure
+          type: Update
+          uuid: b90a0d97-8c9f-4ab1-8f64-dbb5638159a3
+        check_service_status:
+          enabled: true
+          inputs:
+            mandatory:
+              - Node.fqdn
+              - Service.name
+          name: "check whether the service is running"
+          run: tendrl.common.objects.service.atoms.check_service_status.CheckServiceStatus
+          type: Create
+          uuid: eda0b13a-7362-48d5-b5ca-4b6d6533a5ab
+      attrs:
+        config_data:
+          help: "Configuration data for the service"
+          type: String
+        config_path:
+          help: "configuration file path for the service eg:/etc/tendrl/tendrl.conf"
+          type: String
+        name:
+          help: "Name of the service"
+          type: String
+        state:
+          help: "Service state can be started|stopped|restarted|reloaded"
+          type: String
+      enabled: true
+----
+
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+The end user impact will be the addition of new apis as briefed in
+"Proposed Change" section.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  anmolbabu
+
+=== Work Items:
+
+* https://github.com/Tendrl/performance_monitoring/issues/8
+* https://github.com/Tendrl/performance_monitoring/issues/9
+
+== Dependencies:
+
+https://github.com/Tendrl/specifications/pull/8/files
+
+
+== Testing:
+
+This adds apis as described in "Tendrl API impact" which need to be tested.
+
+== Documentation impact:
+
+This adds apis as described in "Tendrl API impact" which need to be documented
+
+== References:
+
+* https://github.com/Tendrl/performance_monitoring/issues/8
+* https://github.com/Tendrl/performance_monitoring/issues/9
+* https://github.com/Tendrl/specifications/pull/8
+* https://github.com/Tendrl/performance_monitoring/pull/2
