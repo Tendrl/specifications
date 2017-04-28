@@ -1,0 +1,199 @@
+= Gather and populate ceph pool usage data to Tendrl
+
+The ceph integration module in Tendrl synchronizes the cluster data to its
+central store at regular interval. The cluster data should contain the pool
+utilization data as well and store the same in central store.
+
+
+== Problem description
+
+Currently the ceph integration module synchronizes the cluster data to its
+central store. The cluster data should also contain the pool utilization data
+fetched and maintained with cluster so that same can be projected in UI for more
+help to administrator.
+
+
+== Use Cases
+
+* The cluster details should contain pool utilization data as well
+
+
+== Proposed change
+
+* Enhance the ceph cluster sync logic in Tendrl's ceph integration module to
+fetch and update the pool utilization data to central store with cluster's pool
+inventory.
+
+=== Alternatives
+
+* There are different ways to achieve the reading of pool utilization data
+
+* Option-1: Use rados module directly to invoke mon_command `df` to fetch the
+pool utilization data. A connection to rados could be kept open and keep running
+`df` command for getting details
+
+```
+import time
+import rados
+import json
+
+def get_pool_utilization(r):
+    cmd = {"prefix":"df", "format":"json"}
+    ret, buf, errs = r.mon_command(json.dumps(cmd), b'', timeout=5)
+    result = json.loads(buf)
+    return result
+
+try:
+    r = rados.Rados(conffile="/etc/ceph/ceph.conf")
+    r.connect()
+
+    for i in range(1000):
+        print(get_pool_utilization(r))
+        time.sleep(1)
+except KeyboardInterrupt:
+    pass
+finally:
+    if r is not None:
+        r.shutdown()
+```
+
+* Option-2: The other option is to use execute command `ceph df` as a process
+and parse the output for data
+
+```
+import json
+import subprocess
+
+cluster = 'my_cluster'
+cmd = [
+    'ceph',
+    '--cluster',
+    cluster,
+    '-f',
+    'json-pretty',
+    'df'
+]
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+out, err = process.communicate()
+ret_code = process.poll()
+if ret_code:
+    print "command %s exited with non-zero status: %d" % (cmd, ret_code)
+    return
+
+df = json.loads(out)
+```
+
+=== Data model impact:
+
+* Update the `Pool` data model to include utilization related fields `used`,
+`total` and `PercentUsed`
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* The pool listing API `GET /cluster/:cluster_id/pool/:pool_id` should list the
+pool with additional fields related to utilization as below
+
+```
+Status: 200 OK
+
+{
+    'cluster_id': 'bc2c51e1-516d-45b8-8310-7caab2fa784c',
+    'min_size': '1',
+    'pg_num': '128',
+    'pool_id': '1',
+    'pool_name': 'testpool',
+    'utilization': {
+        'used': 0,
+        'total': 1024,
+        'percent_used': 0
+    }
+}
+```
+
+==== Notifications/Monitoring impact:
+
+* Would be covered in a separate PR
+
+* Raised https://github.com/Tendrl/performance_monitoring/issues/14 to track
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+* Tendrl's ceph integration module should synchronize the pool utilization data
+as well while cluster data getting synchronized
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+* The REST output for listing individual pools would be including additional
+utilization details
+
+=== Performance impact:
+
+* As confirmed by ceph team, the execution of `ceph df` command on leader mon is
+not resource intensive.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* API module owner to make sure pool listing contains the utilization details
+as well and shown properly
+
+== Implementation:
+
+* Enhance the ceph integration module's cluster data syncing logic to fetch the
+instant pool utilization details and save along-with the pool inventory in
+central store
+
+* Out of above mentioned two options under alternatives, option-1 would be
+preferable here as we directly talk to rados module and we can keep the
+connection open to rados mon module and keep running command `df` again and
+again each sync time.
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+  anivargi - API module
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/80
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Verify if the pool listing displays the utilization as well in central store
+
+* Verify the pool listing API to make sure utilization details are listed
+
+== Documentation impact:
+
+* REST api documentation to update the pool listing results and add utilization
+data as well
+
+== References:
+
+* https://github.com/Tendrl/ceph_integration/issues/64
+
+* https://github.com/Tendrl/usmqe-tests/issues/19
