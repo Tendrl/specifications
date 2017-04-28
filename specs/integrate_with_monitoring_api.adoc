@@ -1,0 +1,107 @@
+// vim: tw=79
+
+= Integrate with monitoring API to generate hosts lists with monitoring data
+
+== Introduction
+
+Tendrl API needs to provide the storage, cpu usage, memory and alert
+count per host in the hosts list API
+
+== Problem description
+
+Tendrl API currently provides just the basic details like the fqdn, node_id and
+machine_id, these details are not sufficient and hence we need to add the
+monitoring details to the response per host.
+
+== Use Cases
+
+Provide a list of hosts to the user with details like storage, cpu usage,
+memory and alert count per host to generate the hosts list API
+
+== Proposed change
+
+Tendrl API needs to integrate with the monitoring API and find the details per
+host and associate them to the details fetched from etcd. These details help us
+generate the API for hosts listing.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== Impacted Modules
+
+==== Tendrl API impact:
+
+The proposed change will affect the hosts list API, the API will have more
+details about each host, the existing keys from the API are not affected and
+hence any service which integrated with the existing API will not be affected.
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+The change will have a performance impact, as Tendrl API will be requesting the
+monitoring API for details about the hosts.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  @anivargi
+
+=== Work Items:
+
+https://github.com/Tendrl/tendrl-api/issues/48
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Hosts details API should have monitoring data per host
+
+== Documentation impact:
+
+Tendrl API documentation should be updated to have new response with monitoring
+details.
+
+== References:
+
+None
