@@ -1,0 +1,110 @@
+= Delete file share workflow by using tendrl-frontend UI
+
+The intent of delete file share workflow is to provide a mechanism to delete a file share along with all connected clients and associated bricks.
+
+* Steps: 
+
+    - This action (file share delete) can be triggered in any of the 3 places: 
+
+        ** List file share - delete action.
+
+        ** Cluster object details -> File share tab - delete action.
+
+        ** File share object details - delete action
+
+    - Delete file share wizard will be modal popup, which will populate following information:
+
+    	** Warning message to draw attention to the fact that this file share will be permanently deleted.
+
+    	** And provide current utilization , a list of clients accessing this file share and a summary of bricks and usage.
+
+    	** User select how they want to handle bricks that currently have data.
+    	  it will have two option for user 
+
+    	  *** Delete data from all bricks.
+    	  *** Delete file share but let data remain (by default selected option).
+
+
+== Problem description
+
+This specification describes a mechanism to delete file share workflow in tendrl.
+
+== Use Cases
+
+WIP
+
+== Proposed change
+
+WIP
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+    * API to delete file share - Required
+
+    * API to get list of bricks associated with specific file share- Required
+
+==== Tendrl Backend impact:
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  kamlesh
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/194
+
+== Dependencies:
+
+* API Github Issue
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+WIP
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/729GRP1W9#/screens/207638142
