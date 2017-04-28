@@ -1,4 +1,4 @@
-= Generic message mechanism for logs and alerts in Tendrl"
+= Generic message mechanism for logs and alerts in Tendrl
 
 Logs and alerts need to be treated as messages emitted by Tendrl.
 
