@@ -1,0 +1,215 @@
+// vim: tw=79
+:toc:
+:sectlinks:
+:sectanchors:
+
+= Provisioning Namespace
+
+This specification builds on the
+https://github.com/Tendrl/specifications/issue/87[default node agent flows and
+namespaces] specification. It adds details regarding the provisioning flows to
+be included in the default definitions to enable the
+https://github.com/Tendrl/documentation/blob/master/provisioning.adoc[Native
+Execution provisioning scenario].
+
+
+== Problem Description
+
+Via the master definition file, Tendrl declares support for specific versions
+of storage systems that it officially supports. Provisioning flows for these
+systems need to be similarly declared globally and by default. These flows
+would enable the API to expose the possibility and the required parameters to
+allow the supported storage systems to be deployed.
+
+
+== Use Cases
+
+* Enable the required parameters for deploying a specific version of the
+  supported storage systems to be made known via the API.
+* Enable selection of a provisioning node unique to each cluster.
+* Handle system configuration to allow https://www.ansible.com/[Ansible] based
+  deployment flows.
+* Enable the storage system specific provisioning system to be deployed and
+  setup to drive the provisioning through.
+
+
+== Proposed Changes
+
+=== Internal Execution Provisioning Modules (Provisioning Wrapper Modules)
+
+The wrapper modules implement flows that enable the deployment of the storage
+system, via the provisioning system.
+
+The wrapper modules are the appropriate place to implement the following
+functionality:
+
+* Client interfaces for the provisioning systems specific to specific version
+  of the storage system and the platform, based on the mapping in the master
+  definition file.
+* Any flows (provisioning or integration) which can accept and work with the
+  parameters appropriate to a specific storage and/or provisioning system
+  version.
+
+In some cases, it may be necessary to use external libraries to communicate
+with the provisioning systems via the wrapper modules. In the scenario where
+such a library needs to be written specifically for Tendrl (eg. for gdeploy),
+the following distinction needs to be maintained:
+
+* The library must implement only the provisioning system specific interfaces.
+* The library must not include any reference to Tendrl.
+* The wrapper must implement Tendrl specific interfaces and namespaces.
+* The wrapper must load and use the library and hardcode the implementation of
+  the Tendrl namespace via the library.
+* The wrapper must serve as a translator between the Tendrl namespaces (and
+  flows) and the corresponding invocation(s) via the library.
+* In the namespaces, all references must be to methods implemented in the
+  wrapper modules only and never directly to any of the library interfaces.
+
+==== Deploying the Wrapper Modules
+
+The wrapper modules should be coded as python modules that can be loaded
+dynamically. If necessary, it should be possible to deploy the wrapper modules
+dynamically, based on the choice of the storage system to be deployed, by the
+administrator. However, the flows need to be shipped as default with the node
+agent along with the master definition files.
+
+The wrapper modules must be loaded by the node agent, on startup, and upon
+manual invocation, from a pre-defined directory.
+
+In the future, the wrapper modules may need to be packaged separately from the
+node agent.  However, for now, they'll be installed along with the node agent.
+Additional configuration, akin to that for the integration modules, would
+eventually be required for the wrapper modules in the master definition file.
+
+
+==== Versioning the Wrapper Modules
+
+Unlike the integration modules, which are versioned, it does not seem to be
+necessary to implement versioned wrapper modules. The reason for this is that
+the flows themselves can be catered for specific versions of the
+storage/provisioning systems. The implementation of these flows would be a
+hardcoded implementation.
+
+If necessary, in the future, a mapping similar to the one used for the
+provisioning systems or integration modules could be added to the master
+definition file.
+
+
+== Data Model Impact
+
+=== Namespaces
+
+==== tendrl.provisioning
+
+`tendrl.provisioning` is the global namespace that contains the provisioning
+related flows shipped by Tendrl itself. This namespace is populated directly by
+the node agent and can be implemented in the node agent itself. This namespace
+provides generic provisioning related utilities supported by Tendrl. These
+utilities provide functionality such as:
+
+SSH configuration::
+Create the SSH keypair for the root user on the provisioner node. Copy it to
+all the other nodes in the cluster to be created to allow password-less SSH
+access.
+
+Ansible installation::
+Install ansible packages.
+
+Ansible ping::
+Invoke the `ansible ping` command to verify connectivity to all the nodes in
+the cluster to be created.
+
+Ansible setup::
+This flow is a composite of the above mentioned flows.
+
+In addition, this namespace can include generic package mangement atoms, which
+can be used to create flows for deploying various system packages and services
+such as ntpd. Flows for installation and configuration of such services can be
+hardcoded in the node agent as this is a core functionality supported by
+Tendrl.
+
+==== tendrl.provisioning.flows.CreateCluster
+
+This is the generic create cluster flow built into the node agent. It
+implements the following steps:
+
+* Validate the inputs provided. The validation should make sure that the tags
+  proposed for the nodes are valid and supported by Tendrl.
+* The node agent that picks up the job assigns itself as the provisioner for
+  the specific cluster by tagging itself with the `provisioner/<cluster_id>`
+  tag.
+* The node agent then invokes the
+* `tendrl.provisioning.<type>.flows.CreateCluster` flow. `<type>` is the
+  supported storage system type specified in the master definition file.
+
+NOTE: Parameters to be accepted by the flow are discussed in the <<api,API>>
+section below.
+
+==== tendrl.provisioning.<type>
+
+This namespace implements storage system specific `CreateCluster` flows. The
+`type` is the storage system type supported in the master definition file. For
+provisioning the storage system, the `CreateCluster` flow is always invoked
+under this namespace. This flow is invoked on the node agent tagged as the
+provisioner for the cluster to be created. The storage system specific
+`CreateCluster` flow is the place to invoke the generic provisioning utilities
+provided by Tendrl, as mentioned in the
+<<tendrl-provisioning,tendrl.provisioning>> section above. The flow should
+ideally use the package installation atoms from the utilities to install the
+provisioner packages.
+
+Once the system setup is done, including any ansible related configuration, the
+flow should invoke the appropriate entry point method of the wrapper module to
+begin the provisioning operation.
+
+=== Tags
+
+The `provisioner/<cluster_id>` tags are added to allow identification of the
+provisioner node agent, per cluster. A node agent could serve as the
+provisioner for multiple clusters. Each cluster it provisions is identified by
+the cluster id in the provisioner tags associated with it. The cluster id is
+the Tendrl generated cluster id created before the invocation of the create
+cluster flow.
+
+In addition, storage system specific provisioning tags may also be supplied by
+the wrapper modules, eg. `ceph/ceph-installer`, `gluster/gdeploy`
+
+Any jobs can be routed to the provisioner by simply requiring a specifc tag,
+even from the integration namespace.
+
+
+== Impacted Modules
+
+=== API
+
+The generic CreateCluster endpoint would be exposed as follows:
+
+  POST /api/1.0/CreateCluster
+
+The parameters are as follows:
+
+  name: <String>
+  type: <String>
+  version: <String>
+  nodes:
+    node1_uuid:
+      role: <String>
+    node2_uuid:
+      role: <String>
+  parameters: <Hash>
+
+* *name*: _String_, Administrator chosen name of the cluster.
+* *type*: _String_, One of the supported storage system types from the master
+  definition file, currently `ceph` or `gluster`.
+* *version*: _String_, One of the supported versions for the storage system
+  type from the master definition file.
+* *nodes*: _Hash_, List of nodes to be part of the cluster. The keys are node
+  UUIDs. The value is a hash as well. Currently only one key is supported in
+  the value.
+** *role*: _String_, One of the supported tags for the storage system version.
+For example, `ceph/osd`, `gluster/peer`.
+* *parameters*: _Hash_, Additional storage system specific parameters. These
+  are documented in their respective specifications at
+  https://github.com/Tendrl/specifications/issues/48[#48] and
+  https://github.com/Tendrl/specifications/issues/49[#49].
+
