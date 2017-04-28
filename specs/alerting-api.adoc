@@ -1,0 +1,360 @@
+= Rest APIs Related To Alerting
+
+APIs should be exposed by tendrl-api for managing alerting related aspects such
+as configuration,listing and filtering
+
+== Problem description
+
+The rest apis for:
+
+* Listing and filtering alerts
+* List different supported alert notification medium
+* Provide a way to know the necessary and optional configuration attributes
+  of different alert notification medium.
+* List all supported types of alerts.
+
+need to be exposed by tendrl-api.
+
+== Use Cases
+
+Tendrl core stack installed and running.
+
+== Proposed change
+
+* All rest apis exposed currently by the alerting module as briefed by spec
+  pluggable_alert_delivery.adoc should be exposed by tendrl-api now.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+The following flow definition will be pushed to etcd by alerting module:
+
+----
+
+# flake8: noqa
+data = """---
+namespace.tendrl.alerting:
+  objects:
+    Config:
+      value: '/_tendrl/config/alerting'
+      data:
+        help: "The configurations path"
+        type: json
+      enabled: true
+    Alert:
+      attrs:
+        alert_id:
+          help: 'The unique identifier of alert'
+          type: String
+        node_id:
+          help: 'The unique identifier of node on which alert was detected'
+          type: String
+        time_stamp:
+          help: 'The timestamp at which alert was observed'
+          type: String
+        resource:
+          help: 'The resource with problem for which alert was raised'
+          type: String
+        current_value:
+          help: 'The current magnitude(status/utilization) of problem'
+          type: String
+        tags:
+          help: 'Alert specific fields that cannot be generalized for all alerts'
+          type: json
+        alert_type:
+          help: 'The type(status/percentage utilization) of alert'
+          type: String
+        severity:
+          help: 'The severity of alert'
+          type: String
+        significance:
+          help: 'The significance of notifying alert'
+          type: String
+        ackedby:
+          help: 'Entity/person acking the alert'
+          type: String
+        acked:
+          help: 'Indication of whether alert is acked or not'
+          type: Boolean
+        pid:
+          help: 'The id of process raising the alert'
+          type: String
+        source:
+          help: 'The process raising the alert'
+          type: String
+      enabled: true
+      value: alerts/$Alert.alert_id
+      list: alerts/
+    NotificationMedia:
+      attrs:
+        value:
+          help: 'The list of supported notification medium'
+          type: String Array
+      list: alerting/notification_medium/supported/
+    AlertTypes:
+      attrs:
+        module-name:
+          help: 'The name of the tendrl module'
+        value:
+          help: 'The list of supported types of alerts corresponding to module-name
+          type: String array
+      value: alerting/alert_types/$AlertTypes.module-name
+      list: alerting/alert_types/
+    NotificationConfig:
+      attrs:
+        id:
+          help: 'A unique identifier of the config'
+          type: String
+        value:
+          help: 'The validated configuration corresponding to notification medium'
+          type: json
+      value: alerting/notification_medium/$NotificationMedia.value[i]/config/$NotificationConfig.id
+      list: alerting/notification_medium/$NotificationMedia.value[i]/config/
+tendrl_schema_version: 0.3
+"""
+
+----
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The following apis need to be exposed by the tendrl-api module:
+
+* This adds the following apis:
+  ** Api to get list of currently supported means of notification.
+
+----
+GET /alerting/notification_medium/supported
+
+Sample Response:
+
+Status: 200 OK
+{
+  notif_medium: [email, snmp]
+}
+----
+
+  ** Api to get list of alerts with various filtering options such as based on
+     time, acked/not acked, alert type, severity, resource and significance.
+
+----
+GET /alerting/alerts?severity=CRITICAL
+
+Sample Response:
+
+Status: 200 OK
+{
+  'resource': u'swap',
+  'severity': u'CRITICAL',
+  'tags': {
+    'message': u'Host dhcp43-30.lab.eng.blr.redhat.com,plugin swap type percent (instance used): Data source "value" is currently 2.399964. That is above failure threshold of 2.000000.\n',
+    'warning_max': u'1.000000e+00',
+    'failure_max': u'2.000000e+00'
+  },
+  'pid': '21688',
+  'source': 'collectd',
+  'host': u'dhcp43-30.lab.eng.blr.redhat.com',
+  'current_value': u'2.399964e+00',
+  'time_stamp': u'1481345075.096',
+  'type': u'percent'
+}
+----
+
+  ** API to post configuration
+----
+Note: API format to be worked through in separate specs as they are very much
+      handler specific and cannot be generalised. Separate specs will be raised
+      for each handler detailing out its specifics.
+----
+
+  ** API to list alert types
+
+----
+GET /alerting/alert_types
+
+Sample Response:
+
+Status: 200 OK
+{
+  alert_types: [
+    'performance_monitoring' : {
+      cpu': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },
+      'swap': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },
+      'memory': {
+        'threshold': [
+          'Warning',
+          'Critical',
+          'Ok'
+        ],
+      },....
+    },
+    'ceph-integration': {
+      'osd_status': {
+        'In',
+        'Out',
+        'Paused',
+        .
+        .
+        .
+      },
+      'cluster_status': {
+        .
+        .
+        .
+      }
+    }
+  ]
+}
+----
+
+  ** API to provide configuration help corresponding to notification-medium
+     ex: for mail configuration
+
+----
+GET /alerting/notification_medium/<name>/help
+
+Sample Response:
+
+Status: 200 OK
+{
+    'email_id': {
+        'detail': 'The email-id',
+        'type': 'String'
+    },
+    'auth': {
+        'detail': "'ssl' or 'tls' or '' if no auth required",
+        'type': 'String'
+    },
+    'email_pass': {
+        'detail': 'Password required if auth chosen',
+        'type': 'String'
+    },
+    'email_smtp_port': {
+        'detail': 'The smtp mail server port corresponding to mail id',
+        'type': 'String'
+    },
+    'email_smtp_server': {
+        'detail': 'The smtp mail server corresponding to the mail id',
+        'type': 'String'
+    },
+    'is_admin': {
+        'detail': 'True if this is admin config else False.'
+                  'If this field is not True, only email_id suffices.',
+        'type': 'Boolean'
+    },
+    'alert_subscriptions': {
+        'detail': '* for all alerts.'
+                  'Or list of required types of alerts'
+                  'Not required for admin user(is_admin: True)',
+        'type': "String(for '*') or List of alert types"
+    },
+    'clusters': {
+        'detail': '* to receive all alerts or list of clusters'
+                  'Not required for admin user(is_admin: True)',
+        'type': "String(for '*') or List of cluster-ids"
+    }
+}
+----
+
+  ** API to add notification medium specific configuration
+
+----
+POST /alerting/notification_medium/<name>/config
+
+The request body is specific to the type of notification medium
+----
+
+==== Notifications/Monitoring impact:
+
+Currently the AlertTypes and NotificationConfig are dumped as json to etcd they
+will need to be refactored in accordance with the definition above.
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+None
+
+==== Sds integration impact:
+None
+
+=== Security impact:
+
+* The mail configuration provides an option to send mails with/without
+  passwords. If the password mode of sending mails is chosen, the admin
+  specific mail configuration needs to store email password in an encrypted
+  manner.
+
+=== Other end user impact:
+
+The above mentioned apis are the only way of user interaction with tendrl
+covered in this spec.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Who is leading the writing of the code? Or is this a spec where you're
+throwing it out there to see who picks it up?
+
+If more than one person is working on the implementation, please designate the
+primary author and contact.
+
+Primary assignee:
+  anivargi
+
+Other contributors:
+  anmolbabu
+
+=== Work Items:
+
+
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* https://github.com/Tendrl/api/issues/57
+* https://github.com/Tendrl/api/issues/58
+* https://github.com/Tendrl/api/issues/59
+
+== Documentation impact:
+
+The apis mentioned above need to be documented.
+
+== References:
+
+None
