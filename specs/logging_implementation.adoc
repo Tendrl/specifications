@@ -1,0 +1,327 @@
+= Generic message mechanism for logs and alerts in Tendrl
+
+Logs and alerts need to be treated as messages emitted by Tendrl.
+
+== Problem description
+* The logs, alerts and operations updates in Tendrl are handled differently
+  and there is no standard mechanism which makes sure no internal details are
+  exposed as part of alerts/notifications sent to end user.
+* Ideally logs messages, operation updates and alerts are messages which
+  are emitted from an application.
+
+== Use Cases
+
+Logs and alerts need to be treated as messages.
+
+== Proposed change
+* Logs, alerts and operations need to be treated as messages emitted by Tendrl modules.
+* A schema needs to be defined for emitted messages.
+* Message priorities, types etc. need to be defined at the time of emission.
+* The integration/bridge applications must pass the message as per schema.
+* For messages that serve as notifications to the administrator (or alerts),
+  exact error message must be hardcoded by the developers. No backtraces or
+  system generated error messages should be sent as notifications to the
+  administrator.
+* Notifications sent to the administrator should provide sufficient context to
+  enable debugging of the problem via investigation into the log files.
+* Notifications and alerts need to be delivered to the node agent alert sockets.
+* Common module needs to implement a logging library that hides all the implementation
+  details and configuration options from any of the components using the library.
+  Components should be able to blindly emit messages to the Message Handler module
+  in Tendrl and it should be able to deliver them to either syslog, log files,
+  alert sockets etc. depending upon the metadata and configuration.
+* Syslog must be the default logging configuration. Logging to individual
+  configuration files should be thoroughly discouraged.
+
+== Alternatives
+
+* None
+
+== Data model impact
+
+* Store the operation details in etcd:
+```
+1. Operation messages with inorder_id
+    key: queue/{job_id_id}/messages/{in_order_id}
+
+    value: {
+       message_id : "uuid",
+       priority: "",
+       timestamp: time_now,
+       publisher: "node-agent/ceph-integration......" (particular module name)
+       "request_id": "",
+       "node_id": "",
+       "cluster_id": "", (optional for node related job)
+       "flow_id": "",
+       "parent_id", (optional)
+       payload: {
+          "message": ""
+       }
+    }
+
+2. All messages are sent to syslog, only notice and above are stored in etcd
+    - all the messages are stored in  /messages/{message_id}
+    - if message have node_id then it stored in /nodes/{node_id}/messages/{message_id}
+    - if the message have cluster_id then it stored /clusters/{cluster_id}/messages/{message_id}
+
+  value:{
+      message_id : "uuid",
+      priority: "",
+      timestamp: time_now,
+      publisher: "node_agent/ceph_integration......" (particular module name)
+      "node_id": "",
+      "cluster_id": "",
+      payload: {
+         "message": """
+         "exception_traceback": "" (created automatically by exception message class
+                                    only for exception messages)
+         "exception_type": "" (created automatically only for exception messages)
+         "exception": "" (Only for exception messages)
+      }
+   }
+```
+
+== Impacted modules
+
+=== Tendrl/common impact
+* Create a new class called "Message" in common.
+```
+structure of Message class
+    "message_id": <string, assigned by message handler>,
+    "priority": <string, defined by the sender>,
+    "timestamp": <string, defined by the sender>,
+    "publisher": <string, defined by the sender>,(it will tell message from which module,
+    used to find particular log configuration).
+    "payload": <json serialized dict, defined by the sender>
+    (payload will change for log and operation other details are common)
+```
+* The Message object itself should have validations to ensure that it's well formed.
+  The validator should check the object contain all the necessary information are populated
+  correctly. If the object is invalid then it create a new message object and store the
+  original object under payload in newly created object and set the priority as warning
+  and return the newly created object. If the object is valid then it return same object.
+* When the message object gets populated then it is passed to event class.
+* Create a new class called Event. Event class should emit a Message object and put that
+  into node_agent socket.
+```
+    Use of event class:
+      - Event class will takecare of connect node socket and put the message object
+        into it.
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(socket_path)
+            s.send(message_object)
+            s.shutdown(socket.SHUT_RDWR)
+```
+* Socket path is from configuration file (node-agent.conf.yaml).
+* Create a ExceptionMessage class to handle the exception messages.
+* ExceptionMessage class is a sub-class of Message class
+* ExceptionMessage class will find the exception traceback and format the treacback in
+  well defined formate.
+* ExceptionMessage class also converted to Message class before log and stored into
+  etcd.
+```
+ Mantatory paramerters for ExceptionMessage class is
+     - priority
+     - publisher
+     - payload:
+         - message
+         - exception
+```
+=== Tendrl/node_agent impact
+* Add job id, flow id, parent id in tendrl context.
+* Create message handler in node_agent to handle the incoming message objects from socket.
+```
+ Use of message handler:
+    - Configure and run the node agent socket for ever.
+    - Message handler will read the socket, and take the message object from socket.
+    - It will pass the message object to logger module.
+```
+* Run socket in node_agent and make it keep listen.
+```
+Configuring and run the socket by message handler:
+  - In node-agent.conf.yaml add socket address and port for configuring socket.
+      socket_path="some_socket_path"
+  - In manager.py Create an object for message_handler.
+  - Message_handler will configure the socket using socket_path.
+  - Create a function called start in message handler to start the socket.
+  - From manager.py with the help of message_handler object call the start function to
+    listen the socket.
+  - Create a stop function in message_handler to stop the socket.
+```
+* When the object is received by message handler, it will passed to logger module.
+* Create a logger module in node agent to handle the message object which is passed
+  from message_handler.
+* Create a new function called handle in logger module to process message object.
+```
+- All the messages are stored in etcd.
+       - all the messages are stored in /Messages/{message_id}
+       - if message have node_id then it stored in /nodes/{node_id}/Messages/{message_id}
+       - if the message have cluster_id then it stored /clusters/{cluster_id}/Messages/{message_id}
+
+ - If the message have "job_id" then it is considered as operation, store message
+   in operation directory in etcd with sequential key.
+   operational messages stored in queue/{job_id}/messages/{in_order_id}.
+
+      For generate a sequential key in a directory
+         client.write("queue/{job_id}/messages/", message_object, append=True)
+         It will store the message_object with sequence of keys
+
+- Store the all log messages via syslog.
+```
+
+=== Tendrl/gluster_integration impact
+* Import a Message class from common.
+* Prepare a well defined json and pass it to message class.
+* Import a Event class from common and pass the message object to it.
+
+=== Tendrl/ceph_integration impact
+
+* Import a Message class from common.
+* Prepare a well defined json and pass it to message class.
+* Import a Event class from common and pass the message object to it.
+
+=== Tendrl/alerting impact
+* Import a Message class from common.
+* Prepare a well defined json and pass it to message class.
+* Import a Event class from common and pass the message object to it.
+
+=== Tendrl/performance_monitoring impact
+
+* Import a Message class from common.
+* Prepare a well defined json and pass it to message class.
+* Import a Event class from common and pass the message object to it.
+
+== Security impact
+
+None
+
+== Notifications/Monitoring impact
+
+The collectd plugin to handle collectd detected threshold breaches should be
+customized to form the json in well defined format and put that in message handler
+socket.
+
+== Other end user impact
+
+None
+
+== Performance Impact
+
+None
+
+== Other deployer impact
+
+None
+
+== Developer impact
+
+None
+
+== Implementation
+* create a new classes called Message and Event in common.
+* Message object is populated with json and validated by a validator.
+* Message object structure for Operation
+```
+message_id : "uuid",
+priority: "", (no priority)
+timestamp: time_now,
+publisher: "node_agent/ceph_integration......" (particular module name)
+"job_id": "",
+"node_id": "",
+"cluster_id": "",
+"flow_id": "",
+"parent_id",
+payload: {
+    "message": ""
+    "exception_traceback": "" (created automatically only for exception messages)
+    "exception_type": "" (created automatically only for exception messages)
+    "exception": "" (Only for exception messages)
+}
+```
+* Message structure for Alert (alert and normal log structure is same, only difference
+between alert and normal log message is priority, Alert always NOTICE)
+```
+message_id : "uuid",
+priority: "notice", (always notice)
+timestamp: time_now,
+publisher: "node_agent/ceph_integration......" (particular module name)
+node_id: "",
+cluster_id: "",
+payload: {
+    message: "" (json of all alert details from collecd, alert handler will
+                 tackcare for alert structure)
+}
+```
+* Message structure for normal log
+```
+message_id : "uuid",
+priority: "",
+timestamp: time_now,
+publisher: "node_agent/ceph_integration......" (particular module name)
+node_id: "",
+cluster_id: ""
+payload: {
+    message: "",
+}
+```
+* Message object is passed to event class and event class will takecare of connecting
+  socket and put the object into socket.
+* Node agent needs to implement a message handler to create, start socket and read a message
+  object from it.
+* Message handler will pass the message object into logger module and the logger
+  figures out where the object needs to be dumped:
+```
+- Every message is dumped to syslog.
+- Messages with a job id are dumped to the operation's update directory.
+- store all the message in etcd.
+    1.global level - all messages
+    2.node level - If node_id is present
+    3.cluster level - If cluster_id is present
+```
+* Message priorities and usages:
+```
+- Debug: Low level information and implementation details that are never pushed to etcd.
+  This includes backtraces.
+- Info: Generic messages. Any messages about flow invocations should be info.
+  Messages originating from storage system or monitoring events may end up here.
+  This is also not stored in etcd.
+- Notice: Hardcoded messages that need to be pushed as notifications.
+  Messages originating from storage system or monitoring events may end up here.
+- Warn: Hardcoded messages that are pushed as UI notifications, but contain
+  warnings instead of just information. Messages originating from storage system
+  or monitoring events may end up here.
+- Error: Errors generated during execution. Probably as a result of exception
+  handling. These may original from within or outside Tendrl.
+- Critical: Operational problems, such as process not responding or hardware
+  failures, critical threshold breaches etc.
+```
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+Other contributor(s): Anmolsachan
+
+== Work Items
+
+* https://github.com/Tendrl/specifications/issues/28
+
+== Dependencies
+
+None
+
+== Testing
+
+* Sanity check for flow.
+* Check all log messages are in correct format
+* Check alert is passed to socket successfully
+
+== Documentation impact
+
+None
+
+== References
+
+* https://github.com/Tendrl/specifications/issues/55
+* https://github.com/Tendrl/specifications/blob/master/specs/pluggable_alert_delivery.adoc
+* Tendrl/usmqe-tests#14 for testing
