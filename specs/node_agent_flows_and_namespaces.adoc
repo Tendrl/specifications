@@ -1,0 +1,623 @@
+// vim: tw=79
+:toc:
+
+= Node Agent Flows and Namespaces
+
+This specification is an overarching specification to denote the scope of the
+operations or responsibilities of the node agent.
+
+
+== Problem Description
+
+Node agent serves as the component that is responsible for invoking and/or
+executing operations that are part of the global Tendrl scope. Such operations
+include, but are not limited to:
+
+* node specific hardware and network inventory
+* disk and process management
+* provisioning operations against storage systems that need to be invoked in
+  Tendrl's global scope
+
+Tendrl officially supports specific storage systems (ceph and gluster
+presently). However, Tendrl also aims to be a framework that provides some
+essential capabilities and interfaces so that it is easy to add support to
+storage systems not officially supported by Tendrl at any point in time. To an
+administrator, Tendrl also seeks to provide a seamless experience where Tendrl
+can auto-detect existing deployments and out of the box sane defaults for
+laying out the storage systems and managing them.
+
+Given these goals, it is impossible to define a completely generic system,
+since some specifics about the storage systems must always be known to Tendrl.
+At the same time, Tendrl's interfaces need to be defined in such a way that
+there can be a clean abstraction between pluggable storage system support and
+Tendrl components. Given it's responsibilities, stated above, node agent is the
+component where this abstraction needs to be.
+
+In addition to the storage systems, Tendrl's own pluggable stack such as the
+monitoring stack need to be deployable against an existing Tendrl deployment.
+These stacks would be handled the same way as support for an storage system.
+
+
+== Use Cases
+
+This specification addresses the core node agent scope and impacts multiple
+specifications pertaining to the node agent capabilities:
+
+* Allow node agent to run on any node, including nodes where Tendrl components
+  are deployed. This would be achieved by tagging and tag based job routing,
+  https://github.com/Tendrl/specifications/issues/44[#44].
+* Automatic detection of services running on a node, including Tendrl and
+  storage system components,
+  https://github.com/Tendrl/specifications/issues/46[#46]. This functionality
+  also impacts the import cluster workflow to enable automatic detection of the
+  storage cluster version and layout,
+  https://github.com/Tendrl/specifications/issues/54[#54].
+* Provisioning support for ceph,
+  https://github.com/Tendrl/specifications/issues/48[#48], and gluster
+  https://github.com/Tendrl/specifications/issues/49[#49].
+* Various provisioning flows,
+  https://github.com/Tendrl/specifications/issues/47[#47],
+  https://github.com/Tendrl/specifications/issues/51[#51],
+  https://github.com/Tendrl/specifications/issues/52[#52].
+
+
+== Proposed Changes
+
+=== Platform Detection Modules
+
+Node agent must be able to indentify the base system type (centos, rhel, ubuntu
+etc.) and it's version. This information would later be used to determine which
+specific storage systems and/or their specific versions are supported and can
+thus be deployed on the platform.
+
+* Node agent needs to define a directory from which it can load the modules.
+* Each module should contain an interface method to be called to invoke it's
+  functionality.
+* Each module must contain the logic to ascertain only one specific platform
+  type and version.
+* Once a specific module detects a platform, the operation can be terminated
+  without invoking the remaining detection modules.
+* The supported platform types and versions would need to be hardcoded and
+  shipped with Tendrl.
+
+=== Storage System Integration Modules
+
+It is necessary to ship a part of the officially supported storage system
+specific integration namespace with the node agent itself. However, this should
+only be a "bootstrap" namespace, necessary to detect and provision the rest of
+the namespace and components.
+
+* By default, two types of integration modules need to be shipped with the node
+  agent:
+** Service detection modules, which have been covered in the <<Service Detection Modules>> section.
+** Provisioning modules to deploy the integration bridges or provisioning
+   systems (gdeploy, ceph-ansible etc.) for a specific storage system, which
+   have been covered in the <<Provisioning Modules>> section.
+* For both types of modules, node agent needs to define a separate directory
+  from where the specific type of integration provisioning modules can be loaded.
+* The modules can be python classes with a specific interface method to be
+  called.
+
+==== Service Detection Modules
+
+Storage system specific detection modules cater primarily to the cluster import
+scenario. In addition, modules that detect Tendrl's own components enable
+various deployment and self-provisioning scenarios, which would be covered in
+future specifications.
+
+* All of the detected modules must be executed on startup.
+* It must be possible to define flows to invoke specific detection modules. The
+  commons library should provide an atom to invoke the service detection
+  functionality. The parameter to this atom would be the specific module to be
+  invoked. The atom must defined in the global node agent namespace.
+* When available as flows, it would be the detection modules would be invoked
+  via jobs. The job can indicate a specific module to be executed. If the job
+  doesn't specify all the modules must be executed. It is not necessary to
+  define the flows currently, but the code must enable support to write such
+  flows in the future.
+* The detection modules should be able to detect the various Tendrl components:
+  api and the central store by default, plus the Tendrl integration bridges for
+  any officially supported storage system for along with these storage systems'
+  services such as glusterd instances, ceph mon and osd processes etc.
+* Storage sytem specific modules would be able to detect the roles of the
+  specific nodes in the cluster. In such a case, additional queries should be
+  run against the detected storage system service to gather a list of all the
+  nodes in the cluster, and their roles.
+
+==== Provisioning Modules
+
+In the cluster creation It is necessary to be able to provision the
+provisioning system itself in cluster creation workflows. The modules shipped
+with the node agent must contain the necessary code to allow the provisioning
+system to be provisioned and not the entire provisioning system itself.
+
+* Bootstrap part of the integration namespace to be shipped with the node agent
+  would be supplied by these modules. On startup, the namespaces should be
+  loaded from the detected modules and pushed to the central store.
+* These namespaces would contain flows that enable the provisioning system to
+  be deployed. The atoms in these flows could be as simple as yum or pip
+  invocations that install the provisioning system.
+
+NOTE: Additional flows may need to be shipped in the global node agent
+namespace to enable full provisioning support. However that will be covered as
+part of the provisioning specifications.
+
+
+=== Pluggable Tendrl Stacks
+
+Every pluggable stack would need to supply it's own service detection,
+provisioning and, if applicable, integration modules. Each of these modules
+need to add the appropriate flows.
+
+
+== Data Model Impact
+
+=== Master Definition File
+
+The structure of the definition files would need to be updated to support
+provisioning and auto-detection functionality.
+
+A master definition file needs to be created, which would contain the essential
+global Tendrl namespace. Following is a commented version of what such a master
+definition file would contain. The example below sources all the definitions
+from a single file. However, this could be split up in multiple files and the
+namespaces combined as part of the centralised compilation process. The
+compilation process would be covered by specification
+https://github.com/Tendrl/specifications/issues/39[#39].
+
+  # The global tendrl namespace would consist mostly of hardcoded keys and
+  # values. Most of these keys and values would be reused in all the other
+  # definition files. The code associated with this namespace would also
+  # contain specific logic to handle the declarations in this section and the
+  # corresponding references from the other namespaces of the definition files.
+  namespace.tendrl:
+    # Installation sources define the supported installation methods and the
+    # parameters that need to be supplied for using that method. This being in
+    # the global tendrl namespace, defines the expected data types. These
+    # values would be used by the validations to ensure that wherever the
+    # `installation_sources` section is used, outside this global namespace, it
+    # conforms to the definitions provided.
+    #
+    # Each installation_type contains a list of mandatory parameters. Along
+    # with these, variables could be populated on the fly. These need to be
+    # supplied as `parameters` from the appropriate `installation` sections.
+    installation_sources:
+      # installation_type
+      yum_repository:
+        # Configure the yum repository. Doesn't actually install anything.
+        repository_path: String
+        gpgcheck: Boolean
+        packages: Hash
+      yum:
+        # Install packages using yum. Assume that the repositories have already
+        # been configured.
+        # The value supplied needs to be {name:version,name:version}
+        packages: Hash
+      git:
+        repository_path: String
+        # tag, branch or commit id
+        reference: String
+      pip_package:
+        package_name: String
+        # "latest" is a supported version, which will automatically use the
+        # latest available.
+        package_version: String
+      pip_requirements:
+        requirements_file: String
+      git+pip_requirements: Hash
+        # It is possible to chain multiple installation methods together. In
+        # which case, they'll be invoked in the order specified and the
+        # parameters would be required based on their individual definitions.
+      yum_repository+yum: Hash
+    platforms:
+      # platform_type supported by tendrl. One of these platforms and their
+      # corresponding versions must be reused in any of the definition files.
+      centos:
+        # platform_version
+        # Supported versions, in ascending order of release. This list, being
+        # ordered, enables the comparators used later in the file to function.
+        - 6.x
+        - 7.x
+      ubuntu:
+        - 15.04.x
+        - 15.10.x
+        - 16.04.x
+    invocations:
+      service:
+        # systemd service
+        # implementation module: tendrl.global.Invocations.Service
+        parameters:
+          name: String
+          start_action: String
+          stop_action: String
+      cli:
+        # Generic CLI command
+        # implementation module: tendrl.global.Invocations.Cli
+        parameters:
+          # Array of objects
+          - command: String
+            # Provide either a list of success or failure exit codes. Anything
+            # else would indicate the other condition.
+            success_exit_code: Array
+      module:
+        # A specific module in the code
+        parameters:
+          - module: Module
+            parameters: Hash
+    storage_system_types:
+      ceph: namespace.tendrl.integrations.ceph
+      gluster: namespace.tendrl.integrations.gluster
+  namespace.tendrl.integrations.ceph:
+    node_roles:
+      - mon
+      - osd
+    detection_roles:
+      # detection module: role to be assigned if detected
+      ceph_mon: mon
+      ceph_osd: osd
+    provisioners:
+      # provisioner_type: provisioner specific namespace
+      ceph-installer: namespace.tendrl.integrations.ceph.provisioner.ceph_installer
+      ceph-ansible: namespace.tendrl.integrations.ceph.provisioner.ceph_ansible
+    integration:
+      installation_sources:
+        # Sections that define a list of things don't need the `type`
+        # attribute. Essentially, a definition section simply lists
+        # alternatives and their details. A section somewhere later then
+        # references one of the defined objects. In such a scenario, it's a
+        # specific instantiation of the definition and requires a `type`
+        # attribute.
+        git+pip_requirements:
+          parameters:
+            ceph_integration_version: namespace.tendrl.installation_sources.git.TagVersion
+          repository_path: https://github.com/Tendrl/ceph_integration.git
+          reference: $ceph_integration_version
+          requirements_file: requirements.txt
+          invocation:
+            # Here, the invocation section instantiates a specific type of
+            # object from the available ones defined in the global
+            # invocations list. Hence, the `type` attribute is required. Only
+            # one specific object can be instantiated via `type`, so the
+            # parameters are automatically applied to that specific object.
+            # The invocation section contains an ordered list of invocations to
+            # be executed one time, post installation.
+            - type: cli
+              parameters:
+                - command: 'bin/ceph_integration'
+                  success_exit_code: [0]
+        yum_repository+yum:
+          parameters:
+            repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+          repository_path: http://tendrl.org/repos/ceph-integration/yum/$repo_system_version/
+          packages: [tendrl-integration-ceph]
+          invocation:
+            - type: service
+              parameters:
+                name: tendrl-ceph-integration.service
+                start-action: start
+                stop-action: stop
+    versions:
+      # Versions can be with or without the .x wildcard. Without the
+      # wildcard, specific version will be matched.
+      2.0:
+        # Keys must reference the keys from the platforms section.
+        ubuntu:
+          # Versions can use comparators, along with the values from the
+          # list of supported versions from the platform type.
+          >=15.04:
+            provisioner:
+              # The type is used to resolve to the appropriate namespace
+              # based on the `provisioners` section.
+              type: ceph-ansible
+              installation:
+                # The installation section here would provide the variables
+                # required by the installation_sources section in the
+                # provisioner's namespace.
+                type: git
+                parameters:
+                  provisioner_version: 2.0
+            integration:
+              installation:
+                type: git+pip_requirements
+                parameters:
+                  ceph_integration_version: 1.0.x
+        centos:
+          =6.x:
+            provisioner:
+              type: ceph-installer
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+      2.1.x:
+        ubuntu:
+          # The + operator has been used to combine multiple versions to
+          # create a range.
+          >=15.10+<=16.04:
+            provisioner:
+              type: ceph-ansible
+              installation:
+                type: git
+                parameters:
+                  provisioner_version: 2.1.x
+            integration:
+              installation:
+                type: git+pip_requirements
+                parameters:
+                  ceph_integration_version: 1.2.x
+        centos:
+          # The .x wildcard here has been used to ensure that any versions
+          # in the 7 series only, above 7.4, will be supported.
+          >=7.4.x:
+            provisioner:
+              type: ceph-installer
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+  namespace.tendrl.integrations.ceph.provisioner.ceph_installer:
+    installation_sources:
+      yum_repository+yum:
+        parameters:
+          repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+        repository_path: http://ceph-installer.org/repos/yum/$repo_system_version/x86_64/
+        packages: [ceph_installer]
+        invocation:
+          # Invocations are referenced from the global `invocations`
+          # declarations. Invocation sections are necessary in cases where a
+          # a one-time post installation activity is needed, such as a
+          # service to be started. The actual integration and interaction
+          # with the system is coded in the wrapper based on the flows.
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+          - type: service
+            parameters:
+              name: ceph-installer.service
+              start_action: start
+              stop_action: stop
+      git:
+        parameters:
+          provisioner_version: namespace.tendrl.installation_sources.git.TagVersion
+        repository_path: https://github.com/ceph/ceph-installer.git
+        reference: $provisioner_version
+        invocation:
+          - type: cli
+            parameters:
+              - command: 'bin/ceph-installer setup'
+                success_exit_code: [0]
+              - command: 'bin/ceph-installer start'
+                success_exit_code: [0]
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+  namespace.tendrl.integrations.ceph.provisioner.ceph_ansible:
+    installation_sources:
+      git:
+        repository_path: https://github.com/ceph/ceph-ansible.git
+        reference: $provisioner_version
+        # The lack of an invocation section means there's no invocation to be
+        # done post installation. The actual integration wrapper code
+        # implements all the necessary actions to integrate with the 
+        invocation:
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+          - type: cli
+            parameters:
+              - command: 'bin/setup'
+                success_exit_code: [0]
+  namespace.tendrl.integrations.gluster:
+    node_roles:
+      - glusterd
+    detection_roles:
+      # detection module: role to be assigned if detected
+      glusterd: glusterd
+    provisioners:
+      gdeploy: namespace.tendrl.integrations.gluster.provisioner.gdeploy
+    integration:
+      installation_sources:
+        yum:
+          parameters:
+            repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+          repository_path: http://tendrl.org/repos/gluster_integration/yum/$repo_system_version/
+          packages: [tendrl-integration-gluster]
+          invocation:
+            - type: service
+              parameters:
+                name: tendrl-gluster-integration.service
+                start-action: start
+                stop-action: stop
+    versions:
+      3.x:
+        centos:
+          =6.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+      4.x:
+        centos:
+          =6.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el6
+          =7.x:
+            provisioner:
+              type: gdeploy
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+            integration:
+              installation:
+                type: yum_repository+yum
+                parameters:
+                  repo_system_version: el7
+  namespace.tendrl.integrations.gluster.provisioner.gdeploy:
+    installation_sources:
+      yum_repository+yum:
+        parameters:
+          repo_system_version: namespace.tendrl.platforms.centos.RepoVersionString
+        repository_path: http://gdeploy.org/repos/yum/$repo_system_version/
+        packages: [gdeploy]
+        invocation:
+          - type: module
+            parameters:
+              - module: Tendrl.Provisioning.SetupSsh
+                parameters: `tendrl_context.nodes`
+
+
+
+==== Version as a Data Type
+
+A global Version object would need to be implemented. This object would contain
+the logic to be able to resolve the .x wildcards and have some comparison logic
+implemented. This object is expected to be inherited and overriden in any
+namespace that requires it's own implementation logic. This way Version becomes
+a valid data type.
+
+Examples of some of the Version sub-types from the above definition file
+structure include:
+
+namespace.tendrl.installation_sources.git.TagVersion::
+This type of Version would need to be able to get a list of all the tags in the
+repository and match one of them. To implement the .x wildcard, the latest from
+the list of tags that match the non-wildcard part of the version string would
+need to be picked.
+
+namespace.tendrl.platforms.centos.RepoVersionString::
+This type of Version would probably be a hardcoded mapping of distro version
+strings to the actual versions. For example:
+
+  6.x: el6
+  7.x: el7
+
+This example is a bit contrived, however. The parameter's value has been
+directly specified. A `String` data type would probably suffice in this
+scenario.
+
+
+=== Node States
+
+At any point in time, a node can be in one of the following states:
+
+Detected::
+A node agent is running on the node, the node inventory is being imported.
+
+Managed::
+The node agent has finished pulling in all the inventory details for the node
+and is able to accept jobs for the node.
+
+Import Pending::
+A Managed node which has been detected to be running one or more supported
+storage system components.
+
+Importing::
+A cluster import operation is in progress which the Managed node is a part of.
+
+Imported::
+A Managed node that is part of a cluster which has been imported.
+
+Provisioning::
+A Managed node that is part of a create cluster operation.
+
+
+==== States for a node with existing cluster components, pre-import
+. Detected
+. Managed
+. Import Pending
+
+==== States for a node with existing cluster components, during import
+. Importing
+
+==== States for a node with existing cluster components, post-import
+. Imported
+
+==== States for a node with no existing cluster components
+. Detected
+. Managed
+
+==== States for a node on which a cluster is being provisioned
+. Provisioning
+. Importing
+
+==== States for a node on which a cluster has been created
+. Imported
+
+
+The above states need to be stored as values under an object `node_state` under
+each node's directory.
+
+
+=== Existing Cluster Detection
+
+Each node in any state `Import Pending` is expected to contain a
+`detected_cluster` object. This object would contain the following details
+regarding the detected cluster components:
+
+type::
+One of the values from the `storage_system_types` from `namespace.tendrl`.
+
+version::
+Detected cluster version.
+
+role::
+Role the node plays in the cluster. Must be one of the `node_roles` from the
+storage system's integration namespace. Depending upon which detection module
+return a success, this role is assigned based on the mapping in
+`detection_roles` in the same namespace.
+
+id::
+A temporary id used to identify all the nodes that may belong to the same
+cluster. For ceph, this could be the fsid. A mechanism would need to be devised
+for gluster. This id is just for the temporary purpose of allowing the
+  administrator to identify a group of nodes belonging to the same cluster.
+
+The API would attach this metadata, if it exists, to each of the nodes it returns.
+
+
+=== Nodes Part of an Imported Cluster
+
+During the import process, the following would be done:
+
+* A cluster id is generated and the corresponding cluster namespace is created
+  under `/clusters`.
+* A `cluster_id` object is created in each of the nodes participating in
+  the cluster. This object simply contains the generated cluster id.
+* A `cluster_role` object is created in each of the nodes participating in the
+  cluster. This object contains the role assigned to the node. As before, must
+  be one of the roles from the `node_roles` list in the storage system
+  namespace.
+* A `cluster_attributes` object is also created in each of the nodes. This
+  object contains administrator defined, and storage system specific attributes
+  such as name, fsid etc.
+
