@@ -1,0 +1,183 @@
+= Specification for adding network details in node hardware inventory
+
+Add network details also as a part of node hardware inventory
+
+== Problem description
+
+Hardware inventory details are used to show exact status of the particular
+node. Currently network details are missing in node hardware inventory.
+we have to add network details like network_id, ipv4, ipv6, netmask, status,
+interface_id, sysfs_id, device_link, interface_type, model, driver_modules, drive
+hw_address, link_detected as a part of node hardware inventory.
+
+== Use Cases
+
+Tendrl should show the current status of network interface.
+
+== Proposed change
+* From node agent collect all network interface details in node inventory list and
+  store it in etcd. (Detailed information in implementation section).
+
+== Alternatives
+
+* We can also use ethtool for getting network details. But ethool is not
+  available for pip.
+
+== Data model impact
+
+* Add network details in etcd with key nodes/node_id/Networks/{interface_name}. (node level)
+* Add network details in etcd with key networks/{subnet}. (global level)
+
+== Impacted modules
+
+=== Tendrl/common impact
+
+None
+
+=== Tendrl/node_agent impact
+
+* Add a new function in pull_hardware_inventory to collect network interface
+  details.
+* Create a new class called Network in persistence module to keep the network
+  details.
+* Create a new function in Network class to convert object into json. (We are string
+  json by json in etcd).
+* Modify the manager modules to read and store network interface details.(stroring
+  network details in node level and global level also).
+* Create an object in tendrl_definitions_node_agent for network details.
+* Commands used to retrieve network details are:
+```
+    interfaces = netifaces.interfaces()
+    ipv4_addr_list = netifaces.ifaddresses(interfaces[integer_value])[AF_INET]
+    netmask = ipv4_addr_detail[integer_value]['netmask']
+    ipv6_addr_list = netifaces.ifaddresses(interfaces[integer_value])[AF_INET6]
+```
+* Commnad for check network interface is up or not
+```
+    Command({"_raw_params": "cat /sys/class/net/wlp3s0/operstate"})
+    Command({"_raw_params": 'hwinfo --network'})
+```
+* Code to find subnet using ip address and netmask
+```
+import netaddr
+cidr = netaddr.IPNetwork('%s/%s' % (address, netmask))
+network = cidr.network
+```
+* Expected format for the network details in etcd as node level is:
+```
+/nodes/{node_id}/Networks
+
+{"interface_name": {"ipv4": ["ipv4address", ...],
+                    "ipv6": ["ipv6address, ..."],
+                    "netmask": ["subnet", ...],
+                    "subnet": "subnet",
+                    "status":"up/down",
+                    "interface_id": "",
+                    "sysfs_id": "",
+                    "device_link": "",
+                    "interface_type": "",
+                    "model": "",
+                    "driver_modules": "",
+                    "drive": "",
+                    "hw_address": "",
+                    "link_detected": ""
+                    }, ...
+}
+```
+*  Expected format for the network details in etcd as global level is:
+```
+/networks
+
+{"subnet1": [{"interface_name": "interface",
+            "ipv4": ["ipv4address", ...],
+            "ipv6": ["ipv6address, ..."],
+            "netmask": ["subnet", ...],
+            "status":"up/down",
+            }, ...
+          ],
+ "subnet2": [{"interface_name": "interface",
+             "ipv4": ["ipv4address", ...],
+             "ipv6": ["ipv6address, ..."],
+             "netmask": ["subnet", ...],
+             "status":"up/down",
+             }, ...
+           ],
+}
+```
+* Add new object in tendrl defenition file with list.
+```
+list: nodes/$Node_context.node.id/Network
+list: networks/$subnet
+```
+
+=== Tendrl/gluster_integration impact
+
+None
+
+=== Tendrl/ceph_integration impact
+
+None
+
+== Security impact
+
+None
+
+== Notifications/Monitoring impact
+
+We might have to monitor the status of the network interface(up/down).
+
+== Other end user impact
+
+None
+
+== Performance Impact
+
+None
+
+== Other deployer impact
+
+None
+
+== Developer impact
+
+None
+
+== Implementation
+
+* Netifaces and hwinfo packages are used to find the network interface details.
+* Add netifaces and hwinfo packages as dependency.
+* From node_agent add a new function in pull_hardware_inventory to find network
+  interfaces details except 'lo' and update those details into node_inventory list.
+* Create a new class called "Network" in persistence module to keep network details.
+* Add a new function in Network to convert object to json.
+* Modify the manager to populate the instance of newly created class (network) using
+  node_inventory list and persist the instance in etcd.
+* Create an object in tendrl_definitions_node_agent for network details.
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+Other contributor(s): TODO
+
+== Work Items
+
+* git-hub issue: https://github.com/Tendrl/node_agent/issues/78
+
+== Dependencies
+
+* Netifaces, netaddr and hwinfo are  dependency to find network details
+* Bonded network interface details will be handled in another specification file
+
+== Testing
+
+* Sanity check for flow.
+* Check all network details are persisted successfully.
+
+== Documentation impact
+
+None
+
+== References
+
+* Bonded interface details will be handled in another specification file
