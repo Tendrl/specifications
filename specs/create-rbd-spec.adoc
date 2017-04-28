@@ -1,0 +1,236 @@
+= Create RBD workflow by using tendrl-frontend UI
+
+The intent of create RBD workflow is to provide a mechanism to create one or more Ceph RBDs into tendrl for management using tendrl-frontend UI.
+
+* Assumption: 
+
+    - Ceph cluster exists.
+
+    - Ceph pool in the Ceph cluster may or may exist.
+
+== Problem description
+
+This specification describes a mechanism to create one or more Ceph RBDs into tendrl for management.
+
+== Use Cases
+
+This addresses the use case of creating RBD into tendrl for management.
+
+The workflow is as follows:
+
+* "Create RBD" is triggered by "Create RBD" button on RBD landing page.
+   (https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/198417119)
+
+* User clicks on "Create" button.
+
+* It will redirect the user to a wizard for creating RBD/RBDs.
+
+* The flow consist of three steps.
+
+* In the first step, user needs to fill below items to the form -
+  (https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735641)
+
+    - RBD Name
+
+    - RBDs to create(UI will autogenerate the name of RBDs based on the number)
+
+    - cluster(User will select from the drop down which will list all the clusters present in Tendrl)
+
+    - Target size
+
+* If the target size * RBDs to create > available storage in this cluster, a warning message will be displayed, but 
+  the user will be allowed to continue.
+
+* For block devices, a backing pool must be created. Only one pool can be created per set of block devices.
+
+* In the second step, user will decide whether to use an existing pool or create a new pool as the backing pool
+  for this set of RBD.
+  (https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735638)
+
+* On choosing existing pool, a drop down will be displayed which will list down all the available pools in the 
+  Tendrl.
+
+* If using an existing pool, the total storage required by all the RBDs must not exceed the available capacity of  
+  the chosen cluster(i.e. Target size * #RBDs to create <= available capacity in cluster).
+
+* When user selects an existing pool, the attributed of that pool will be shown along with a graphic that reflects 
+  storage currently in use by that pool, the amount to be added, and the amount remaining in the cluster after the creation of the new RBD storage.
+
+* The details to be shown on the UI on selecting existing pool are -
+
+    - Type
+
+    - OSDs
+
+    - Replicas
+
+    - PG Count
+
+    - Journal Configuration
+
+    - Quotas
+
+* If user wants to create a new pool, they are presented with a pool creation form. See Create Pool Workflow's spec 
+  for details about these options.
+  (https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735639)
+
+* User will be presented with a summary of block devices to be created, including the backing pool information.
+  (https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735647)
+
+* Details on the summary page for RBDs are -
+
+    - Name
+
+    - Target Size
+
+* Details on the summary page for backing pool are -
+
+    - Name
+
+    - Type
+
+    - OSDs
+
+    - Replicas
+
+    - PG Count
+
+    - Journal Configuration
+
+    - Quotas
+
+* Clicking on "Create RBDs" button will create these RBDs and backing pool, if required.
+
+* A POST call be fired form UI to backend along with data required for creating RBD.
+
+* On successful creation, a successful message will be displayed to user.
+  (https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735642) 
+
+== Proposed change
+
+Front-end related changes:
+
+    * Create view for "Create RBD" workflow.
+    * An API call be triggered at the bootstrap of application which will fetch the cluster list, pool list 
+      to display the 
+
+      - cluster options and size for each cluster in step one 
+
+      - pool options and it details in step two 
+
+    of the workflow. 
+    
+    * When user clicks on "Cancel" button, the operation should be stopped and user will be landed to RBD landing 
+      page.
+
+    * When user clicks on "Back" button, he will be taken back to previous step in the workflow.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+API to get the list of cluster and pool -
+
+    * /api/GetClusterList
+    * Response - 
+
+    {
+        "clusters": [{
+            "fsid": "c221ccdb-51d6-4b57-9f10-bcf30c7fa351",
+            "integration_id": "c221ccdb-51d6-4b57-9f10-bcf30c7fa353",
+            "name": "ceph",
+            "sds_name": "ceph",
+            "sds_version": "10.2.5",
+            "cluster_id": "c221ccdb-51d6-4b57-9f10-bcf30c7fa353",
+            "pools": {
+                "0": {
+                    "percent_used": "0",
+                    "pg_num": "64",
+                    "pool_id": "0",
+                    "pool_name": "rbd",
+                    "used": "0",
+                    "min_size": "2"
+                }
+            }
+        }]
+}
+
+
+API to post the data for import cluster - Required.
+
+==== Tendrl frontend impact:
+
+   * Needs to add one more routing for create RBD view.
+   * Needs to be add unit tests for the same.
+
+==== Tendrl Backend impact:
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+
+None.
+
+=== Developer impact:
+
+
+None.
+
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+
+=== Work Items:
+
+https://github.com/Tendrl/dashboard/issues/129
+
+== Dependencies:
+
+* https://tendrl.atlassian.net/browse/TEN-143
+
+
+== Testing:
+
+=== Unit tests needs to be tested -
+
+* Should fetch cluster and pool list properly.
+* Should create RBD/RBDs.
+
+== Documentation impact:
+
+== References:
+
+* https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/198417119
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735641
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735640
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735638
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735639
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735647
+* https://redhat.invisionapp.com/share/EHAC6S0N4#/screens/217735642
