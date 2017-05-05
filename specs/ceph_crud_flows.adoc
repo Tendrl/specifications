@@ -1,0 +1,228 @@
+// vim: tw=79
+
+= CRUD flows for ceph cluster entities
+
+The ceph-integration module need to provide flows for creating, retrieving,
+updating and deleting various entities like pools, rbds, ec-pools etc.
+
+== Problem description
+
+Currently the ceph-integration module provides flows only for creation and
+deletion of storage pools. Need to add flows for managing rbds, osd, erasure
+code profiles and ec-pools as well.
+
+== Use Cases
+
+CRUD operations for ceph cluster entities like storage pools, rbds, ec-pools and
+erasure code profiles.
+
+== Proposed change
+
+Add flows in ceph-integration module for below
+
+* Pool
+** Create
+** Update
+** Delete
+
+* RBDs
+** Create
+** Delete
+** Resize
+
+* Erasure coded pool
+** Create
+** Update
+** Delete
+
+* Erasure code profile
+** Create
+
+=== Alternatives
+
+There are two options to achieve the CRUD flows for ceph entities -
+
+* Use Calamari REST endpoints
+** pros
+*** Currently Calamari supports create/update/delete REST end points for pool
+management. For everything else, we need to invoke generic `CLI` end point from
+Calamari
+
+** cons
+*** Introduces another daemon on cluster MON nodes
+
+* Use direct rados and rnd command calls from ceph-integration modules
+** pros
+*** Doesn't need another daemon running on the MON nodes
+
+** cons
+*** None
+
+=== Data model impact:
+
+* Add models for
+** RBDs
+** Erasure coded pools
+** Erasure code profiles
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* To be discussed in separate spec.
+** Would require RBDs listing API
+** Would require ec profile listing API
+
+==== Notifications/Monitoring impact:
+
+* To be discussed in separate spec.
+* RBD utilization monitoring
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+* ceph-integration module to add the required flows for CRUD operations on ceph
+cluster entities
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+* Update data model for pool and add additional attributes
+
+```
+class Pool(objects.CephIntegrationBaseObject):
+    def __init__(self, pool_id=None, type=None
+                 pool_name=None, pg_num=None, min_size=None,
+                 used=None, percent_used=None,
+                 deleted=None, quota_max_objects=None,
+                 quota_max_bytes=None, type=None,
+                 erasure_code_profile=None, *args, **kwargs):
+        super(Pool, self).__init__(*args, **kwargs)
+
+        self.value = 'clusters/%s/Pools/%s'
+        self.pool_id = pool_id
+        self.pool_name = pool_name
+        self.pg_num = pg_num
+        self.min_size = min_size
+        self.used = used
+        self.percent_used = percent_used
+        self.deleted = deleted
+        self.quota_max_objects = quota_max_objects
+        self.quota_max_bytes = quota_max_bytes
+        self.type = type
+        self.erasure_code_profile = erasure_code_profile
+```
+
+* Add data model for RBDs
+
+```
+class RBD(objects.CephIntegrationBaseObject):
+    def __init__(self, name=None, size=None,
+                order=None, block_name_prefix=None,
+                format=None, features=None,
+                flags=None, *args, **kwargs):
+        super(RBD, self).__init__(*args, **kwargs)
+
+        self.value = 'clusters/%s/Pools/%s/rbds/%s'
+        self.name = name
+        self.size = size
+        self.order = order
+        self.block_name_prefix = block_name_prefix
+        self.format = format
+        self.features = features
+        self.flags = flags
+```
+
+* Add data model for ec profile
+
+```
+class ECProfile(objects.CephIntegrationBaseObject):
+    def __init__(self, name=None
+                 k=None, m=None,
+                 *args, **kwargs):
+        super(ECProfile, self).__init__(*args, **kwargs)
+
+        self.value = 'clusters/%s/ecprofiles/%s'
+        self.name = name
+        self.k = k
+        self.m = m
+```
+
+* Add flows for pool management. This should support ec-pools as well inherently
+** Create
+** Delete
+** Update
+
+* Add flows for RBDs management
+** Create
+** Resize
+** Delete
+
+* Add flows for ec profile management
+** Create
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+  NA
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/126
+
+== Dependencies:
+
+* If calamari options is selected for CRUD operations on entities, there is a
+dependency on Calamari and it should be running on MON nodes
+
+== Testing:
+
+* Verify the below scenarios
+** Create storage pool
+** Update storage pool details
+** Delete storage pool
+** Create ec-pool
+** Update ec-pool details
+** Delete ec-pool
+** Create RBD associated to a pool
+** Update details of the RBD
+** Delete RBD
+** Create ec-profile
+** Listing of pools, RBDs (under specific pool), ec-profiles (under cluster)
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
