@@ -1,0 +1,131 @@
+// vim: tw=79
+
+= Tendrl Ceph-installer Wrapper
+
+Ceph-installer allows the administrator to provision and control the deployment
+of Ceph clusters via a RESTFul API. Tendrl expected to make use of these APIs for provisioning the Ceph clusters.
+
+== Problem description
+
+Ceph-installer provides a set of Rest APIs which allows one to install and configure Ceph.Ceph-installer make use of ceph-ansible (ansible based deployment tool for provisioning ceph) internaly and exposes the Rest APIs that accepts and returns JSON responses with meaningful error codes and messages.  Tendrl is expected to perform Ceph deployment and planning to leverage the capabilities of ceph-installer by writing a wrapper for integration.
+
+== Use Cases
+
+* Creating the ceph cluster
+  ** Install the packages
+  ** Configure MONs and OSDs
+* Expanding the ceph cluster
+  ** Install Packages(if a new host is added)
+  ** Configure MONs and OSDs
+* Task management
+  A task is created when an action on a remote node is triggered. Tasks are used to track the progress of the operation.
+
+== Proposed change
+
+A wrapper needs to be created which abstracts the capabilities provided by the ceph-installer.
+
+=== Flows and atoms
+
+* Create ceph cluster
+  ** Package installation
+  ** Configure MONs
+  ** Configure OSDs
+  ** Check task status
+
+* Expand ceph cluster
+  ** Add OSD
+  ** Add a new node
+  ** Check task status
+
+=== Alternatives
+
+None.
+
+=== Data model impact:
+
+None.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None.
+
+==== Notifications/Monitoring impact:
+
+None.
+
+==== Tendrl/common impact:
+
+None.
+
+==== Tendrl/node_agent impact:
+
+None.
+
+==== Sds integration impact:
+
+The ceph-integration bridge needs to enhanced to provide the wrapper functionality.
+
+==== Tendrl frontend impact:
+
+None.
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None.
+
+=== Performance impact:
+
+
+None.
+
+=== Other deployer impact:
+
+One of the ceph monitors will be marked as a provisioner node for the cluster and the ceph-installer to be installed on the node. This node is expected to accept all ceph provisioning related tasks.
+
+=== Developer impact:
+
+None.
+
+
+== Implementation:
+
+* https://github.com/Tendrl/specifications/issues/48
+
+=== Assignee(s):
+
+Primary assignee:
+
+nthomas-redhat
+
+Other contributor(s):
+
+=== Work Items:
+
+* https://github.com/Tendrl/ceph-integration/issues/106
+* https://github.com/Tendrl/node-agent/issues/202
+
+== Dependencies:
+
+
+None.
+
+
+== Testing:
+
+End users can't directly test this feature, however the flows like ceph cluster creation and expansion will use this feature internally.
+
+
+== Documentation impact:
+
+None.
+
+
+== References:
+
+* http://docs.ceph.com/ceph-installer/docs/
