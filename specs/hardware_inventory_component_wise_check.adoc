@@ -1,0 +1,119 @@
+= Component wise comparison for hardware inventory details
+
+Hardware inventory details needs component wise comparison.
+
+== Problem description
+
+* Currently, we are comparing hardware inventory details with entire file and
+  if it is not equal we are updating all the component details in etcd. Problem
+  here is if any changes in one component details then updation happens for all
+  the component.
+
+== Use Cases
+
+None
+
+== Proposed change
+
+* Instead of comparing hardware inventory details with entire file, Compare
+  component wise. It will reduce number of etcd request.
+
+== Alternatives
+
+* None
+
+== Data model impact
+
+None
+
+== Impacted modules
+
+=== Tendrl/common impact
+None
+
+=== Tendrl/node_agent impact
+
+* Modify the logic of comparing newly collected hardware inventory details with
+  entire file.
+* The comparison should happen component wise.
+  (more details in implementation section)
+
+=== Tendrl/gluster_integration impact
+
+None
+
+=== Tendrl/ceph_integration impact
+
+None
+
+=== Tendrl/alerting impact
+
+None
+
+=== Tendrl/performance_monitoring impact
+
+None
+
+== Security impact
+
+None
+
+== Notifications/Monitoring impact
+
+None
+
+== Other end user impact
+
+None
+
+== Performance Impact
+
+None
+
+== Other deployer impact
+
+None
+
+== Developer impact
+
+None
+
+== Implementation
+
+* The comparison logic needs to be component wise comparison.
+* if any component details are not changed then delete that from hardware inventory
+  list. So only changed is passed to onpull function.
+```
+old_data = "from hardware inventory file"
+if new_data['component_name'] == old_data['component_name']:
+    del  new_data['component_name']
+
+write new_data in file and pass it to onpull function
+```
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+Other contributor(s): None
+
+== Work Items
+
+* https://github.com/Tendrl/specifications/issues/109
+
+== Dependencies
+
+None
+
+== Testing
+
+* Sanity check for flow.
+* Check only modified components are updated in etcd
+
+== Documentation impact
+
+None
+
+== References
+
+None
