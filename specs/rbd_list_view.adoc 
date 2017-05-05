@@ -1,0 +1,127 @@
+// vim: tw=79
+
+= Tendrl Definitions: Display list of RBDs present in Ceph cluster in Tendrl
+
+Display list of RBDs associated with a ceph cluster present in Tendrl. The list should have functionality for 
+
+* filtering by RBD name, cluster name and backing pool name.
+* sorting by RBD name, utilization, cluster name, status and backing pool.
+
+RBDs list will be sorted by name by default.
+
+== Problem description
+
+Tendrl should show list of RBDs associated with a ceph cluster along with their details.
+
+The details shown for each RBD in UI is -
+
+* RBD Name
+* Status
+* RBD Utilisation
+* Cluster Name
+* Backing pool with indicator if pool is shared with other RBDs.
+* Active alerts
+
+== Use Cases
+
+Users can see the list of RBDs associated with a ceph cluster present in Tendrl. They can also 
+
+* filter by RBD name, cluster name and backing pool name.
+* sort by RBD name, utilization, cluster name, status and backing pool.
+
+== Proposed change
+
+* Create a view for listing RBDs associated with a ceph cluster.
+* For RBD utilisation, use donut chart component.
+* Implement client side filter and sorting functionality using angular's filter and orderby components.
+* Send polling call after 2 minutes to get the updated data. 
+* Show total count of RBDs present in a ceph cluster.
+
+=== Alternatives
+
+Generate list component can be created and used for listing the RBDs. But because of its complexity and time constraint, we will pick this up later.
+
+=== Data model impact:
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+/api/1.0/GetClusterList - fetch the all detail along with RBDs list.
+
+Required from API - 
+
+* Response format for the API call
+* If "GetClusterList" contain RBDs list . than "parameter name" should be known which is  holding the RBDs list.
+
+==== Notifications/Monitoring impact:
+
+Monitoring data is not available at this point in time.
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  kamleshverma1
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+https://github.com/Tendrl/tendrl_frontend/issues/66
+
+== Estimate
+
+Template creation, sort and Filter functionality implementation - 1 day
+
+API integration - 1 day
+
+Unit testing - 1 day
+
+Worst-case scenario - can extend to 4 days
+
+== Dependencies:
+
+https://github.com/Tendrl/tendrl_frontend/issues/67
+
+== Testing:
+
+Test whether RBDs present in a ceph cluster are correctly being displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/specifications/issues/75
+* UX Design: https://redhat.invisionapp.com/share/BR8JDCGSQ#/screens/198417119
+
