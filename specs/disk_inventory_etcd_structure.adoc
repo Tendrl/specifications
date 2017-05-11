@@ -1,0 +1,138 @@
+= Disk inventory etcd structure
+
+This specification specifies the way in which disk inventory has to be structured
+in tendrl's central store and the details that has to be stored in the disk
+inventory
+
+== Problem description
+
+We should have a proper structure to our disk inventory in such a way that we
+store all the needed information in a easily consumable way.
+
+== Use Cases
+
+* This spec provides guidelines about how the disk information is to be
+stored in etcd.
+
+== Proposed change
+
+The disk inventory details will basically stored under 2 sections as follows:
+
+1. /nodes/<node-id>/disks/
+
+* In this location we store all the physical disks available on the node
+with a unique key which is a combination of manufacturer-id+vendor-id+
+device-serial-number this would be unique across tendrl. And this information
+should be available from hwinfo tool.
+
+* under each disk here we have to store all the details about the physical
+  device available via hwinfo tool.
+
+* also the following details have to be stored under each disk(if applicable):
+       - partition details under it
+       - lvm details under
+       - raid specific details
+
+2. /nodes/<node-id>/block-devices/
+
+* This is the location to store the details about block-devices available
+  on the node. This section will have following sub sections:
+
+       - all : this should contain all the block devices available on the node
+       - free: this should list all the free block devices on the node that
+               can be used to create ceph osd/gluster volume
+       - used: this should list all the used block devices on the node
+
+* the key for each block-device would be its name where "/" is replaced by "_"
+  For example a device /dev/vda would be listed as "_dev_vda"
+
+* while listing the block devices we have to list only the block-device that
+  correspond to an actual device or a block device that correspond to a raid volume.
+  partition block devices and lvm block devices can be neglected as they are not
+  consumable by either ceph/gluster also we are anyhow maintaining its details
+  under disks
+
+* Here each block device will have links to the underlying disks which are located
+  at: /nodes/<node-id>/disks/<disk-unique-id>
+
+NOTE: 1. During inventory sync we have to make sure that if at all any previously
+         free device is used now, we have to properly update this by moving the
+         free block device from /free to /used.
+      2. Also the links between block devices and disks have to be kept up to date,
+         so that even if block-device name changes after reboot. it should properly
+         be reflected in the disk inventory.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+Above mentioned data mode would be the new data model to store disk inventory, the
+existing data model for disk inventory will be replaced by this model
+
+=== REST API impact
+
+Api has to note that the disk inventory model has changed and this will need changes
+in api to consume disk details as per new model
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+Monitoring module has to note that the disk inventory model has changed and this
+might need changes to consume disk details as per new model
+
+
+=== Other end user impact
+
+None
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+None
+
+=== Developer impact
+
+* This specification has to be followed to develop the new
+disk inventory structure.
+
+== Implementation
+
+=== Assignee(s)
+
+GowthamShanmugam, nnDarshan
+
+Primary assignee:
+
+GowthamShanmugam
+
+Other contributors:
+  None
+
+=== Work Items
+
+Node-agent has to make sure that it updates the disk details
+as per the new model described above
+
+== Dependencies
+
+None
+
+== Testing
+
+None
+
+== Documentation Impact
+
+None
+
+== References
+
+None
