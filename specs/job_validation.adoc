@@ -1,0 +1,208 @@
+﻿// vim: tw=79
+
+= Definition file and job validation
+
+As there are lot of changes in the sds schema, The job-validation module which
+is in the common project needs a few changes or enhancements in order to
+validate the sds definition file and the incoming jobs which contains
+input values.
+
+== Problem description
+
+The spec is for addressing the following list of important issues
+
+1. Addressing the Schema change
+* “name-space” is introduced in the recent schema. This name-space should be
+  used in the process of validation.
+* “object_details” is renamed to “objects”
+* A new attribute called “value” is also added for an object. This should be
+  validated
+
+2. Addressing the naming issue
+Currently the sds-job-validator can validate an object only when it
+has the full name. It does not support any parameter specified without
+the object name.
+In reality, some object can be defined directly without specifying its
+parent name. Means, any mandatory or optional parameter can be specified
+without parent name for the whole object. But the sds-job-validator must
+validate each and every object name even if it is without the parent-name.
+i.e:- parent_object_name = parameter_name
+For example if the parameter is specified as Volume.brickdetails or Node.Node
+it will validate; where as, sds-validation skips the parameter check if the
+particular parameter is specified without the parent object like Node or
+Nodes or Node[] which may have a single element or a list of elements.
+
+3. Addressing the performance issue
+Currently sds-job-validator validates both the integrity of a flow and atoms
+involved for a particular job. If a flow or atom is used multiple time or
+if an atom is used by many flows then the same piece of code will be executed
+again and again. It seems unnecessary which needs to be fixed.
+It is ok to check only the input values of an atom.
+
+4. Addressing the case sensitive issue
+Currently it does not support the input parameter to be case sensitive.
+Because it converts the custom data type (class names / object names etc) into
+lower case during validation. This may cause "custom object not defined"
+error if the object is defined with case sensitive
+(snake case / camel case / upper case)
+
+5. Addressing nested input object validation
+* Currently the sds-job-validator support only the first level of given input
+instead of checking all the given level of inputs in a nested input parameter
+(dict of dict of … / object of objects). It will not help in case of input
+parameters have multiple sub parameters. For example: importNode the parameter
+can have nested input in addition to its regular inputs like
+Node: [ { fqdn, ...} ], Disk [ of devices [of type ...] ] and so on.
+
+6. Addressing missing input value issue
+* Currently in the process of validating input values, the validator expects
+all the required inputs to be given beforehand. It does not need to be so.
+As the job divides into various flows and atoms based on the custom need,
+the validator can fetch the output of any other related atom as its
+required input.
+
+7. Addressing the test-case failures
+Because of all such issues due to change of sds schema, the test cases
+could not have been succeeded. These issues need to be fixed.
+
+8. Currently the sds-job-validator is not enabled in some components (bridge).
+
+9. Currently tendrl-node-agent creates the JobValidator object every time for
+validate every job.
+
+== Use Cases
+
+* sds-job-validator should validate the given job input parameters and the
+integrity of the flows and atoms involved in a particular job.
+
+* Use Case1:
+  ** The list of available jobs presented to the user via APIs
+  ** user selects a particular job
+  ** user specifics the input for the selected job
+
+== Proposed change
+
+Schema change
+* JobValidator class in the file definitions/validator.py should be updated
+to use name-space, objects, value attributes while validating.
+
+* Add a function to fetch the parent name for the given object or return
+the object name if it does not have any parent.
+Ie, the object itself is a parent.
+
+* Add a common function to validate all the existing flows and atoms and call
+the function from the constructor. So that it will be executed only at
+the time of creating the jobvalidator object.
+
+* Update the _checkCustomType() function in JobValidator class to support
+both upper and lower case with case sensitivity for the given input.
+
+* checkInputType() should be modified to check all the input parameters
+exists in the entire object of a nested input.
+
+* Add a function to fetch the required input of any atom from the output
+of some other related atoms involving in the particular flow.
+
+* Rectify test_validate_api.py by applying all the solutions mentioned above.
+
+* sds-job-validator must be enabled in components where its commented.
+They are tendrl-node-agent, gluster-integration and ceph-integration.
+
+* The JobValidator object should be created only in the constructor level
+to avoid creating multiple time to validate schema on every job request in
+tendrl-node-agent, tendrl-gluster-integration and tendrl-ceph-integration.
+
+=== Alternatives
+None
+
+=== Data model impact:
+None
+
+=== Impacted Modules:
+None
+
+==== Tendrl API impact:
+None
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+definitions/validator.py should be updated with new function to
+support the required changed mentioned in the proposed change section.
+
+==== Tendrl/node_agent impact:
+* api job validation should be enabled in the file
+tendrl/node_agent/manager/rpc.py
+
+==== Tendrl/gluster-integration impact:
+* api job validation should be enabled in the file
+tendrl/gluster_integration/manager/rpc.py
+
+==== Tendrl/ceph-integration impact:
+* api job validation should be enabled in the file
+tendrl/ceph_integration/manager/rpc.py
+
+==== Sds integration impact:
+None
+
+=== Security impact:
+None
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+Will improve the performance by validating the common things only once
+
+=== Other deployer impact:
+None
+
+=== Developer impact:
+None
+
+== Implementation:
+Issues will be linked in this doc once its created
+
+=== Assignee(s):
+tjeyasin@redhat.com
+
+Primary assignee:
+TimothyAsirJeyasing
+
+Other contributors:
+None
+
+=== Work Items:
+None
+
+== Dependencies:
+None
+
+== Testing:
+This can be tested by providing
+i) different schema
+Should return appropriate message for the given schema
+
+ii) different input (type)
+Should return appropriate message or exception for the given input
+thru UI or thru api
+ex:- create volume with invalid input type
+
+iii) Missing input values
+Should return appropriate message or exception for the missing input
+thru UI or thru api
+ex:- create volume with missing input values
+
+iv) Extra values which are not required or defined
+This needs a discussion. Because for some cases, a job can have
+more values based on the list of atoms.
+Should return appropriate message or accept the extra inputs given
+thru UI or thru api
+ex:- create volume with extra input type
+
+== Documentation impact:
+None
+
+== References:
+None
