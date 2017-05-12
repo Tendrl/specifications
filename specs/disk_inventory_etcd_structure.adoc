@@ -71,6 +71,208 @@ None
 Above mentioned data mode would be the new data model to store disk inventory, the
 existing data model for disk inventory will be replaced by this model
 
+```
+attributes of tendrl.objects.Disk
+            disk_id (manufacturer-id+vendor-id+device-serial-number)
+            unique_id (hwinfo id)
+	    parent_name
+            disk_type
+            model
+            vendor
+            serial_no
+            device_name
+            sysfs_id
+            sysfs_busid
+            sysfs_device_link
+            driver_modules
+            driver
+            device_files
+            device_number
+            device
+            drive_status
+            rmversion
+            bios_id
+            geo_bios_edd
+            geo_bios_legacy
+            geo_logical
+            disk_kernel_name
+            major_to_minor_no
+            fstype
+            mount_point
+            label
+            fsuuid
+            read_ahead
+            read_only
+            removable_device
+            size
+            state
+            owner
+            group
+            mode
+            alignement
+            min_io_size
+            optimal_io_size
+            phy_sector_size
+            log_sector_size
+            disk_type
+            ssd
+            scheduler_name
+            req_queue_size
+            discard_align_offset
+            discard_granularity
+            discard_max_bytes
+            discard_zeroes_data
+	    discard_max_bytes
+            discard_zeros_data
+	    partition
+            lvm (json)
+    	    raid (json)
+```
+
+Here partiton, raid and lvm are json, raid and lvm can comes under partition also. when we pass 
+disk details with partition json, lvm json, raid json to etcdobj it will form directory using these jsons.
+```
+partition json have partition details + (raid json or lvm json or both or without both)
+			unique_id
+                        type
+                        device_name
+			parent_name
+                        sysfs_id
+                        device_files
+                        disk_kernel_name
+                        major_to_minor_no
+                        fstype
+                        mount_point
+                        label
+                        fsuuid
+                        read_ahead
+                        read_only
+                        removable_device
+                        size
+                        state
+                        owner
+                        group
+                        mode
+                        alignement
+                        min_io_size
+                        optimal_io_size
+                        phy_sector_size
+ 			log_sector_size
+                        scheduler_name
+                        req_queue_size
+                        discard_align_offset
+                        discard_granularity
+                        discard_max_bytes
+                        discard_zeros_data
+			raid (json)
+			lvm  (json)
+
+```
+
+lvm details are collected from lvs, only mount point, parent name details is collected using lsblk
+```
+    lv_uuid                
+    lv_name               
+    lv_full_name          
+    lv_path                
+    lv_dm_path             
+    lv_parent
+    lv_layout           
+    lv_role                
+    lv_initial_image_sync  
+    lv_image_synced       
+    lv_merging            
+    lv_converting         
+    lv_allocation_policy   
+    lv_allocation_locked  
+    lv_fixed_minor         
+    lv_merge_failed        
+    lv_snapshot_invalid    
+    lv_skip_activation    
+    lv_when_full          
+    lv_active              
+    lv_active_locally     
+    lv_active_remotely     
+    lv_active_exclusively  
+    lv_major               
+    lv_minor              
+    lv_read_ahead          
+    lv_size               
+    lv_metadata_size      
+    seg_count             
+    origin                 
+    origin_uuid            
+    origin_size            
+    lv_ancestors           
+    lv_descendants         
+    data_percent           
+    snap_percent          
+    metadata_percent       
+    copy_percent          
+    sync_percent           
+    raid_mismatch_count    
+    raid_sync_action       
+    raid_write_behind      
+    raid_min_recovery_rate 
+    raid_max_recovery_rate 
+    move_pv                
+    move_pv_uuid          
+    convert_lv             
+    convert_lv_uuid        
+    mirror_log             
+    mirror_log_uuid        
+    data_lv               
+    data_lv_uuid           
+    metadata_lv            
+    metadata_lv_uuid       
+    pool_lv                
+    pool_lv_uuid           
+    lv_tags                
+    lv_profile             
+    lv_lockargs            
+    lv_time                
+    lv_host                
+    lv_modules 
+    mount_point
+```
+raid details are collected from lsblk
+```
+(similar to partition)
+			unique_id
+                       	type
+                        device_name
+                        parent_name
+                        sysfs_id
+                        device_files
+                        disk_kernel_name
+                        major_to_minor_no
+                        fstype
+                        mount_point
+                        label
+                        fsuuid
+                        read_ahead
+                        read_only
+                        removable_device
+                        size
+                        state
+                        owner
+                        group
+                        mode
+                        alignement
+                        min_io_size
+                        optimal_io_size
+                        phy_sector_size
+                        log_sector_size
+                        scheduler_name
+                        req_queue_size
+                        discard_align_offset
+                        discard_granularity
+                        discard_max_bytes
+                        discard_zeros_data
+```
+
+ 
+
 === REST API impact
 
 Api has to note that the disk inventory model has changed and this will need changes
@@ -104,6 +306,118 @@ None
 disk inventory structure.
 
 == Implementation
+* All disk details are stored under /node/{node_id}/disks/{disk_id} in etcd as a single object.
+* Object is created from raw_json, It contains disk, partitions, lvm and raid details of the specific object.
+* Disk details and its partitions, lvm and raid details are populated in etcd as a single write request.
+```
+Example raw_json
+
+{
+	"disk_id1":{
+	    disk_id: "" (not decided)
+            unique_id: "3OOL.qPX1W_dGFo7"
+            disk_type: "disk"
+            model: "SAMSUNG MZ7TE512"
+            vendor: "SAMSUNG"
+            serial_no: "S1GJNSAG400778"
+            device_name: "/dev/sda"
+            sysfs_id: "/class/block/sda"
+            sysfs_busid: "0:0:0:0"
+            sysfs_device_link: "/devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0"
+            driver_modules: "ahci"
+            driver: ["ahci", "sd"]
+            device_files: "/dev/sda, /dev/disk/by-id/ata-SAMSUNG_MZ7TE512HMHP-000L1_S1GJNSAG400778, /dev/disk/by-id/wwn-0x4d30445853885002"
+            device_number: "block 8:0-8:15"
+            device: "/dev/sda"
+            drive_status: "no medium"
+            rmversion: "6L0Q"
+            bios_id: "0x80"
+            geo_bios_edd: "CHS 992277/16/63"
+            geo_bios_legacy: "CHS 1023/255/63"
+            geo_logical: "CHS 62260/255/63"
+            disk_kernel_name: "/dev/sda"
+            major_to_minor_no: "8:0"
+            fstype: "LVM2_member"
+            mount_point: ""
+            label: ""
+            fsuuid: ""
+            read_ahead: "128"
+            read_only: "0"
+            removable_device: "0"
+            size: "10737418240"
+            state: "running"
+            owner: "root"
+            group: "disk"
+            mode: "brw-rw----"
+            alignement: "0"
+            min_io_size: "512"
+            optimal_io_size: "0"
+            phy_sector_size: "512"
+            log_sector_size: "512"
+            ssd: "True"
+            scheduler_name: "cfq"
+            req_queue_size: "128"
+            discard_align_offset: "0"
+            discard_granularity: "0"
+	    discard_max_bytes: "0"
+	    discard_zeros_data: "0"
+	    partition:{
+            		unique_id: "2pkM.SE1wIdpsiiC"
+                        parent_name: "3OOL.iLjwFstLQvC"
+            		disk_type: "partition"
+            		device_name: "/dev/sda1"
+            		sysfs_id: "/class/block/sda/sda1"
+            		device_files: "/dev/sda1, /dev/disk/by-id/ata-SAMSUNG_MZ7TE512HMHP-000L1_S1GJNSAG400778-part1, /dev/disk/by-id/wwn-0x4d30445853885002-part1, /dev/disk/by-uuid/dda9f15					     f-c5ec-4674-894a-d9ae57b8243c"
+            		disk_kernel_name: "/dev/sda1"
+            		major_to_minor_no: "8:1"
+            		fstype: "ext4"
+            		mount_point: "/boot"
+            		label: ""
+            		fsuuid: "dda9f15f-c5ec-4674-894a-d9ae57b8243c"
+            		read_ahead: "128"
+            		read_only: "0"
+            		removable_device: "0"
+            		size: "10737418240"
+            		state: ""
+            		owner: "root"
+            		group: "disk"
+            		mode: "brw-rw----"
+            		alignement: "0"
+            		min_io_size: "512"
+            		optimal_io_size: "0"
+            		phy_sector_size: "512"
+            		log_sector_size: "512"
+            		ssd: ""
+            		scheduler_name: "cfq"
+            		req_queue_size: "128"
+            		discard_align_offset: "0"
+            		discard_granularity: "0"
+            		discard_max_bytes: "0"
+            		discard_zeros_data: "0"
+                        lvm:{
+				//all lvm details
+			}
+			raid:{
+				//all raid details, it similar to partitions
+			}
+		}
+	    lvm:{
+                                //all lvm details
+            }
+	    raid:{
+                                //all raid details, it similar to partitions
+            } 
+
+	}
+	"disk_id2": {
+		//same as disk_id1
+	}
+}
+```
+The raw_json is stored in an etcd using disk object. During disk sync time collected 
+disk ids are compared with etcd and mismatched disk details are deleted from it. Same 
+type of comparison for partition,lvm and raid also. After cleanup collected disk details 
+are updated in etcd.
 
 === Assignee(s)
 
