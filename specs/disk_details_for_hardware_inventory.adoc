@@ -1,3 +1,5 @@
+// vim: tw=79
+
 = Specification for adding disk details in node hardware inventory
 
 Add disk details also as a part of node hardware inventory
@@ -5,37 +7,80 @@ Add disk details also as a part of node hardware inventory
 == Problem description
 
 Hardware inventory details are used to show exact status of the particular
-node. Currently disk details are missing in node hardware inventory. Add all possible
-disk details in node hardware inventory and store it in etcd.
+node. Currently disk details are missing in node hardware inventory. Add all
+possible disk details in node hardware inventory and store it in etcd.
+
+This specification focuses on gathering all the information about disks
+attached to a system, including their partitioning information and block
+devices. This spec does not address either LVM or RAID devices. Separate specs
+need to be filed for both.
 
 == Use Cases
 
-Tendrl should show the current status of disk.
+Tendrl needs to be able to track locally attached physical storage, such as
+hard drives, solid state drives etc.
 
 == Proposed change
-* From node agent collect all possible disk details in node inventory list and store
-  it in etcd. (Detailed information in implementation section).
 
-== Alternatives
+Gather all the possible details about the locally attached disks and the
+corresponding device hierarchy and store it in etcd for consumption by clients
+via the API.
 
-* hdparm is also giving some disk details like serial number and firmware but it
-  works only for ATA disks types. For SCSI disk we have to use sdparm.
+The information to be gathered from the system includes:
+
+* Disk hardware details.
+* Block details of the block devices the system identifies the disks as.
+* The /dev/disk hierarchy which indexes the block devices based on various
+  types of identifiers.
+
+It is also necessary to identify disks (and the corresponding block devices) as
+used. Any disk that does not contain a partition table is considered to be
+unused.
 
 == Data model impact
 
-* Add used disks id in etcd with key nodes/node_id/Disks/Used.
-* Add free disks id in etcd with key nodes/node_id/Disks/Free.
-* Add all disks details in etcd with key nodes/node_id/Disks.
-* There needs to be one object per disk, which contains all the information about
-  the disk. This needs to be in the disks directory. The object's key needs to be
-  the id that's guaranteed to always be available.
-* The objects under used and free directories under disks, need to be empty
-  objects with their key being the id of the disk object under disks.
+=== `nodes/<node_id>/Disks`
+
+This directory contains all the hardware information about the disks and the
+various references to the devices from the `/dev/disk` hierarchy on the system.
+
+* Disk hardware details go to `Disks/all`, one object per disk.
+* The disk object contains:
+** all the hardware information about the disk
+** parition table and hardware information about all the paritions on the disk
+** a pointer to the block device the disk is identified as
+* The id for the disk object is in the following format:
+  `<vendor>_<model>_<serial_number>`.
+* The `/dev/disk` hierarchy is stored as is as the `Disks/raw_references`
+  object. The entire directory structure is read from the system and is stored
+  as-is. This allows easier sync by validating the checksum of the value of
+  this object against the directory structure's data from the system.
+* The `Disks/references` object is generated as the json representation of the
+  `raw_references` object each time the said object is updated as part of the
+  sync.
+* If a disk has partitions, an empty object with it's id is created under
+  `Disks/used`.
+* If a disk has no partition table, an empty object with it's id is created
+  under `Disks/free`.
+
 ```
      list: nodes/$Node_context.node_id/Disks
      list: nodes/$Node_context.node_id/Disks/Used
      list: nodes/$Node_context.node_id/Disks/Free
 ```
+
+=== `nodes/<node_id>/block_devices`
+
+* Block device details go to `nodes/<node_id>/block_devices`.
+* Objects in this directory are populated based on the output of `lsblk`. More
+  details below.
+* Each block device object's key is the device name, such as `vda`, `sda`,
+  `nvme0` etc.
+* All the partition information about the block device is contained in the
+  object representing the disk device itself. No separate device hierarchy is
+  created for individual partitions.
+* Each block device object must contain the id of the disk it represents, as
+  the value of the attribute `disk_id`.
 
 == Impacted modules
 
@@ -154,8 +199,8 @@ None
 
 == Implementation
 
-* "hwinfo" and "lsblk" to find the disk details.
-* lsblk is not sufficient to find all disk details, So we have to use hwinfo also.
+* `hwinfo` and `lsblk` to find the disk details.
+* `lsblk` is used for gathering block device information.
 * From node_agent add a new function in pull_hardware_inventory to find disk
   details and update those details into node_inventory list.
 * Add all possible disk details in hardware inventory list.
@@ -192,6 +237,12 @@ None
 /nodes/node_id/Disks/free
    <disk_id2> #empty object
 ```
+
+== Alternatives
+
+hdparm is also giving some disk details like serial number and firmware but it
+works only for ATA disks types. For SCSI disk we have to use sdparm.
+
 
 == Assignee(s)
 
