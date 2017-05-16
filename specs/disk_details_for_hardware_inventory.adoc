@@ -39,12 +39,103 @@ unused.
 
 == Data model impact
 
-=== `nodes/<node_id>/Disks`
+The data model for disk inventory is:
+
+```
+attributes of tendrl.objects.Disk class
+
+	disk_id (manufacturer-id+vendor-id+device-serial-number)
+	unique_id (hwinfo id)
+    	disk_type
+       	model
+    	vendor
+       	serial_no
+       	device_name
+      	sysfs_id
+     	sysfs_busid
+     	sysfs_device_link
+      	driver_modules
+    	driver
+    	device_files
+      	device_number
+      	device
+      	drive_status
+      	rmversion
+       	bios_id
+      	geo_bios_edd
+      	geo_bios_legacy
+     	geo_logical
+     	disk_kernel_name
+      	major_to_minor_no
+     	fstype
+   	label
+    	fsuuid
+     	read_ahead
+     	read_only
+    	removable_device
+      	size
+      	state
+ 	owner
+   	group
+   	mode
+    	alignement
+     	min_io_size
+   	optimal_io_size
+   	phy_sector_size
+    	log_sector_size
+    	ssd
+       	scheduler_name
+    	req_queue_size
+    	discard_align_offset
+      	discard_granularity
+     	discard_max_bytes
+      	discard_zeroes_data
+	discard_max_bytes
+     	discard_zeros_data
+	partition (json)
+```
+
+Partiton json structure in disk object is:
+```
+	unique_id
+    	disk_id
+    	type
+    	device_name
+	parent_name
+       	sysfs_id
+    	device_files
+   	disk_kernel_name
+      	major_to_minor_no
+      	fstype
+      	mount_point
+        label
+        fsuuid
+      	read_ahead
+      	read_only
+       	removable_device
+      	size
+    	state
+      	owner
+    	group
+        mode
+       	alignement
+       	min_io_size
+       	optimal_io_size
+	log_sector_size
+        scheduler_name
+        req_queue_size
+	discard_granularity
+        discard_max_bytes
+        discard_zeros_data
+```
+
+== `nodes/<node_id>/Disks`
 
 This directory contains all the hardware information about the disks and the
-various references to the devices from the `/dev/disk` hierarchy on the system.
+various devices from the `/dev/disk` hierarchy on the system.
 
-* Disk hardware details go to `Disks/all`, one object per disk.
+* In this location we store all the physical disks available on the node with 
+  a unique key, one object per disk.
 * The disk object contains:
 ** all the hardware information about the disk
 ** parition table and hardware information about all the paritions on the disk
@@ -58,20 +149,17 @@ various references to the devices from the `/dev/disk` hierarchy on the system.
 * The `Disks/references` object is generated as the json representation of the
   `raw_references` object each time the said object is updated as part of the
   sync.
-* If a disk has partitions, an empty object with it's id is created under
-  `Disks/used`.
-* If a disk has no partition table, an empty object with it's id is created
-  under `Disks/free`.
 
 ```
-     list: nodes/$Node_context.node_id/Disks
-     list: nodes/$Node_context.node_id/Disks/Used
-     list: nodes/$Node_context.node_id/Disks/Free
+     list: nodes/$Node_context.node_id/Disks/`<vendor>_<model>_<serial_number>`
 ```
 
 === `nodes/<node_id>/block_devices`
 
-* Block device details go to `nodes/<node_id>/block_devices`.
+This is the location to store the details about block-devices available on the node.
+This section will have following sub sections:
+
+* Block device details go to `nodes/<node_id>/block_devices/all`.	
 * Objects in this directory are populated based on the output of `lsblk`. More
   details below.
 * Each block device object's key is the device name, such as `vda`, `sda`,
@@ -80,13 +168,33 @@ various references to the devices from the `/dev/disk` hierarchy on the system.
   object representing the disk device itself. No separate device hierarchy is
   created for individual partitions.
 * Each block device object must contain the id of the disk it represents, as
-  the value of the attribute `disk_id`.
+   the value of the attribute `disk_id`.
+* If a disk has partitions, an empty object with it’s id is created under Disks/used.
+* If a disk has no partition table, an empty object with it’s id is created under Disks/free.
+  the key for each block-device would be its name where "/" is replaced by "_" For example a 
+  device /dev/vda would be listed as "_dev_vda".
+* Here each block device will have links to the underlying disks which are located at: 
+  /nodes/<node-id>/disks/<disk-unique-id>
+
+```
+     list: nodes/$Node_context.node_id/block_devices/all
+     list: nodes/$Node_context.node_id/block_devices/used
+     list: nodes/$Node_context.node_id/block_devices/free
+```
+
+NOTE: 1. During inventory sync we have to make sure that if at all any previously
+         free device is used now, we have to properly update this by moving the
+         free block device from /free to /used.
+      2. Also the links between block devices and disks have to be kept up to date,
+         so that even if block-device name changes after reboot. it should properly
+         be reflected in the disk inventory.
 
 == Impacted modules
 
 == Tendrl API impact:
 
-None
+Api has to note that the disk inventory model has changed and this will need changes
+in api to consume disk details as per new model
 
 === Tendrl/common impact
 
@@ -94,73 +202,118 @@ None
 
 === Tendrl/node_agent impact
 
-* Add a new function in pull_hardware_inventory to collect disk details.
-* Create a class Disk in persistence module.
-* Modify the manager to retrieve inventory details from tendrl-node-inventory
-  file and compare it with node_inventory list, If any changes then populate the
-  disk details in class instance and store it in etcd.
-* Add three different object in tendrl definitions for disks, used disks and
-  free disks.
-* Commands used to retrieve disk details are:
-```
-1. columns = 'NAME,FSTYPE,MOUNTPOINT,UUID,SIZE,ROTA
-   lsblk --all --bytes --noheadings --output='%s' --path --raw" % columns
-2. hwinfo --block (It will give disk, partitons, cdrom information. For disk
-   details disk and partitions are enough).
-```
+* Create a new class for disk.
+* Create a new function in node sync to collect disk details.
+* Create a new object for disk in definition file.
+* Collect all disk details from node sync and store it in etcd using disk class object.
+* Store Block device details also in etcd.
 * Expected disk details output format form  hardware inventory list is:
 ```
-{"disks": [{"disk_id": "",
-            "parent_id": "",
-            "disk_type": "",
-            "model": "",
-            "vendor": "",
-            "serial_no": "",
-            "device_name": "",
-            "sysfs_id": "",
-            "sysfs_busid": "",
-            "sysfs_device_link": "",
-            "driver_modules": "",
-            "driver": "",
-            "device_files": "",
-            "device_number": "",
-            "device": "",
-            "drive_status": "",
-            "rmversion": "",
-            "bios_id": "",
-            "geo_bios_edd": "",
-            "geo_bios_legacy": "",
-            "geo_logical": ""
-            "disk_kernel_name": ""
-            "parent_name": "",
-            "major_to_minor_no": "",
-            "fstype": "",
-            "mount_point": "",
-            "label": "",
-            "fsuuid": "",
-            "read_ahead": "",
-            "read_only": "",
-            "removable_device":"",
-            "size": "",
-            "state": "",
-            "owner": "",
-            "group": "",
-            "mode": "",
-            "alignement": "",
-            "min_io_size": "",
-            "optimal_io_size": "",
-            "phy_sector_size": "",
-            "log_sector_size": "",
-            "disk_type": "",
-            "ssd": "",
-            "scheduler_name": "",
-            "req_queue_size": "",
-            "discard_align_offset": "",
-            "discard_granularity": "",
-            "discard_max_bytes": "",
-            "discard_zeroes_data": "", ...]
-  "free": [disk_id,...],
-  "used": [disk_id,.....]...}
+Example raw_json
+
+{
+  "Disks":{
+	"disk_id1":{
+	    disk_id: "" (not decided)
+            unique_id: "3OOL.qPX1W_dGFo7"
+            disk_type: "disk"
+            model: "SAMSUNG MZ7TE512"
+            vendor: "SAMSUNG"
+            serial_no: "S1GJNSAG400778"
+            device_name: "/dev/sda"
+            sysfs_id: "/class/block/sda"
+            sysfs_busid: "0:0:0:0"
+            sysfs_device_link: "/devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0"
+            driver_modules: "ahci"
+            driver: ["ahci", "sd"]
+            device_files: "/dev/sda, /dev/disk/by-id/ata-SAMSUNG_MZ7TE512HMHP-000L1_S1GJNSAG400778, /dev/                          disk/by-id/wwn-0x4d30445853885002"
+            device_number: "block 8:0-8:15"
+            device: "/dev/sda"
+            drive_status: "no medium"
+            rmversion: "6L0Q"
+            bios_id: "0x80"
+            geo_bios_edd: "CHS 992277/16/63"
+            geo_bios_legacy: "CHS 1023/255/63"
+            geo_logical: "CHS 62260/255/63"
+            disk_kernel_name: "/dev/sda"
+            major_to_minor_no: "8:0"
+            fstype: "LVM2_member"
+            mount_point: ""
+            label: ""
+            fsuuid: ""
+            read_ahead: "128"
+            read_only: "0"
+            removable_device: "0"
+            size: "10737418240"
+            state: "running"
+            owner: "root"
+            group: "disk"
+            mode: "brw-rw----"
+            alignement: "0"
+            min_io_size: "512"
+            optimal_io_size: "0"
+            phy_sector_size: "512"
+            log_sector_size: "512"
+            ssd: "True"
+            scheduler_name: "cfq"
+            req_queue_size: "128"
+            discard_align_offset: "0"
+            discard_granularity: "0"
+	    discard_max_bytes: "0"
+	    discard_zeros_data: "0"
+	    partition:{
+            		unique_id: "2pkM.SE1wIdpsiiC"
+                        parent_name: "3OOL.iLjwFstLQvC"
+            		disk_type: "partition"
+            		device_name: "/dev/sda1"
+            		sysfs_id: "/class/block/sda/sda1"
+            		device_files: "/dev/sda1, /dev/disk/by-id/ata-SAMSUNG_MZ7TE512HMHP-000L1_S1GJNSAG                                      400778-part1, /dev/disk/by-id/wwn-0x4d30445853885002-part1, /dev/di                                      sk/by-uuid/fff-c5ec-4674-894a-d9ae57b8243c"
+            		disk_kernel_name: "/dev/sda1"
+            		major_to_minor_no: "8:1"
+            		fstype: "ext4"
+            		mount_point: "/boot"
+            		label: ""
+            		fsuuid: "dda9f15f-c5ec-4674-894a-d9ae57b8243c"
+            		read_ahead: "128"
+            		read_only: "0"
+            		removable_device: "0"
+            		size: "10737418240"
+            		state: ""
+            		owner: "root"
+            		group: "disk"
+            		mode: "brw-rw----"
+            		alignement: "0"
+            		min_io_size: "512"
+            		optimal_io_size: "0"
+            		phy_sector_size: "512"
+            		log_sector_size: "512"
+            		ssd: ""
+            		scheduler_name: "cfq"
+            		req_queue_size: "128"
+            		discard_align_offset: "0"
+            		discard_granularity: "0"
+            		discard_max_bytes: "0"
+            		discard_zeros_data: "0"
+		}
+
+	}
+	"disk_id2": {
+		//same as disk_id1 structure
+	}
+   }
+   "all_block_device":{
+     	"/dev/vda" : "disk/manufacturer-id+vendor-id+device-serial-number",
+	"/dev/vda1": "disk/manufacturer-id+vendor-id+device-serial-number/partition/dev/vda1"
+	"/dev/vdb" : "disk/manufacturer-id+vendor-id+device-serial-number"
+   }
+   "used_block_device":{
+	"/dev/vda": "disk/manufacturer-id+vendor-id+device-serial-number",
+        "/dev/vda1": "disk/manufacturer-id+vendor-id+device-serial-number/partition/dev/vda1"
+   }
+   "free_block_device"{
+	"/dev/vdb": "disk/manufacturer-id+vendor-id+device-serial-number"
+  }
+}
 ```
 
 === Tendrl/gluster_integration impact
@@ -178,7 +331,8 @@ None
 
 == Notifications/Monitoring impact
 
-None
+Monitoring module has to note that the disk inventory model has changed and this
+might need changes to consume disk details as per new model
 
 
 == Other end user impact
@@ -201,42 +355,10 @@ None
 
 * `hwinfo` and `lsblk` to find the disk details.
 * `lsblk` is used for gathering block device information.
-* From node_agent add a new function in pull_hardware_inventory to find disk
-  details and update those details into node_inventory list.
-* Add all possible disk details in hardware inventory list.
-```
-  (disk_id, device_name, internal_kernel_device_name, parent_id, parent_name,
-  maj_to_min_device_number, fs_type, mount_point, label, fs_uuid, read_ahead,
-  read_only, removable_device, model, size, state, owner, group, mode, alignement,
-  min_io_size, optimal_io_size, physical_sector_size, logical_sector_size, ssd,
-  scheduler_name, request_queue_size, disk_type, discard_alignment_offset,
-  discard_granularity, discard_max_bytes, discard_zeroes_data, vendor, serial_no,
-  firmware_version, sysfs_id, sysfs_busid, sysfs_device_link, driver, driver_modules,
-  device_files, device_number, bios_id, geometry_logical, geometry_bios_legacy).
-```
-* Create a class called  Disks  in persistence module to keep all disk details.
-* Modify the manager to retrieve inventory details from tendrl-node-inventory
-  file and compare it with node_inventory list, If any changes then populate the
-  disk details in class instance and store it in etcd.
-```
-- Populate all disk details in Disks class instance and store it in etcd.
-- store free disks id keys with empty object in etcd
-- store used disks id keys with empty object in etcd.
-```
-* Store disk class instance in etcd with key.
-* Create objects in tendrl definition for disks, used disks and free disks.
-* Disks structure in etcd:
-```
-/nodes/node_id/Disks
-   <disk_id1> # object with all the details for disk_id1
-   <disk_id2> # object with all the details for disk_id2
+* All disk details are stored under /node/{node_id}/disks/{disk_id} in etcd in hierarchical order.
+* Object is created from raw_json in node sync, It contains disk, partitions informations in hierarchical order.
+* raw_json is stored in etcd using disk class object.
 
-/nodes/node_id/Disks/used
-   <disk_id1> # empty object
-
-/nodes/node_id/Disks/free
-   <disk_id2> #empty object
-```
 
 == Alternatives
 
