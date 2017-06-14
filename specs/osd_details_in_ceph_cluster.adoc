@@ -1,0 +1,230 @@
+= Gather and populate OSD details for a ceph cluster and support actions
+
+The ceph integration module in Tendrl synchronizes the cluster data to its
+central store at regular intervals. The cluster data should contain the OSD
+details with its utilizations and path details which could be depicted well in
+dashboard.
+
+Tendrl also needs to support possible actions on individual OSDs.
+
+This specifications talks about the details which need to be and would be
+available as part of OSD details in a ceph cluster. It also talks about various
+actions which would be supported for OSDs.
+
+
+== Problem description
+
+Currently the OSD details for a ceph cluster are listed under
+`clusters/{integration-id}/Osds/{osd-uuid}` and it contains details available
+with ceph cluster maps. Certain details like OSD utilization, hostname and
+device path for the OSDs are not available as part of maps. These details needs
+to captured separately and updated for the OSDs during synchronization of OSD
+data in Tendrl central store.
+
+Also Tendrl should support various actions possible on OSDs so that they can be
+triggered from UI.
+
+Note: There would be a separate specifications filed for introduction of OSD
+tab under cluster dashboard in UI. The details which need to be listed for OSDs
+under this tab consist of
+
+* Name
+* OSD Status
+* Utilization
+* Weight
+* Host Name
+* Device Path
+* Supported Actions
+
+
+== Use Cases
+
+* The cluster details should contain OSD details with possible actions on them
+
+
+== Proposed change
+
+* Enhance the ceph cluster sync logic to find the utilization and device path
+details and populate as part of OSD data
+
+* Populate the `hostname` field as is for the OSDs as part of ceph cluster sync
+
+* Introduce flows in Tendrl for supported actions on the OSDs
+
+
+=== Alternatives
+
+* There are different ways to achieve the reading of osd utilization data
+
+* Option-1: Use rados module directly to invoke mon_command `osd df` to fetch
+the pool utilization data. A connection to rados could be kept open and keep
+running `osd df` command for getting details
+
+```
+import time
+import rados
+import json
+
+def get_osd_utilization(r):
+    cmd = {"prefix":"osd df", "format":"json"}
+    ret, buf, errs = r.mon_command(json.dumps(cmd), b'', timeout=5)
+    result = json.loads(buf)
+    return result
+
+try:
+    r = rados.Rados(conffile="/etc/ceph/ceph.conf")
+    r.connect()
+
+    for i in range(1000):
+        print(get_osd_utilization(r))
+        time.sleep(1)
+
+    if r is not None:
+        r.shutdown()
+except KeyboardInterrupt:
+    pass
+```
+
+* Option-2: The other option is to use execute command `ceph osd df` as a
+process and parse the output for data
+
+```
+import json
+import subprocess
+
+cluster = 'my_cluster'
+cmd = [
+    'ceph',
+    '--cluster',
+    cluster,
+    '-f',
+    'json-pretty',
+    'osd',
+    'df'
+]
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+out, err = process.communicate()
+ret_code = process.poll()
+if ret_code:
+    print "command %s exited with non-zero status: %d" % (cmd, ret_code)
+    return
+
+print out
+```
+
+=== Data model impact:
+
+* Update the `Osd` data model to include utilization and hostname related fields
+`total`, `used`, `used_pcnt`, `device_path` and `hostname`
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* The OSD listing API should list the additional fields related to utilization
+and hostname as well
+
+
+==== Notifications/Monitoring impact:
+
+* NA as already taken care
+
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+* Tendrl's ceph integration module should synchronize the OSD utilization data,
+device path and hostname as well while cluster data getting synchronized
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+* The REST output for listing individual OSDs would be including additional
+utilization, device path and hostname details
+
+=== Performance impact:
+
+NA
+
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* API module owner to make sure OSD listing contains the utilization, device
+path  and hostname details as well and shown properly
+
+== Implementation:
+
+* Enhance the ceph integration module's cluster data syncing logic to fetch the
+instant OSD utilization details and save along-with the pool inventory in
+central store
+
+* Enhance the SDS sync integrations module under `tendrl-node-agent` to figure
+out the device path for the OSDs on OSD nodes and set the same for the
+respective OSDs (this needs to be done in node agent integrations module as
+OSD nodes only would be able to figure out the device path details)
+
+* Populate the hostname for the OSD while cluster data synchronization
+
+* Under `tendrl-ceph-integration` module add flows and atoms for OSd operations.
+Currently below operations are supported for OSDs
+
+** Mark OSD Down
+** Marok OSD Out
+** Mark OSD In
+
+* Out of above mentioned two options under alternatives, option-1 would be
+preferable here as we directly talk to rados module and we can keep the
+connection open to rados mon module and keep running command `osd df` again and
+again each sync time.
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+
+Other contributors:
+  anivargi - API module
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/163
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Verify if the osd listing displays the utilization, device path and hostname
+as well in central store
+
+* Verify the OSD listing API to make sure utilization, device path and hostname
+details are listed
+
+== Documentation impact:
+
+* REST api documentation to update the OSD listing results and add utilization,
+device path and hostname data as well
+
+== References:
+
+* https://github.com/Tendrl/ceph-integration/issues/288
+
+* https://github.com/Tendrl/node-agent/issues/510
+
+* https://github.com/Tendrl/ceph-integration/issues/289
