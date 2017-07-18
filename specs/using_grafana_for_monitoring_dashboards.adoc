@@ -1,0 +1,127 @@
+// vim: tw=79
+
+= Spec - Using Grafana for displaying monitoring dashboard
+
+Grafana provides a rich set of tools to display monitoring and analytics using
+time series data.
+
+== Problem description
+
+Tendrl currently uses set of API's which are converted to a consumeable form
+for the front-end to display monitoring data. The front-end is unable to handle
+large amounts of data as the interval for the graphs increase and needs
+continuous polling to update the graphs in real-time. The graphs don't provide
+visual updates about a on going alert state.
+
+Tendrl also does not provide a way to customize the views for the end users
+needs, they are expected to use the default views provided.
+
+== Use Cases
+
+End users are provided with more detailed graphs with possibility of querying
+based on any time interval. Users can create their own graphs which suit their
+use cases. The graphs also provides visual real time updates about an ongoing
+alert in the system.
+
+== Proposed change
+
+Use Grafana to display monitoring, analytics and alerting dashboards.
+
+=== Alternatives
+None
+
+=== Data model impact:
+None
+
+=== Impacted Modules:
+
+==== Tendrl UI
+
+Tendrl UI will not provide any monitoring related screens. Provide a navigation
+from UI to Grafana dashboards.
+
+==== Tendrl API impact:
+
+Tendrl API will not provide any moniroting related API's.
+
+==== Notifications/Monitoring impact:
+
+Performance monitoring does not need to provide any kind of API's or connect to
+the time series db.
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+None
+
+==== Sds integration impact:
+None
+
+=== Security impact:
+None
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+
+The proposed changes will improve the performance of the API, as most of the
+real-time polling will be handled by Grafana.
+
+=== Other deployer impact:
+
+The changes introduces a new Grafana component which needs to be installed and
+configured by Tendrl.
+
+=== Developer impact:
+
+The change potentially affects performance-monitoring, node-monitoring, API and
+UI. 
+
+== Implementation:
+
+* Summary
+
+** Introduce a new component (possibly gluster-metrics-integration) to store
+predefined json's for dashboards, panels and alerts.
+
+** Script to configure Grafana to directly use time series db i.e Graphite and
+load the json configurations.
+
+** Enable single authentication across the UI and Grafana dashboards.
+
+** Disable performance-monitoring API's.
+
+** Disable proxy API's from performance-monitoting to tendrl-api
+
+** Disable previous UI for showing monitoring data
+
+=== Assignee(s):
+
+Primary assignee:
+  @cloudbehl
+  @anmolbabu
+
+Other contributors:
+  @anivargi
+  @nnDarshan
+
+=== Work Items:
+
+TODO
+
+== Dependencies:
+
+TODO
+
+== Testing:
+
+Verify all the monitoring data is updated and displayed correctly.
+
+== Documentation impact:
+
+Update documentation to provide installation steps for Grafana.
+
+== References:
+None
