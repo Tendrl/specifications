@@ -81,21 +81,19 @@ UI.
 
 == Implementation:
 
-* Summary
-
-** Introduce a new component (possibly gluster-metrics-integration) to store
+* Introduce a new component (possibly gluster-metrics-integration) to store
 predefined json's for dashboards, panels and alerts.
 
-** Script to configure Grafana to directly use time series db i.e Graphite and
+* Script to configure Grafana to directly use time series db i.e Graphite and
 load the json configurations.
 
-** Enable single authentication across the UI and Grafana dashboards.
+* Enable single authentication across the UI and Grafana dashboards.
 
-** Disable performance-monitoring API's.
+* Disable performance-monitoring API's.
 
-** Disable proxy API's from performance-monitoting to tendrl-api
+* Disable proxy API's from performance-monitoting to tendrl-api
 
-** Disable previous UI for showing monitoring data
+* Disable previous UI for showing monitoring data
 
 === Assignee(s):
 
