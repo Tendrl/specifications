@@ -1,0 +1,235 @@
+= Tendrl performance enhancements for lesser CPU and memory consumption
+
+The intent of this change is to make sure load due to tendrl components on
+storage nodes is minimal. It also covers the aspects related to performant REST
+apis and make sure no crashes in etcd, predictable job processing with defined
+CPU and memory uses.
+
+It also tends to define the hardware requirements for standard tendrl server
+and load incurred on the storage nodes due to tendrl components.
+
+
+== Problem description
+
+This specification talk about various changes required in tendrl components to
+make it more performant and make sure they consume less resources (CPU, memory)
+on storage nodes. It also covers the guidelines to storage admin for required
+hardware for tendrl server, etcd clustering and load incurred on storage nodes.
+
+
+== Use Cases
+
+* This addresses the changes in the way tendrl entities get written and read
+to/from etcd. Currently the objects get written field by field which is CPU
+intensive and needs more resources.
+
+* The job processor in tendrl, consistently looks at `/queue` etcd dir for
+finding the jobs to be processed. We need a tagged job queue mechanism which
+reduces huge fetching and probing of the `/queue` jobs. With tagged job queues,
+specific services would look for the interesting specific job queues and they
+would process jobs them only.
+
+* Provide guidelines on standard hardware requirements for tendrl server node
+
+* Provide guidelines on setting up a clustered etcd for tendrl
+
+* Tuning of REST endpoints for better performance and predictable response time
+
+* Tuning of different components of tendrl for better memory utilizations
+
+
+== Proposed change
+
+* Annotate flows in tendrl definition files with tagged queue names (to which
+these flows would write the job to)
+
+* Introduce a tagged job queue mechanism in `tendrl-commons` module. Services
+with defined tags would pick jobs from their specific tagged job queues for
+processing
+
+* Enhance REST layer to create job in tagged job queues based on flow annotation
+for job queue names
+
+* Enhance writing/reading to/from etcd to consider whole object details as
+single JSON. While writing we need to get the json representation of the object
+and write as single field under etcd. While reading, it should be read as single
+value and whole object should be weaved back from JSON.
+
+A pseudo save and load functions would something like below
+
+```
+def save(self, update=True, ttl=None):
+    NS._int.wclient.write(self.value + '/data', self.json)
+
+def load(self):
+    self.render()
+    val = json.loads(NS._int.client.read(self.value + '/data').value)
+    for attr_name, attr_val in vars(self).iteritems():
+        if not attr_name starts with '_' and attr_name is not 'value':
+            Get attr type from definitions file already loaded
+            if attr type in ['json', 'list']:
+                setattr(self, attr_name, json.loads(attr_val))
+            else:
+                setattr(self, attr_name, attr_val)
+    return self
+```
+
+* Fine tune REST endpoints for better and faster response times
+
+* Document the hardware requirements for tendrl server under wiki
+
+* Document the clustering mechanism of etcd in wiki
+
+* Document the details of load incurred on storage nodes due to tendrl
+components within justified limits (so that storage admin can plan the resource
+requirements accordingly)
+
+* In {gluster/ceph}_integration, change the sds sync as a job and start this job
+while startup of these integration services. Once started, these jobs should be
+triggered periodically.
+
+* Change any explicit raw reads in tendrl components to use load() and then the
+required field from object.
+
+=== Alternatives
+
+* Regarding {gluster/ceph}_integration sds_sync as flows, there is another
+suggestion to have different time intervals at which specific details get
+synchr0nized. A sample pseudo code could be as below
+
+```
+counter = 1
+while True:
+    sleep(10)
+    sync volume and bricks
+
+    if counter % 30 == 0: # if 30 rounds of volume sync has happened, trigger
+        sync cluster status
+        sync utilization details
+
+    if counter % 60 == 0: # if 60 rounds of volume sync has happened, trigger
+        sync snapshots
+        sync underlying device details for bricks
+
+    counter = (counter + 1) % 60 (LCM of 1, 30, 60)
+```
+
+This would make sure different syncs are done at different intervals. Also this
+does not require sds_sync to be a separate flow and still different syncs get
+triggered at different intervals.
+
+=== Data model impact
+
+* Annotate the tendrl flows in different definitions files of tendrl modules to
+define the tagged queue name where these jobs would be written
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* With proposed changes above, the object details would be saved as single JSON
+field with name `data`. For example, the volume details would be saved as
+`clusters/{int-id}/Volumes/{vol-id}/data`. API layer need to change to read the
+values as per these changes for listing the objects details.
+
+* REST layer to write the jobs in tagged queues based on definitions
+
+* Enhancements for tuning the response time for various GET endpoints
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+
+* Enhancements for processing tagged job queues. Based on the current service,
+it should look at defined tagged job queue only for figuring out the jobs to be
+picked and processed
+
+* Enhance the writing/reading logic to/from etcd to consider the whole object as
+single JSON
+
+==== Tendrl/node_agent impact:
+
+* Definitions changes for tagging flows with specific job queue names
+
+==== Sds integration impact:
+
+* Definitions changes for tagging flows with specific job queue names
+
+==== Tendrl Dashboard impact:
+
+None
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None.
+
+=== Other deployer impact:
+
+None.
+
+=== Developer impact:
+
+None.
+
+
+== Implementation:
+
+* https://github.com/Tendrl/documentation/issues/88
+
+* https://github.com/Tendrl/documentation/issues/89
+
+* https://github.com/Tendrl/documentation/issues/90
+
+* https://github.com/Tendrl/commons/issues/657
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+  r0h4n
+  anivargi
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/172
+
+
+== Dependencies:
+
+None
+
+
+== Testing:
+
+* Verify that load incurred on storage nodes due to tendrl components is within
+the defined limits
+
+* Verify the REST endpoints for their response time and it should be within the
+defined time limits
+
+* Verify the guidelines published regarding clustering of etcd
+
+* Verify all the objects listing REST endpoints to make sure all the details are
+listed properly.
+
+
+== Documentation impact:
+
+* Document for clustered setup of etcd
+
+* Document for hardware requirements for tendrl server
+
+* Document for load details on storage nodes due to tendrl components
+
+== References:
+
+None
