@@ -1,0 +1,200 @@
+
+
+= Alert Notifications
+
+Alerting system is essential to spot the problem and notify it to the corresponding user.
+The thresholds for alerts are configured in grafana and events of alerts will be notified by grafana.
+These events are interpretted and modified by Monitoring-Integration component and notified to
+respective user via the notifier.
+
+
+== Problem description
+
+The present alerting system monitors all the events in etcd and retrieves alert specific events.
+The events are converted into alert structure and stored in etcd under /alerting/alerts/.
+This leads to duplication of events in etcd and excess read and writes to etcd.
+The events are processed for alerts after saving into etcd instead of processing it before
+saving events in etcd.
+
+== Use Cases
+
+Goal: Notify user in case of any alert event.
+
+Actors:
+
+1) Notifier
+
+Steps:
+
+* Node-Agent stores events in etcd.
+
+* The alert conditions will be monitored by the Notifier.
+
+* The alert notification is sent to the appropriate end points via
+  corresponding notification channels.
+
+== Proposed change
+
+Present Alert system(https://github.com/Tendrl/alerting) will be renamed as “Notifier”
+
+The main functionality of Notifier would be to:
+
+* Monitor etcd for alert conditions being set, modified or unset.
+
+* Sending alert notifications to configurable receiving end-points.
+
+Presently the alerting module processes all events under messages\events
+in etcd and looks for events having priority as “notice” which signifies they are
+alerts. Instead of processing all events an AlertManager will be configured to
+receive just alerting events and notify users about these events.
+
+For this the notifier must receive only the alerting events.
+This can be achieved in 2 ways:
+
+* All alert conditions will be stored in etcd under alerting/alerts/{cluster,node} by
+  the node-agent as per the scope of the alert condition (cluster level scope or node level scope).
+  A watcher(NotificationWatcher) will be configured to poll etcd (alerting/alerts) for any new
+  set or unset alert conditions. On detecting new alert condition or changes in existing condition
+  the alert condition will be passed to notifier and using the configured notification channel the
+  notifier would notify the users of these alerts.
+
+ Advantage:
+
+     ** It will reduce number of read and write in etcd.
+
+  Drawback:
+
+      ** Polling etcd for new alerts is not efficient.
+
+* To avoid polling etcd, node-agent instead of just logging the events to
+  alerting/alerts/{cluster,node} could also pass events to notifier directly.
+  Notifier can extract the payload,parse it and using the configured notification channel
+  would notify the users of these events.
+
+    Advantage:
+
+     ** Avoids polling etcd for new alerts.
+
+
+The Notifier will notify the user of the events via configured notification channels
+like SMTP.
+
+=== Alternatives:
+
+Prometheus alertmanager can be used as a "Notifier" instead of tendrl alert module.
+It provides facility to inhibit, group and silence the alerts.
+
+=== Data model impact:
+
+ No changes in existing structure.
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+WIP
+
+==== Sds integration impact:
+
+None
+
+==== Tendrl/performance-monitoring impact:
+
+None
+
+==== Tendrl/alerting impact:
+
+Tendrl alerting system will be renamed as Notifier.
+Its main functionality would be to fetch the alert events and
+notify the respective user.
+
+=== Security impact:
+
+ None
+
+=== Other end user impact:
+
+Users will be able to set alerts in Grafana itself and get notified for the same.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+Modify node-agent to insert events into different path in etcd.
+
+Trim down present alerting system to provide only notification functionality.
+
+== Implementation:
+
+* Rename the alerting module as notifier
+* Rename the file tendrl-alerting.spec as tendrl-notifier.spec
+* Rename the file tendrl-alerting.service as tendrl-notifier.service
+* Replace the word tendrl-alerting or alerting or both from tendrl-alerting.spec,
+  tendrl-alerting.service, setup.py, README.rst, Makefile, MANIFEST.in as tendrl-alerting
+  or alerting.
+* Rename the alerting_logging.yaml.sample as notifier_logging.yaml.sample and modifiy the
+  file.
+* Rename the file alerting.conf.yaml.sample as notifier.conf.yaml.sample and modify the
+  file.
+* Modify the doc/sources based on new notifier module functionality.
+* Modify the __init__ function in TendrlAlertingManager class to start gevent for watcher,
+  and sync thread only.
+* Rename the class TendrlAlertingManager as TendrlNotificationManager in __init__.py
+* Modify the AlertingNS as NotifierNS
+* Remove the handlers module from notifer.
+* Change the watcher to monitor alerts from /alerting/alerts instead of /messages/event
+* Create the file called alert_condition_handler.py in node-agent.
+* Create a new class called AlertCondtionHandler in alert_condition_handler.py
+* Move the alert object, cluster_alert object and node_alert from alerting module to
+  common with all utility functions.
+* Modifiy the logger.py to pass the alert message into AlertCondtionHandler class.
+* AlertCondtionHandler should have a logic to find whether alert is new alert or
+  updation for existing alert or unset.
+
+=== Assignee(s):
+
+
+@GowthamShanmugam
+@rishubhjain
+
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/190
+
+
+== Dependencies:
+
+None
+
+
+== Testing:
+
+None
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://github.com/Tendrl/specifications/pull/198
