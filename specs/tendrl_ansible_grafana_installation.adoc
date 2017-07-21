@@ -1,0 +1,156 @@
+= Tendrl ansible to install grafana
+
+Needs ansible playbook scripts for automatic installation and configuration of
+grafana and tendrl metrics in the tendrl server.
+
+
+== Problem description
+
+Grafana will be used in tendrl to trigger alerts and visualize the tendrl
+metrics. Currently, Tendrl-ansible is used to install and configure tendrl
+packages. It should also support installation and configuration of tendrl
+metrics and grafana package installation.
+This specification provides the required changes in tendrl-ansible tool to
+support installation and configuration of tendrl metrics and grafana.
+
+
+== Use Cases
+
+* Provide playbook for tendrl-ansible to install tendrl-metrics and grafana
+along with server installation.
+
+
+== Proposed change
+
+* Add the repo to install latest grafana and its dependencies
+
+* Install tendrl metrics, grafana, fontconfig, freetype* and urw-fonts
+
+* Configure tendrl metrics and  grafana
+  This should add the required environment variables, set log path, database
+  connection details, data source and the node details
+
+* Enable the tendrl metrics and grafana server to start at boot time
+
+* Start the grafana-server service
+
+* Document the ansible playbook configuration, tendrl metrics activation
+  details in wiki
+
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl Ansible impact:
+
+* Update roles in site.yml.sample about the repo details install grafana
+and its dependencies for tendrl-server host installation.
+- hosts: tendrl-server
+  ...
+  roles:
+    - tendrl-copr
+    - grafana
+    ...
+
+* Add repo details under tendrl-ansible/roles
+  files directory with keys and the repo files
+  tasks to install the repos
+
+* Create and add tasks to install grafana and tendrl metrics packages
+  in tendrl-ansible/roles/tasks
+
+* Include tasks to configure grafana and tendrl metrics packages
+  in tendrl-ansible/roles/tasks
+
+* Update tendrl-ansible/roles/tendrl-server/handlers/main.yml
+  to check the status of grafana server service and start
+
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+==== Tendrl Dashboard impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None.
+
+=== Other deployer impact:
+
+None.
+
+=== Developer impact:
+
+None.
+
+
+== Implementation:
+
+<Add specific issues here>
+
+=== Assignee(s):
+
+Primary assignee:
+  Timothy Asir Jeyasingh
+  Martin Bukatovič
+
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/175
+
+
+== Dependencies:
+
+None
+
+
+== Testing:
+
+* Verify that installation and configuration of grafana and tendrl metrics
+
+* Verify the metrics graphs are showing properly and periodically
+
+
+== Documentation impact:
+
+None
+
+
+== References:
+
+None
