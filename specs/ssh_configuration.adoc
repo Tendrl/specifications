@@ -1,0 +1,314 @@
+= SSH configuration utilities for provisioning cluster
+
+SSH public-key utilities are helping tendrl to setup a password less ssh between
+the provisioning node and other cluster nodes.
+
+== Problem description
+
+The cluster provisioning process needs some communication between the provisioning
+node and cluster nodes. Before that provisioning node needs some authentication
+to enable the secure communication with cluster nodes. SSH public-key configuration
+is the process of setup a password less ssh between the provisioning node and other
+cluster nodes.
+
+SSH utilities are helps tendrl in SSH public-key configuration process. Each SSH
+utility have some different functionality.
+
+1. Utility for generate SSH-Key for particular user.
+2. Utility for copy authorized ssh key.
+3. Utility for find sshd service port number and status.
+
+Later entire workflow is tied together with flows, which are not part of this
+specification.
+
+== Use Cases
+
+Needs SSH configuration utility in common to support SSH configuration for
+provisioning cluster.
+
+== Proposed change
+
+
+SSH public-key configuration have four major step, each step is a separate utility
+method that always works locally on a specific node. Each of these utility methods
+are executed by ansible in local node. Later entire workflow is tied together with
+flows, which are not part of this specification.
+
+1. Generate a key for a user. The method can take the user name and
+   key as optional parameters, whose defaults are root and tendrl
+   respectively.
+2. Install an SSH key into a user's authorized_keys. SSH public key should be
+   a mandatory parameter, while the user name should be optional. User name
+   should default to root. (Copying authorize key will happend only when selinux
+   is in disable state)
+3. Check if the SSH daemon is running and get it's port number.
+4. Check if the SSH incoming port is open. (It will implemented in future not part
+   of this spec).
+
+== Alternatives
+
+None
+
+== Data model impact
+
+None
+
+== Impacted modules
+
+=== Tendrl/common impact
+
+* Create a new ansible module in commons utils to create a new user with
+  SSH-key. If the user already present then it should create only SSH-key for that
+  user.
+```
+Example arguments for the ansible user module is:
+Create a 2048-bit SSH key for user tendrl in /home/tendrl/.ssh/id_rsa.pub
+- user:
+    name: tendrl (default root)
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa.pub
+```
+* Create a new ansible module commons utils to add SSH authorized key
+```
+Example arguments for the ansible authorized_key module is:
+- name: Set authorized key took from file
+  authorized_key:
+    user: tendrl (default root)
+    key: "pass ssh-key"
+    (default path is "(homedir)+/.ssh/authorized_keys")
+```
+* Create a new a function in utils to find ssh daemon status and port number.
+  (In implementation section it is explained briefly)
+
+=== Tendrl/node_agent impact
+None
+
+=== Tendrl/gluster_integration impact
+None
+
+=== Tendrl/ceph_integration impact
+None
+
+=== Tendrl/alerting impact
+None
+
+=== Tendrl/performance_monitoring impact
+None
+
+== Security impact
+None
+
+== Notifications/Monitoring impact
+None
+
+== Other end user impact
+None
+
+== Performance Impact
+None
+
+== Other deployer impact
+None
+
+== Developer impact
+* Example to call GenerateSSH key module:
+    ssh-key = GenerateSSH("username").run() # username is optional default is root
+* Example to call AuthorizedKey module:
+    err = AuthorizedKey(user="username", ssh_key="ssh key").run()
+* Example to call SSHUtil:
+    result, err = SSHUtil()
+
+== Implementation
+
+* Create a new utility class called GenerateSSH in commons with filename generate_ssh_utils.py.
+* GenerateSSH should take username and exec_path path as parameter to initialize object.
+* Default user is root.
+* Create a method called __run_module in GenerateSSH class to call ansible runner with
+  arguments to create user with ssh-key. (If user is already there then it only create ssh-key for
+  that user).
+* Output of Ansible runner is:
+```
+  {
+	"u'comment'": "u''",
+	"u'createhome'": true,
+	"u'group'": 1003,
+	"u'name'": "u'tendrl'",
+	"u'changed'": true,
+	"u'system'": false,
+	"u'state'": "u'present'",
+	"u'shell'": "u'/bin/bash'",
+	"u'ssh_fingerprint'": "u'2048 SHA256:005PDbjBgpnU0sjpfcnSDncrNvXoWNn6Gu5HLSSS+3E
+                        ansible-generated on dhcp35-60.lab.eng.blr.redhat.com (RSA)'",
+	"u'stderr'": "u'useradd: warning: the home directory already exists.\\nNot copying
+                any file from skel directory into it.\\nCreating mailbox file: File exists\\n'",
+	"u'home'": "u'/home/tendrl'",
+	"u'invocation'": {
+		"u'module_args'": {
+			"u'comment'": "None",
+			"u'ssh_key_bits'": 2048,
+			"u'update_password'": "u'always'",
+			"u'non_unique'": false,
+			"u'force'": false,
+			"u'skeleton'": "None",
+			"u'ssh_key_passphrase'": "None",
+			"u'uid'": "None",
+			"u'home'": "None",
+			"u'append'": false,
+			"u'ssh_key_type'": "u'rsa'",
+			"u'ssh_key_comment'": "u'ansible-generated on dhcp35-60.lab.eng.blr.redhat.com'",
+			"u'group'": "None",
+			"u'system'": false,
+			"u'state'": "u'present'",
+			"u'shell'": "None",
+			"u'expires'": "None",
+			"u'ssh_key_file'": "u'.ssh/id_rsa'",
+			"u'groups'": "None",
+			"u'move_home'": false,
+			"u'password'": "None",
+			"u'seuser'": "None",
+			"u'name'": "u'tendrl'",
+			"u'createhome'": true,
+			"u'remove'": false,
+			"u'login_class'": "None",
+			"u'generate_ssh_key'": true
+		}
+	},
+	"u'ssh_public_key'": "u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2KEOtIHZDEzupUT"
+                       sJoa/w9PLgjIEw0tZhc75L9ZYaAy2psHtv31J2G8RqZkht1b7vE58uY+
+                       KMKptpe+l+yNmvEtZ86wsGpV6zanUVDUMOgpm2G6zslHfiDcwHi1FeIs8
+                       P5HgrVUo89WLNbGDUN8srPXtEHEgPPO+E4CyOTbk+Xs4n6bqDMzSLWTED
+                       Xh/NdGmKxFgj2S/LyLHgGQXlPRDld7L8ZCbYtYgo8RYt7zdaI6XF+b/Cq
+                       4cTDijrWB/LXkcQMBnaVsRYVNPNdIcztFlp1336OMdWyFsmjl5WsvvpZ
+                       Ag20rNUEhbBGHJAEKCE6qmN5ATn+JrB387mWDEEFEqf ansible-generated
+                       on dhcp35-60.lab.eng.blr.redhat.com'",
+	"u'ssh_key_file'": "u'/home/tendrl/.ssh/id_rsa'",
+	"u'uid'": 1003
+}
+```
+* Output of GenerateSSH utils is:
+```
+newly generated ssh-key:
+                    "u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2KEOtIHZDEzupUT"
+                     sJoa/w9PLgjIEw0tZhc75L9ZYaAy2psHtv31J2G8RqZkht1b7vE58uY+
+                     KMKptpe+l+yNmvEtZ86wsGpV6zanUVDUMOgpm2G6zslHfiDcwHi1FeIs8
+                     P5HgrVUo89WLNbGDUN8srPXtEHEgPPO+E4CyOTbk+Xs4n6bqDMzSLWTED
+                     Xh/NdGmKxFgj2S/LyLHgGQXlPRDld7L8ZCbYtYgo8RYt7zdaI6XF+b/Cq
+                     4cTDijrWB/LXkcQMBnaVsRYVNPNdIcztFlp1336OMdWyFsmjl5WsvvpZ
+                     Ag20rNUEhbBGHJAEKCE6qmN5ATn+JrB387mWDEEFEqf ansible-generated
+                     on dhcp35-60.lab.eng.blr.redhat.com'"
+```
+* Create a new utility class called AuthorizedKey in commons with filename authorized_key_utils.py.
+* AuthorizedKey should be initialized with username(default root) and key(mandatory).
+* Create a method called __run_module in AuthorizedKey class to call ansible runner with
+  arguments to copy ssh-key.
+* Sample output of ansible runner is:
+```
+{
+u'exclusive':False,
+u'validate_certs':True,
+u'changed':False,
+u'key_options':None,
+u'state':u'present',
+u'user':u'tendrl',
+u'key':u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5hqcQ0EkbEsnowSdh8B2RPuvgEfIFvyT4
+        /cbHODYc+/y7OxOK66J7006t9llzmhCG6jYE5jCZz4Q+rKHQ9G6+0Fc2Av7x9KdnEeYkBH8a2
+        HgmyA16dJW+eTLL4QK4TLC03yFSedorc9NXbCaYW0EMc59lZMUiXaGUtzAjm+QLfh7h8Vf9Z
+        4fNJkj8zURIbfemHaoYgv6ElJGg+sdKAhZwULRe0ZzrYsRXBSPKQCfzavnt7XXi/VWJTlirh
+        lAp7WR97M26ufEN7bPB27wIcF4FZUo8kLlULRn58VB0rIXXqNKM2BI+v4y9UvCmeqlTFFGuVx
+        0Ep+trrYDcsqwuulyp ansible-generated on dhcp35-60.lab.eng.blr.redhat.com',
+u'invocation':{
+  u'module_args':{
+    u'exclusive':False,
+    u'keyfile':u'/home/tendrl/.ssh/authorized_keys',
+    u'key_options':None,
+    u'state':u'present',
+    u'user':u'tendrl',
+    u'key':u'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5hqcQ0EkbEsnowSdh8B2RPuvgEfIF
+            vyT4/cbHODYc+/y7OxOK66J7006t9llzmhCG6jYE5jCZz4Q+rKHQ9G6+0Fc2Av7x9KdnE
+            eYkBH8a2HgmyA16dJW+eTLL4QK4TLC03yFSedorc9NXbCaYW0EMc59lZMUiXaGUtzAjm+
+            QLfh7h8Vf9Z4fNJkj8zURIbfemHaoYgv6ElJGg+sdKAhZwULRe0ZzrYsRXBSPKQCfzavn
+            t7XXi/VWJTlirhlAp7WR97M26ufEN7bPB27wIcF4FZUo8kLlULRn58VB0rIXXqNKM2BI+
+            v4y9UvCmeqlTFFGuVx0Ep+trrYDcsqwuulyp ansible-generated on
+            dhcp35-60.lab.eng.blr.redhat.com',
+    u'path':None,
+    u'unique':False,
+    u'validate_certs':True,
+    u'manage_dir':True
+  }
+},
+u'path':None,
+u'unique':False,
+u'keyfile':u'/home/tendrl/.ssh/authorized_keys',
+u'manage_dir':True
+}
+```
+* Sample output of AuthorizedKey utils is:
+```
+err:
+   None or error
+```
+* Create a new utility class called SSHUtil in commons with filename ssh_utils.py.
+* Create a method called get_pid to identify the currently running sshd process id.
+```
+ there is 2 ways to find pid:
+  1. "systemctl show sshd.service" and parse the output using a keyword MainPID.
+  2. Run the command "cat /var/run/sshd.pid" in ansible to get currently running pid
+```
+* Create a function called find_sshd_status in SshUtil class.
+```
+  This method will find port number and ssh daemon status using pid
+  import psutil
+  p = psutil.Process(identified pid from get_pid())
+  p.name() # to print service name nothing but sshd
+  p.connections()
+
+  sample output:
+      [pconn(fd=3, family=10, type=1, laddr=('::1', 22), raddr=('::1', 54960),
+      status='LISTEN')]
+
+      return status and portnumber from this
+```
+* There is one more utility for identifying port is open or not. It will not part of this
+  spec. It will implemented in future.
+
+== Assignee(s)
+
+Primary assignee: Gowtham Shanmugasundaram
+
+== Work Items
+
+https://github.com/Tendrl/specifications/issues/141
+
+== Dependencies
+
+libselinux-python - is a dependency for authorized_key module to copy the key.
+psutil - is a dependency for find sshd service status(port number, and status).
+```
+In centos:
+   libselinux-python (yum package)
+   psutil (pip package)
+
+Both package names are differ in centos and rhel
+In rhel:
+   libselinux
+   python-psutil
+```
+(Already raised bug for this: https://github.com/Tendrl/node-agent/issues/234)
+
+== Testing
+
+* Sanity check for flow.
+* Check SSH-key is generated successfully or not
+* Check SSH-key is copied successfully
+* Check the user is created successfully
+* Check the connection manually using ssh.
+
+== Documentation impact
+
+None
+
+== References
+
+* http://docs.ansible.com/ansible/user_module.html
+* http://docs.ansible.com/ansible/authorized_key_module.html
