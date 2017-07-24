@@ -1,0 +1,276 @@
+// vim: tw=79
+
+= Gluster Metrics - Milestone 1
+
+== Introduction
+
+This specification deals with monitoring tendrl managed gluster cluster.
+It explains the following:
+
+* Which gluster metrics are to be enabled.
+* How each of the metrics is going to be implemented.
+* Any flows to be added to the node agent for configuring any collectd plugins
+  needed by the individual metrics.
+This specification will deal with metrics implemented in milestone 1
+
+== Problem description
+
+Admin using tendrl for gluster cluster management, should be able to see an
+easy to interpret representation of his gluster cluster/s with appropriate
+utilization trend patterns and any issue in his gluster cluster/s should be
+with no/minimal effort be made noticeable to the admin.
+
+== Use Cases
+
+A gluster cluster is imported(or created) in tendrl. From this point, this
+cluster needs to be monitored for utilization and status behaviour.
+
+== Proposed change
+
+The gluster metrics will be enabled at the very level from collectd and any
+aggregations thereon will be done by the grafana either on its own or using the
+aggregation rules as communicated to it by the monitoring-integration module.
+
+* Following are the gluster metrics to be enabled from collectd along with the
+  source of the information:
+    ** Brick level:
+        *** IOPS -- gluster volume profile <vol_name> info --xml
+
+            xml attribute hierarchy in cli response:
+            cliOutput -> volProfile -> brick -> cumulativeStats -> totalRead
+            cliOutput -> volProfile -> brick -> cumulativeStats -> totalWrite
+            iops <- totalRead + totalWrite
+
+        *** Brick Utilization -- python os.statvfs on brick path
+
+            total -> data.f_blocks * data.f_bsize
+            free -> data.f_bfree * data.f_bsize
+            used_percent -> 100 - (100.0 * free / total)
+
+        *** Inode utilization -- python os.statvfs on brick path
+
+            free -> data.f_ffree
+            total -> data.f_files
+            used_percent_inode -> 100 - (100.0 * free_inode / total_inode)
+
+        *** LVM Thin Pool metadata usage -- lvm vgs command
+        *** LVM thin pool data usage -- lvm vgs command
+
+        ----
+        l = map(lambda x: dict(x),
+                map(lambda x: [e.split('=') for e in x],
+                    map(lambda x: x.strip().split('$'), out)))
+        d = {}
+        for i in l:
+            if i['LVM2_LV_ATTR'][0] == 't':
+                k = "%s/%s" % (i['LVM2_VG_NAME'], i['LVM2_LV_NAME'])
+            else:
+                k = os.path.realpath(i['LVM2_LV_PATH'])
+            d.update({k: i})
+        return d
+
+        if lvs and device in lvs and \
+           lvs[device]['LVM2_LV_ATTR'][0] == 'V':
+            thinpool = "%s/%s" % (lvs[device]['LVM2_VG_NAME'],
+                                  lvs[device]['LVM2_POOL_LV'])
+            out['thinpool_size'] = float(
+                lvs[thinpool]['LVM2_LV_SIZE']) / 1024
+            out['thinpool_used_percent'] = float(
+                lvs[thinpool]['LVM2_DATA_PERCENT'])
+            out['metadata_size'] = float(
+                lvs[thinpool]['LVM2_LV_METADATA_SIZE']) / 1024
+            out['metadata_used_percent'] = float(
+                lvs[thinpool]['LVM2_METADATA_PERCENT'])
+            out['thinpool_free'] = out['thinpool_size'] * (
+                1 - out['thinpool_used_percent'] / 100.0)
+            out['thinpool_used'] = out['thinpool_size'] - out['thinpool_free']
+            out['metadata_free'] = out['metadata_size'] * (
+                1 - out['metadata_used_percent'] / 100.0)
+            out['metadata_used'] = out['metadata_size'] - out['metadata_free']
+        ----
+
+    ** Node level:
+        *** CPU -- collectd plugin
+        *** Memory -- collectd plugin
+        *** Storage(Mount point) -- collectd plugin
+        *** SWAP -- collectd plugin
+        *** Disk IOPS -- collectd plugin
+        *** Network
+            **** Bytes sent and received(rx, tx) -- collectd plugin
+            **** Dropped packets -- collectd plugin
+            **** Errors/overruns -- collectd plugin
+    ** Volume level:
+        *** Status -- gluster get-state glusterd odir /var/run file collectd-glusterd-state
+            **** Counters will be made available via collectd plugins based on get-state result
+        *** Bricks counter
+            **** Total -- gluster get-state glusterd...
+    ** Cluster level:
+        *** Number of nodes
+            **** Total -- gluster get-state glusterd...
+            **** Status-wise
+                 Based on "peer in cluster" and "connected" in get-state output
+        *** Number of volumes
+            **** Total -- gluster get-state glusterd...
+            **** Status wise -- gluster get-state glusterd...
+        *** Number of bricks
+            **** Total -- gluster get-state glusterd...
+    ** Brick and cluster status wise counters can't be made  available from the
+       level of collectd as only the brick info corresponding to node on which
+       the collectd plugin is currently in execution, will be accessible and
+       info regarding the other bricks in cluster is not available and plugins
+       are stateless. This if required will not be found and updated to
+       graphite by monitoring-integration.
+* Collectd plugins for each of the above mentioned metrics will be added and
+  configured as detailed in :
+
+----
+https://github.com/Tendrl/specifications/blob/master/specs/refactoring_of_node_monitoring_flows_into_node_agent.adoc#proposed-change
+----
+
+----
+Note:
+The aggregated/derived metrics that will be made available at grafana
+level will be dealt with in detail by spec issues:
+    * https://github.com/Tendrl/specifications/issues/179
+----
+
+=== Alternatives
+
+* A new pluggable approach within our gluster metric collectors can be
+  developed such that the metrics collection plugins are loaded and
+  activated dynamically given just a one time configuration specifying
+  cluster_id and graphite host and port addresses.The plugins hooked to
+  gluster metrics provided pluggable framework are executed in concurrent as
+  green threads(being experimented) and hence their atomicity needs to be
+  ensured.
+    * The cluster topology is learnt once per execution cycle and the same
+      knowledge is shared between plugins unless the same can be fetched
+      by using a different means which is unavoidable.
+      ex: gluster volume status clients info --xml should be used to get
+      connections count but that already readily gives cluster topology
+      which can be used directly.
+    Note:
+        * Above approach runs every plugin in the framework at same interval.
+        * Attempts are being made to have a mechanism by which plugins can
+          register to our framework as light-weight, heavy-weight etc.. and
+          accordingly, the plugin execution interval will differ.
+        Note:
+        ** This is of particular importance in case of certain operations where
+           the command execution too frequently can affect the performance.
+* This is achieved as follows:
+    ** The plugins are classified as heavy-weight(can't be executed frequently
+       due to performance concerns) and low-weight(can be executed frequently)
+       under the collectd plugin path(/usr/lib64/collectd/gluster)
+    ** The base plugin executes gluster get-state command and learns cluster
+       topology.
+    ** The plugin base framework loads and executes as greenlets; all plugins
+       under above mentioned directories dynamically at every fixed interval
+       of time as configured in base plugin and passes cluster topology to
+       each of the plugins.
+
+----
+Note: This proposed alternative is being experimented.
+----
+
+=== Data model impact:
+
+The name-spacing of metrics will follow the following:
+
+* tendrl.clusters.<cluster_id> will be the prefix for all metrics.
+* Node level metrics follow the format:
+   tendrl.clusters.<cluster_id>.nodes.<node_name>.<plugin_name>.<plugin_attrs>
+* Cluster level metrics follow the format:
+    tendrl.clusters.<cluster_id>.<plugin_name>.<plugin_attrs...>
+* Volume level metrics follow the format:
+    tendrl.clusters.<cluster_id>.volumes.<volume_name>.<plugin_name>.
+    <plugin_attrs>
+* Brick level metrics follow the format:
+    tendrl.clusters.<cluster_id>.volumes.<volume_name>.nodes.<node_name>.bricks.
+        <brick_path>.<plugin_name>.<plugin_attrs>
+    and the same would also be maintained @
+    tendrl.clusters.<cluster_id>.nodes.<node_name>.bricks.<brick_path>.
+        <plugin_name>.<plugin_attrs>
+    for mapping directly from node level.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+The configuration method would now change slightly in accordance with
+details in https://github.com/Tendrl/specifications/blob/master/specs/refactoring_of_node_monitoring_flows_into_node_agent.adoc#proposed-change
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+The main consumer of this is the tendrl-grafana dashboard.
+The impact in and due to the new dashboard will be detailed in a different
+spec.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+* The aggreageations that were previously done by the performance-monitoring
+  application will now be done at grafana.
+    ** The rules of aggregation will be communicated to grafana by
+       monitoring-integration. Details of this are out of scope of this spec
+       and will be covered as part of:
+
+       ----
+       https://github.com/Tendrl/specifications/pull/218
+       ----
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  Metrics from collectd: anmolbabu<anmolbudugutta@gmail.com>
+  Dashboard: cloudbehl<cloudbehl@gmail.com>
+
+=== Work Items:
+
+* https://github.com/Tendrl/node-agent/issues/549
+
+== Dependencies:
+
+None
+
+== Testing:
+
+The plugins push stats to graphite and the same in graphite will need to be
+tested for correctness.
+
+== Documentation impact:
+
+None
+
+== References:
+
+Attempts in this regard can be found @:
+https://github.com/Tendrl/node-monitoring/pull/79
