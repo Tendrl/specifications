@@ -34,7 +34,8 @@ Use Grafana to display monitoring, analytics and alerting dashboards.
 None
 
 === Data model impact:
-None
+The data model impact for graphite is defined in spec
+https://github.com/Tendrl/specifications/pull/206
 
 === Impacted Modules:
 
@@ -72,6 +73,8 @@ None
 
 The proposed changes will improve the performance of the API, as most of the
 real-time polling will be handled by Grafana.
+The polling required for updating the nodes list and clusters list periodically
+will still remain.
 
 === Other deployer impact:
 
@@ -86,14 +89,16 @@ The change potentially affects performance-monitoring, API and UI.
 == Implementation:
 
 * Introduce a new component called as monitoring-integration to store predefined
-json's for dashboards, panels and alerts.
+json's for dashboards, panels and alerts. (Spec Issue at
+https://github.com/Tendrl/specifications/issues/179 )
 
 * Script to configure Grafana to directly use time series db i.e Graphite and
 load the json configurations. The script is executed after the
 monitoring-integration service is started.  The script will run after first time
 installation and subsequent updates to the monitoring-integration component.
 
-* Enable single authentication across the UI and Grafana dashboards.
+* Enable single authentication across the UI and Grafana dashboards. (Spec at
+* https://github.com/Tendrl/specifications/pull/205 )
 
 * Disable performance-monitoring API's.
 
