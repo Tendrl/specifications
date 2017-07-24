@@ -18,10 +18,13 @@ needs, they are expected to use the default views provided.
 
 == Use Cases
 
-End users are provided with more detailed graphs with possibility of querying
-based on any time interval. Users can create their own graphs which suit their
-use cases. The graphs also provides visual real time updates about an ongoing
-alert in the system.
+* End users are provided with more detailed graphs with possibility of querying
+based on any time interval.
+
+* Users can create their own graphs which suit their use cases.
+
+* The graphs provides visual real time updates about an ongoing alert in the
+system.
 
 == Proposed change
 
@@ -42,12 +45,13 @@ from UI to Grafana dashboards.
 
 ==== Tendrl API impact:
 
-Tendrl API will not provide any moniroting related API's.
+Tendrl API will not provide any monitoring related API's.
 
 ==== Notifications/Monitoring impact:
 
 Performance monitoring does not need to provide any kind of API's or connect to
-the time series db.
+the time series db, which potentially deprecates performance-monitoring
+component.
 
 ==== Tendrl/common impact:
 None
@@ -73,19 +77,21 @@ real-time polling will be handled by Grafana.
 
 The changes introduces a new Grafana component which needs to be installed and
 configured by Tendrl.
+The installation will be done 
 
 === Developer impact:
 
-The change potentially affects performance-monitoring, node-monitoring, API and
-UI. 
+The change potentially affects performance-monitoring, API and UI. 
 
 == Implementation:
 
-* Introduce a new component (possibly gluster-metrics-integration) to store
-predefined json's for dashboards, panels and alerts.
+* Introduce a new component called as monitoring-integration to store predefined
+json's for dashboards, panels and alerts.
 
 * Script to configure Grafana to directly use time series db i.e Graphite and
-load the json configurations.
+load the json configurations. The script is executed after the
+monitoring-integration service is started.  The script will run after first time
+installation and subsequent updates to the monitoring-integration component.
 
 * Enable single authentication across the UI and Grafana dashboards.
 
@@ -107,7 +113,8 @@ Other contributors:
 
 === Work Items:
 
-TODO
+Remove monitoring API proxy code
+https://github.com/Tendrl/api/issues/233
 
 == Dependencies:
 
