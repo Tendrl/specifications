@@ -1,0 +1,124 @@
+# Authentication and Authorisation (AA) linkage between tendrl UI and Grafana
+
+The intent of this spec is to:-
+
+  - Sync read-write and read-only roles per user between tendrl and grafana, priority being read-only.
+  - Sync user creation and changes to existing users and their roles in tendrl to grafana.
+  - Users authenticated via tendrl should be automatically authenticated in grafana as well.
+  - Launching a cluster specific grafana dashboard should be pre-authorised from within tendrl ui.
+
+
+## Problem Description
+
+Since the Tendrl stack is going to include Grafana for monitoring, so there will be a button in UI of Tendrl which can take users to Grafana Dashboard to view different charts.Tendrl has an authentication system and Grafana has there own authentication system as well. So instead of having two authentication for users, we are planning to bring it down to one.
+  
+## Use Cases
+Provide seemless authorization between two dashboards.
+There are three types of users in Tendrl:- 
+* Admin
+* Limited
+* Viewer
+
+There are four types of user in Grafana:-
+* Admin
+* Editor
+* Read-only Editor
+* Viewer
+
+So the roles can be mapped as follows:-
+
+Admin <----------------------> Admin
+
+Limited <----------------------> Editor
+
+Viewer <----------------------> Read-only Editor / Viewer
+
+## Proposed change
+
+The Authentication seamlessness by enabling anonymous login
+```
+[auth.anonymous]
+enabled = true
+org_name = YourOrgName
+org_role = Viewer/Editor/Read-only editor
+```
+For every user there will be an organization created in grafana
+Every organization will have one of the roles as mentioned above
+Also, each organization has different url eg. http://localhost:3000/?orgId=1 so we can use javascript to dynamically generate this hyperlink, ( we will be having the corresponding organization no. stored in DB)
+The user cannot change the url to jump to another organization, So it is secure
+
+* Problem
+We cant use url to go to specific organization just by clicking button or we cant go to different organization just by URL ie, if we make a button pointing to orgid=2, it will by default take us to orgid=1
+
+### Alternative
+2nd Approach
+
+The api token - Its a fallback approach 
+We can provide each user with a grafana account, whose username and password will be not changeable and can be viewable in settings of user. So, we can generate an api token everytime it expires
+
+Here is the link which tells how we can work with api token using grafana:-
+http://docs.grafana.org/tutorials/api_org_token_howto/
+
+### Data model impact:
+If we use appraoch 1: 
+We need some API to know the organization of user
+If we use approach 2:
+We need save and retrive API token
+
+### Impacted Modules:
+#### Tendrl API impact:
+None
+
+#### Notifications/Monitoring impact:
+None
+
+#### Tendrl/common impact:
+None
+
+#### Tendrl/node_agent impact:
+None
+
+#### Sds integration impact:
+None
+
+#### Tendrl/performance-monitoring impact:
+None
+
+#### Tendrl/alerting impact:
+None
+
+### Security impact:
+If we use 1st approach, and if we resolve the problems with urls, the url will become shareable and reachable by others.
+
+### Other end user impact:
+If the URLs are sharable, it can be edited if organization is editable by annonymous
+
+### Performance impact:
+None
+
+### Other deployer impact:
+None
+
+### Developer impact:
+APIs would be required
+
+## Implementation:
+WIP
+
+### Assignee(s):
+[@anivargi](https://github.com/anivargi) [@a2batic](https://github.com/a2batic)
+
+### Work Items:
+https://github.com/Tendrl/specifications/issues/191
+
+## Dependencies:
+None
+
+## Testing:
+Both UI and API testing will be required
+
+## Documentation impact:
+If we use fallback(2nd) approach we need to add about grafana username and passward fields in documentation and also mention they are not editable.
+
+## References:
+None
