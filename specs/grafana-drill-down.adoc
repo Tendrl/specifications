@@ -1,0 +1,143 @@
+// vim: tw=79
+
+= Drill-down navigation in grafana dashboard
+
+
+Enable the user to navigate between related objects/panels and dashboards
+in the Grafana dashboard. So the end user can find the source of problem in
+their cluster.
+
+== Problem description
+
+
+This spec would include details about which related panels could be 
+configured to allow drill-down navigation between them and the implementation 
+details for exactly how this navigation would be enabled in Grafana.
+
+== Use Cases
+
+
+* This will allow users to drill-down between different dashboards with a different set of values. 
+* The user can go back and forth between these dashboards by clicking on the different panels.
+
+== Proposed change
+
+
+The structure of graphite is going to be changed for allowing user to 
+context switch between dashboards.
+
+=== The new structure for graphite will be:
+  Volume and Brick Dashboard
+  collectd.clusters."cluster_id".volumes."volume_name".hosts."host_name".bricks."brick_path".*(All the volume level data)
+
+  Host level Dashboard:
+  collectd.cluster."cluster_id".nodes."host_name".*(All the node level data)
+  
+  
+
+=== Alternatives
+
+
+None
+
+=== Data model impact:
+
+==== Graphite Data model needs to be in below-mentioned structure for allowing users to drill-down.
+  Volume and Brick Dashboard
+  collectd.clusters."cluster_id".volumes."volume_name".hosts."host_name".bricks."brick_path".*(All the Volume and Brick level data)
+
+  Host level Dashboard:
+  collecd.cluster."cluster_id".nodes."host_name".*(All the node level data)
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+The user will have drill-down options from the panel, which will allow
+a user to reach the source of the problem.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+The structure of graphite needs to be changed to all users to drill-down
+
+
+== Implementation:
+
+* Grafana provides the drill-down option in which you can pass the
+absolute or the relative urls.
+
+* We can also pass the parameters in URL which will allow users
+to dynamically create the views.
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  Ankush Behl<cloudbehl>
+  Anmol Babu<anmolbabu>
+
+Other contributors:
+  Anup<anivargi>
+
+=== Work Items:
+
+
+None
+
+
+== Dependencies:
+
+
+None
+
+
+== Testing:
+
+
+Check the drill-downs betweens the different are happening correctly
+and the context is getting passed in the URL.
+
+
+== Documentation impact:
+
+
+None
+
+
+== References:
+
+
+https://github.com/Tendrl/specifications/issues/189
