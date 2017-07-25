@@ -16,8 +16,8 @@ Since the Tendrl stack is going to include Grafana for monitoring, so there will
 Provide seemless authorization between two dashboards.
 There are three types of users in Tendrl:- 
 * Admin
+* Normal
 * Limited
-* Viewer
 
 There are four types of user in Grafana:-
 * Admin
@@ -29,9 +29,9 @@ So the roles can be mapped as follows:-
 
 Admin <----------------------> Admin
 
-Limited <----------------------> Editor
+Normal <----------------------> Editor
 
-Viewer <----------------------> Read-only Editor / Viewer
+Limited <----------------------> Read-only Editor / Viewer
 
 ## Proposed change
 
