@@ -1,0 +1,121 @@
+# Initial UI refresh for the grafana integration
+
+Since we are having Grafana with Tendrl, the global menu has to be refined. This spec talks about the modules which we can keep from our previous build (it is available https://github.com/Tendrl/ui/tree/ui-legacy-code[ui-legacy-code] ).
+
+## Problem Description
+
+It descibes the items to be retained/added in new global menu
+  
+## Use Cases
+
+
+## Proposed change
+
+Currently the navigation has following items:-
+
+* Dashboard
+* Clusters
+* Hosts
+* Volumes
+* Pools
+* RBDs
+* Alerts
+* Admin
+
+
+The following navigation entries would be available post the refresh from the ui-legacy-code branch
+
+* Removing of the global navigation items for cluster specific objects such as volumes, pools and rbds.
+* Retaining the global navigation entries for Clusters, Hosts, Admin.
+* Retaining the global navigation entry for Alerts.
+* Retaining the top navigation entry for the notifications panel and authentication.
+
+So, the following modules will be retained:-
+
+* Notifications drawer
+```
+module: base
+```
+* Global alerts list
+```
+module: alerts
+```
+* Hosts list
+```
+module: host
+```
+* Tasks list
+```
+module: tasks
+```
+* Task details page
+```
+module: tasks/task-detail
+```
+* Authentication
+```
+module: login
+```
+
+
+
+### Data model impact:
+None
+
+### Impacted Modules:
+#### Tendrl API impact:
+None
+
+#### Notifications/Monitoring impact:
+None
+
+#### Tendrl/common impact:
+None
+
+#### Tendrl/node_agent impact:
+None
+
+#### Sds integration impact:
+None
+
+#### Tendrl/performance-monitoring impact:
+None
+
+#### Tendrl/alerting impact:
+None
+
+### Security impact:
+None
+
+### Other end user impact:
+None
+
+### Performance impact:
+None
+
+### Other deployer impact:
+None
+
+### Developer impact:
+None
+
+## Implementation:
+WIP
+
+### Assignee(s):
+https://github.com/gnehapk[@gnehapk] https://github.com/a2batic[@a2batic]
+
+### Work Items:
+https://github.com/Tendrl/specifications/issues/182
+
+## Dependencies:
+None
+
+## Testing:
+UI testing
+
+## Documentation impact:
+None
+
+## References:
+None
