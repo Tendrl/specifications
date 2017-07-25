@@ -1,0 +1,119 @@
+# Initial UI refresh for the grafana integration
+
+With the integration of grafana as the monitoring dashboard, the functionality offered by the tendrl ui is being refined. This specification talks about the functionality retained from the last ui build (available as the [ui-legacy-code](https://github.com/Tendrl/ui/tree/ui-legacy-code) branch) and the resulting changes to the global navigation.
+
+## Proposed change
+
+Currently the navigation has following items:-
+
+* Dashboard
+* Clusters
+* Hosts
+* Volumes
+* Pools
+* RBDs
+* Alerts
+* Admin
+
+
+The following changes has been done in the navigation
+
+* Removing *Cluster specific objects* items such as *Volumes*, *Pools* and *Rbds*.
+* Retaining items: *Clusters*, *Hosts*, *Admin(tasks)*, *Alerts*
+
+** Cluster List ```module: cluster```
+** Hosts list ```module: host```
+** Global alerts list ```module: alerts```
+** Tasks list ```module: tasks```, ```module: tasks/task-detail```
+
+* Retaining the top navigation entry for the *Notifications panel* and *Authentication*.
+** Notifications drawer ```module: base```
+** Authentication(Login) ```module: login```
+** Service for logout ```service: auth-manager.js```
+
+## API Changes:
+
+### APIs to be carried forward
+
+* Retaining items : Clusters, Hosts, Admin(tasks), Alerts
+** Cluster List module
+*** Get Cluster List
+** Hosts list module
+*** Get Node List
+** Global alert list module
+*** Get Alert List
+** Task list module
+*** Get Job List
+** Task details page module
+*** Get Job Detail
+*** Get Status
+*** Get Message List
+
+* Retaining the top navigation entry for the Notifications panel and Authentication.
+** Notifications drawer module
+*** Get Notification List
+** Authentication (login) module
+*** Login
+** Service for logout service
+*** Logout
+
+### APIs to be Changed:-
+
+* Get Cluster List
+** Managed : yes/no
+** Error/Success message
+* Get Node List
+** Cluster’s property will be removed as managed/unmanaged clusters are going to come in Get Cluster List response
+
+### Removed APIs - 
+
+* Get Cluster IOPS: ```Cluster List``` Module
+* Get Utilization data for Dashboard: ```Dashboard``` Module
+* Get Throughput for Cluster: ```Dashboard``` Module
+* Import Cluster flow: ```Import Cluster``` module
+* Generate Journal mapping : ```Create Cluster``` module
+* Create Cluster: ```Create Cluster``` Module
+* Generate Gluster brick mapping: ```Create Volume``` Module 
+* Create brick: ```Create Brick``` Module
+* Create Volume: ```Create Volume``` Module
+
+
+### Data model impact:
+None
+
+### Impacted Modules:
+None
+
+## Implementation:
+
+* Following things has to be removed for the view that has been removed:-
+** ```state``` and link of removed *Views*.
+** Folder of *modules*.
+** *SCSS* from ```src/commons/scss/main.scss```.
+** Menu items from ```modules/base/navigation/menu-svc.js```.
+** ```test/unit```.
+* Remove unnecessary API calls, which can make application slow.
+* Modify/remove unnecessary *Data manipulation functions* from ```src/commons```.
+* Earlier the landing page was a *Dashboard* if cluster is already imported and Import view if no cluster is present in Tendrl. *Now* landing page will be *Cluster-list view* wheather the clusters are imported or not.
+* Earlier the navigation was hidden if no cluster is present in Tendrl. As per the new design, it will be visible all the time.
+* Cluster-list page will show all the clusters, wheather it is imported or not.
+* "Tendrl API is not reachable" message will be shown if the API is not reachable.
+
+### Assignee(s):
+https://github.com/gnehapk[@gnehapk] https://github.com/a2batic[@a2batic]
+
+### Work Items:
+https://github.com/Tendrl/specifications/issues/182
+https://github.com/Tendrl/ui/issues/486
+
+## Dependencies:
+None
+
+## Testing:
+UI testing
+
+## Documentation impact:
+None
+
+## References:
+None
