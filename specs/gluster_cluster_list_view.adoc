@@ -1,0 +1,152 @@
+// vim: tw=79
+:imagesdir: ./images/
+
+= Tendrl Definitions: Display list of clusters discovered by Tendrl
+
+Display list of Gluster clusters present in Tendrl. The list should have functionality for 
+
+* filtering by name.
+* sorting by name, status, cluster version and managed.
+
+Cluster list will be sorted by name by default.
+
+View design will look like:
+
+image::upadtedClusterList.png[Upadted Cluster List]
+
+== Problem description
+
+Tendrl should show list of Gluster clusters present by Tendrl along with their details.
+
+The details shown for each cluster in UI is -
+
+* Cluster Name
+* Status
+* Managed State
+* Cluster Version
+* Import button(if ready to import)
+* Launch Dashboard button(if already imported)
+* Cluster Details button(if already imported)
+* Message to state cluster configurable state for eg. ready to import, cluster misconfigured.
+
+The workflow is as follows:
+
+* API will provide the list of clusters to the Tendrl.
+
+* User can click on expand icon of each cluster record to see the events/notifications and hosts associated with it.
+
+* In the hosts tab, host name and IP address will be displayed.
+
+* Based on the managed state, import/launch dasboard/cluster details buttons will be displayed for each cluster.
+  * If Managed state is "Yes", Launch dashboard and cluster details button will be displayed.
+  * If Managed state is "No" and cluster is ready to import, Import button will be displayed.
+  * If Managed state is "No" and cluster is not properly configured, Imported will be disabled.
+
+* Clicking Import button will take to import cluster workflow.
+
+* Clicking Launch dashboard button will launch the dashboard in a new tab of browser.
+
+* Clicking Cluster details button will take to cluster objects details page. This flow is handled in separate spec- https://github.com/Tendrl/specifications/issues/216.
+
+== Use Casess
+
+Users can see the list of cluster present in Tendrl. They can also 
+
+* filtering by name.
+* sorting by name, status, cluster version and managed.
+
+== Proposed change
+
+* Create a view for listing clusters.
+* Use the patternfly expanded list views design to display list of clusters.
+* Implement client side filer and sorting functionality using angular's filter and orderby components.
+* Send polling call after 10 seconds to get the updated data. 
+* Show total count of clusters present in Tendrl.
+
+Tendrl API related changes:
+
+* Get API call for getting cluster list.
+
+Tracked in github issue: https://github.com/Tendrl/api/issues/234
+
+=== Alternatives
+
+Generate list component can be created and used for listing the cluster. But because of its complexity and time constraint, we will pick this up later.
+
+=== Data model impact:
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+/api/1.0/GetClusterList - fetch the list of clusters
+
+Sample API Response - required.
+
+API support present for -
+
+* Status
+* Cluster Name
+* Cluster Version
+
+Required from API - 
+
+* Managed State
+* Message to state cluster configurable for eg. ready to import, cluster misconfigured.
+* Host IP address for displaying it under "Hosts" tab of expanded view.
+
+Backend implementation is being tracked in github issue: https://github.com/Tendrl/specifications/issues/211
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+None
+
+=== Other deployer impact:
+None
+
+=== Developer impact:
+None
+
+== Implementation:
+
+* Cluster Name, version, status, managed state will be taken from the API response to display it on the cluster list view.
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+  a2batic
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/181
+
+== Dependencies:
+
+* Updated API response which will list all the clusters i.e. imported and ready to import. 
+
+== Testing:
+
+Test whether clusters are correctly being displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://github.com/Tendrl/specifications/issues/181
