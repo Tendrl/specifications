@@ -1,0 +1,320 @@
+= Spec - Introducing a new component monitoring-integration
+
+Remove existing performance monitoring component and replace it with a new
+monitoring-integration component.
+
+
+== Problem description
+
+The new monitoring-integration component would primarily focus on dynamic
+configuration of grafana, based on the topology changes in etcd. Some of these
+responsibilities would be:
+
+* monitoring-integration should to store predefined json’s for dashboards, panels and alerts.
+* Keeping track of the topology changes in etcd to configure the grafana dashboards
+  to ensure that the correct nodes are part of the respective cluster dashboards.
+* Configuring grafana authentication and authorisation (https://github.com/Tendrl/specifications/pull/205),
+  based on changes in the primary tendrl AA scheme.
+
+
+== Use Cases
+
+* Monitoring-integration should able to configure grafana dashboard and panels
+  and alerts.
+* User should able access grafana dashboard via tendrl user interface using
+  tendrl authentication.
+* Grafana alerting events should be notified via tendrl.
+
+== Proposed change
+
+=== Why monitoring-integration?
+
+Grafana is used for visualizing time series data in graphs. Based on the metrics
+from datasource it will create graphs and display. Grafana supports different kinds
+of http api's to configure its environment.
+
+1. Admin
+2. Alerting
+3. Authentication
+4. Dashboard
+5. Dashboard version
+6. Data source
+7. Organisation
+8. Users
+9. Preference
+10. Snapshot
+11. Others
+
+Monitoring integration is the component which will used to configure the grafana
+environment when it is started. Monitoring integration is going to have all json
+for setup the grafana environment for tendrl users. Monitoring integration should
+Keeping track of the topology changes in etcd to configure the grafana dashboards.
+
+Monitoring integration should have all grafana related packages as dependency.
+When cluster is created or imported, the flow will install the monitoring integration
+with grafana as dependency. When monitoring integration starts then it will configure
+the grafana environment using some predefined json files.
+
+```
+Example dashboard json for creates a new dashboard or updates an existing dashboard.
+
+{
+  "dashboard": {
+    "id": null,
+    "title": "Production Overview",
+    "tags": [ "templated" ],
+    "timezone": "browser",
+    "rows": [
+      {
+      }
+    ],
+    "schemaVersion": 6,
+    "version": 0
+  },
+  "overwrite": false
+}
+```
+
+For each grafana configuration different predefined json is maintained in monitoring
+integration.
+
+The json is sent to grafana server as http api request.
+
+JSON Body schema:
+
+* dashboard – The complete dashboard model, id = null to create a new dashboard
+* overwrite – Set to true if you want to overwrite existing dashboard with newer
+  version or with same dashboard title.
+* message - Set a commit message for the version history.
+
+Monitoring integration is enabling authorization and authentication in grafana for
+tendrl users.
+
+Monitoring integration also monitors then alerting event from grafana and notify it
+to user via tendrl (https://github.com/Tendrl/specifications/pull/198).
+
+monitoring integration pass dashboard related metrics in dashboard json. Alert
+conditions for the particular dashboard are also part of dashboard json only.
+
+```
+{
+  "aliasColors": {},
+  "bars": false,
+  "dashLength": 10,
+  "dashes": false,
+  "datasource": null,
+  "fill": 1,
+  "id": 1,
+  "legend": {
+    "avg": false,
+    "current": false,
+    "max": false,
+    "min": false,
+    "show": true,
+    "total": false,
+    "values": false
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "nullPointMode": "null",
+  "percentage": false,
+  "pointradius": 5,
+  "points": false,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "spaceLength": 10,
+  "span": 12,
+  "stack": false,
+  "steppedLine": false,
+  "targets": [
+    {
+      "refId": "A"
+    }
+  ],
+  "thresholds": [
+    {
+      "value": 56,
+      "op": "gt",
+      "fill": true,
+      "line": true,
+      "colorMode": "critical"
+    }
+  ],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Panel Title",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "buckets": null,
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "alert": {
+    "conditions": [
+      {
+        "type": "query",
+        "query": {
+          "params": [
+            "A",
+            "5m",
+            "now"
+          ]
+        },
+        "reducer": {
+          "type": "avg",
+          "params": []
+        },
+        "evaluator": {
+          "type": "gt",
+          "params": [
+            56
+          ]
+        },
+        "operator": {
+          "type": "and"
+        }
+      }
+    ],
+    "noDataState": "no_data",
+    "executionErrorState": "alerting",
+    "frequency": "60s",
+    "handler": 1,
+    "notifications": [],
+    "name": "Panel Title alert"
+  }
+}
+```
+
+
+== Alternatives
+
+None
+
+
+== Data model impact:
+
+None
+
+
+== Impacted Modules:
+
+=== Tendrl API impact:
+
+None
+
+=== Notifications/Monitoring impact:
+
+None
+
+=== Tendrl/common impact:
+
+None
+
+=== Tendrl/node_agent impact:
+
+Cluster creation or import cluster creation flow should install the monitoring-integration
+packages and start that as service.
+
+=== Sds integration impact:
+
+None
+
+=== Tendrl/monitoring-integration impact:
+
+Introduced a new component monitoring integration in tendrl.
+
+Monitoring integration should have all predefined json files. When monitoring
+integration stats it should start the script to configure the grafana environment
+using predefined jsons via http api request. When monitoring integration starts it
+has to start a server socket to receive the alerting events from messages.
+Monitoring integration should enable the authentication and authorization for tendrl
+(https://github.com/Tendrl/specifications/pull/205).
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+User can access the grafana dashboards using tendrl authorization only.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+Monitoring integration needs grafana packages as dependency.
+
+=== Developer impact:
+
+Create a new component called monitoring-integration and implement its functionalities.
+
+== Implementation:
+
+* Create a new tendrl component called monitoring-integration
+* Create a directory called grafana to place all predefined json files and configuration
+  files for grafana.
+* Create a files in grafana directory to configure the grafana environment using
+  predefined jsons.
+* Create a grafana configuration file called grafana.conf.yml
+* create a graphite configuration file called graphite.conf.yml
+* Create a directory called server to create an endpoint for receive grafana
+  alert events and convert that alert events into tendrl alert condition and pass the
+  alert condition to node-agent message socket (for more detail https://github.com/Tendrl/specifications/pull/198).
+
+
+== Assignee(s):
+
+Gowtham S & Rishub jain
+
+
+== Work Items:
+
+None
+
+
+== Testing:
+
+Check grafana dashboards are configured and displayed correctly based on topologies
+from etcd.
+
+
+== Documentation impact:
+
+None
+
+
+== References:
+
+https://github.com/Tendrl/specifications/pull/198
+
+https://github.com/Tendrl/specifications/pull/205
+
+https://github.com/Tendrl/specifications/pull/171
