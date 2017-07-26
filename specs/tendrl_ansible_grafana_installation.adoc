@@ -16,7 +16,7 @@ support installation and configuration of tendrl metrics and grafana.
 
 == Use Cases
 
-* Provide playbook for tendrl-ansible to install tendrl-metrics and grafana
+* Provide playbook for tendrl-ansible to install monitoring_integrtaion and grafana
 along with server installation.
 
 
@@ -24,18 +24,51 @@ along with server installation.
 
 * Add the repo to install latest grafana and its dependencies
 
-* Install tendrl metrics, grafana, fontconfig, freetype* and urw-fonts
+* Install monitoring_integrtaion, grafana and
+  also install grafana dependencies fontconfig, freetype* and urw-fonts
 
-* Configure tendrl metrics and  grafana
+* Configure monitoring_integrtaion and  grafana
   This should add the required environment variables, set log path, database
   connection details, data source and the node details
 
-* Enable the tendrl metrics and grafana server to start at boot time
+  Sample default configuration:
+
+```
+  grafana_config:
+    grafana_database:
+      type: graphite
+      host: <ip:port>
+      name: grafana
+      user: root
+      password: ""
+
+  Server Configuration Details:
+    grafana_server:
+      protocol: http
+
+      # The ip address to bind to, empty will bind to all interfaces
+      http_addr: ""
+      http_port: 3000
+      domain:
+      root_url: "%(protocol)s://%(domain)s:%(http_port)s/"
+      # binary where the static files are placed, public: html/js/css
+      static_root_path: public
+      # SSL cert & key file if grafana_server_protocol is https
+      cert_file: ""
+      cert_key: ""
+
+  grafana_session:
+      # Session provider could be either memory, file mysql. The default is "memory"
+      grafana_session_provider: file
+      session life time, default is 86400
+      session_life_time: 86400
+```
+
+* Enable monitoring_integrtaion and grafana server to start at boot time
 
 * Start the grafana-server service
 
-* Document the ansible playbook configuration, tendrl metrics activation
-  details in wiki
+* Document the ansible playbook configuration details in wiki
 
 
 === Alternatives
@@ -53,11 +86,12 @@ None
 * Update roles in site.yml.sample about the repo details install grafana
 and its dependencies for tendrl-server host installation.
 - hosts: tendrl-server
-  ...
+  ```
   roles:
     - tendrl-copr
     - grafana
     ...
+  ```
 
 * Add repo details under tendrl-ansible/roles
   files directory with keys and the repo files
@@ -72,6 +106,31 @@ and its dependencies for tendrl-server host installation.
 * Update tendrl-ansible/roles/tendrl-server/handlers/main.yml
   to check the status of grafana server service and start
 
+Sample playbook:
+
+```
+    name: Install Grafana package
+        yum:
+            name: "{{ grafana_pkg }}"
+            state: present
+
+    name: Configure Grafana
+       template:
+           src: grafana.ini.tendrl
+           dest: /etc/grafana/grafana.ini
+
+    name: Restart grafana
+        service:
+            name: grafana-server
+            state: restarted
+
+    name: Make sure grafana service is enabled and running
+        service:
+	    name: grafana-server
+	    enabled: yes
+	    state: running
+
+```
 
 ==== Tendrl API impact:
 
@@ -120,7 +179,7 @@ None.
 
 == Implementation:
 
-<Add specific issues here>
+https://github.com/Tendrl/tendrl-ansible/issues/18
 
 === Assignee(s):
 
