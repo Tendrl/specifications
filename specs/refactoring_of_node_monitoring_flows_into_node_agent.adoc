@@ -1,0 +1,235 @@
+// vim: tw=79
+
+= Refactoring Of Node Monitoring Flows Into Node-Agent
+
+== Introduction
+
+This specification deals with detailing the work involved in merging the
+node-monitoring and node-agent services.
+
+Currently the responsibilities of node-monitoring are as follows:
+
+* It packages the collectd custom plugins
+    ** sds-specific utilization, status and counters plugins
+    ** node cluster network throughput plugin
+* Jinja2 templates for configuring the collectd plugins(both custom and
+  collectd provided)
+* A generic flow and a python script(that can be used as a linux command) to
+  get the configs generated from jinja templates given the appropriate parameters.
+
+== Problem description
+
+The idea behind having node-agent and node-monitoring seperated into a seperate
+packages was to facilitate modularity in tendrl stack such that users of tendrl
+stack can have the freedom to choose whether or not to have monitoring stack
+along with tendrl core stack. But, this pulls in overhead of having to maintain
+greater number of services.So, the idea is to now consolidate the services as
+much as possible and as part of this idea, this spec proposes consolidation of
+node-monitoring into node-agent.
+
+== Use Cases
+
+Admin creates/imports a cluster using/into tendrl and has monitoring enabled
+out of the box.
+
+== Proposed change
+
+* The generic flow as in:
+
+----
+https://github.com/Tendrl/node-monitoring/blob/master/tendrl/node_monitoring/flows/configure_collectd/__init__.py
+----
+
+and a genric command to generate config file from template as in:
+
+----
+https://github.com/Tendrl/node-monitoring/blob/master/tendrl/node_monitoring/commands/config_manager.py
+----
+
+will be moved to node-agent.
+
+* The templates currently in:
+
+----
+https://github.com/Tendrl/node-monitoring/tree/master/tendrl/node_monitoring/templates
+----
+
+and the plugins currently in:
+
+----
+https://github.com/Tendrl/node-monitoring/tree/master/tendrl/node_monitoring/plugins
+----
+
+will be moved into node-agent.
+
+* Earlier the jobs for initiating the flows to configure collectd on nodes were
+  initiated by performance-monitoring node. But for now(momentarily) as a final
+  step of import, create and expand cluster, this will be initiated on all
+  nodes of cluster.
+
+* Initiating(loading job to etcd) configuration on cluster nodes will involve
+  invoking configuration flow from an atom marked post atom in import cluster
+  flow.
+  ----
+  Job loading sample:
+  https://github.com/Tendrl/performance-monitoring/blob/master/tendrl/performance_monitoring/utils/util.py#L41
+  ----
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+A new flow definition will be added to node-agent under its namespace as below:
+
+----
+namespace.node_agent:
+  flows:
+    ConfigureCollectd:
+      atoms:
+        - tendrl.objects.Node.atoms.Cmd
+      help: "Execute given command on given node"
+      enabled: true
+      inputs:
+        mandatory:
+          - Node.fqdn
+          - plugin_name
+          - plugin_conf_params
+          - Service.name
+      post_run:
+        - tendrl.objects.Service.atoms.CheckServiceStatus
+      pre_run:
+        - tendrl.objects.Node.atoms.CheckNodeUp
+      run: tendrl.node_agent.flows.ConfigureCollectd
+      type: Create
+      uuid: dc8fff3a-34d9-4786-9282-55eff6abb6c4
+      version: 1
+tendrl_schema_version: 0.3
+----
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+* node-monitoring project will be deprecated.
+* performance-monitoring will also be deprecated and details related to this are
+  captured as part of :
+    ** https://github.com/Tendrl/specifications/pull/218
+    ** https://github.com/Tendrl/specifications/pull/198
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+
+As described in section "Proposed Change" section, collectd templates, custom
+plugins and flow to generate collectd configuration will move into node-agent.
+
+* The plugins and templates will go as under :
+
+----
+[node_agent]$ tree tendrl/node_agent/collectd/
+tendrl/node_agent/collectd/
+├── collectors
+│   ├── ceph
+│   │   ├── __init__.py
+│   │   ├── tendrl_ceph_cluster_iops.py
+│   │   ├── tendrl_ceph_node_network_throughput.py
+│   │   └── tendrl_ceph_utilization.py
+│   ├── glusterfs
+│   │   ├── heavy_weight
+│   │   │   ├── __init__.py
+│   │   │   └── tendrl_glusterfs_clients_info.py
+│   │   ├── __init__.py
+│   │   ├── low_weight
+│   │   │   ├── __init__.py
+│   │   │   ├── tendrl_glusterfs_brick_utilization.py
+│   │   │   ├── tendrl_glusterfs_health_counters.py
+│   │   │   ├── tendrl_glusterfs_peer_network_throughput.py
+│   │   │   └── tendrl_glusterfs_profile_info.py
+│   │   ├── tendrl_glusterfs_base.py
+│   │   └── utils.py
+│   ├── ini2json.py
+│   └── __init__.py
+├── __init__.py
+└── templates
+    ├── ceph
+    │   ├── tendrl_ceph_cluster_iops.jinja
+    │   ├── tendrl_ceph_cluster_utilization.jinja
+    │   └── tendrl_ceph_node_network_throughput.jinja
+    ├── glusterfs
+    │   ├── tendrl_glusterfs_clients_info.jinja
+    │   └── tendrl_glusterfs.jinja
+    └── node
+        ├── collectd.jinja
+        ├── cpu.jinja
+        ├── dbpush.jinja
+        ├── disk.jinja
+        ├── latency.jinja
+        ├── memory.jinja
+        ├── mount_point.jinja
+        ├── network.jinja
+        └── swap.jinja
+
+----
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+The end user will now have only node-agent to be deployed on nodes apart from
+sds-integrations.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+Tendrl ansible will now need to remove node-monitoring deployment steps
+
+=== Developer impact:
+
+Described in "Proposed Change" section
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+
+  * anmolbabu<anmolbudugutta@gmail.com>
+  * r0h4n
+
+=== Work Items:
+
+* https://github.com/Tendrl/node-agent/issues/546
+* https://github.com/Tendrl/tendrl-ansible/issues/20
+
+== Dependencies:
+
+None
+
+== Testing:
+
+None
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
