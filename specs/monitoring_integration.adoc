@@ -10,18 +10,18 @@ The new monitoring-integration component would primarily focus on dynamic
 configuration of grafana, based on the topology changes in etcd. Some of these
 responsibilities would be:
 
-* monitoring-integration should to store predefined json’s for dashboards, panels and alerts.
+* monitoring-integration should store predefined json’s for dashboards, panels and alerts.
 * Keeping track of the topology changes in etcd to configure the grafana dashboards
   to ensure that the correct nodes are part of the respective cluster dashboards.
-* Configuring grafana authentication and authorisation (https://github.com/Tendrl/specifications/pull/205),
+* Configuring grafana authentication and authorization (https://github.com/Tendrl/specifications/pull/205),
   based on changes in the primary tendrl AA scheme.
 
 
 == Use Cases
 
-* Monitoring-integration should able to configure grafana dashboard and panels
+* Monitoring-integration should be able to configure grafana dashboard and panels
   and alerts.
-* User should able access grafana dashboard via tendrl user interface using
+* User should be able access grafana dashboard via tendrl user interface using
   tendrl authentication.
 * Grafana alerting events should be notified via tendrl.
 
@@ -39,16 +39,16 @@ of http api's to configure its environment.
 4. Dashboard
 5. Dashboard version
 6. Data source
-7. Organisation
+7. Organization
 8. Users
 9. Preference
 10. Snapshot
 11. Others
 
-Monitoring integration is the component which will used to configure the grafana
+Monitoring integration is the component which will be used to configure the grafana
 environment when it is started. Monitoring integration is going to have all json
-for setup the grafana environment for tendrl users. Monitoring integration should
-Keeping track of the topology changes in etcd to configure the grafana dashboards.
+for setting up the grafana environment for tendrl users. Monitoring integration should
+keep track of the topology changes in etcd to configure the grafana dashboards.
 
 Monitoring integration should have all grafana related packages as dependency.
 When cluster is created or imported, the flow will install the monitoring integration
@@ -56,7 +56,7 @@ with grafana as dependency. When monitoring integration starts then it will conf
 the grafana environment using some predefined json files.
 
 ```
-Example dashboard json for creates a new dashboard or updates an existing dashboard.
+Example dashboard json for creating a new dashboard or updating an existing dashboard.
 
 {
   "dashboard": {
@@ -90,10 +90,10 @@ JSON Body schema:
 Monitoring integration is enabling authorization and authentication in grafana for
 tendrl users.
 
-Monitoring integration also monitors then alerting event from grafana and notify it
+Monitoring integration also monitors the alerting event from grafana and notify it
 to user via tendrl (https://github.com/Tendrl/specifications/pull/198).
 
-monitoring integration pass dashboard related metrics in dashboard json. Alert
+monitoring integration passes dashboard related metrics in dashboard json. Alert
 conditions for the particular dashboard are also part of dashboard json only.
 
 ```
@@ -238,7 +238,7 @@ None
 
 === Tendrl/node_agent impact:
 
-Cluster creation or import cluster creation flow should install the monitoring-integration
+Cluster creation or import cluster flow should install the monitoring-integration
 packages and start that as service.
 
 === Sds integration impact:
@@ -247,10 +247,10 @@ None
 
 === Tendrl/monitoring-integration impact:
 
-Introduced a new component monitoring integration in tendrl.
+Introduce a new component monitoring integration in tendrl.
 
 Monitoring integration should have all predefined json files. When monitoring
-integration stats it should start the script to configure the grafana environment
+integration starts it should start the script to configure the grafana environment
 using predefined jsons via http api request. When monitoring integration starts it
 has to start a server socket to receive the alerting events from messages.
 Monitoring integration should enable the authentication and authorization for tendrl
@@ -281,23 +281,24 @@ Create a new component called monitoring-integration and implement its functiona
 * Create a new tendrl component called monitoring-integration
 * Create a directory called grafana to place all predefined json files and configuration
   files for grafana.
-* Create a files in grafana directory to configure the grafana environment using
+* Create files in grafana directory to configure the grafana environment using
   predefined jsons.
 * Create a grafana configuration file called grafana.conf.yml
 * create a graphite configuration file called graphite.conf.yml
-* Create a directory called server to create an endpoint for receive grafana
+* Create a directory called server to create an endpoint for receiving grafana
   alert events and convert that alert events into tendrl alert condition and pass the
   alert condition to node-agent message socket (for more detail https://github.com/Tendrl/specifications/pull/198).
 
 
 == Assignee(s):
 
-Gowtham S & Rishub jain
+@GowthamShanmugam
 
+@rishubhjain
 
 == Work Items:
 
-None
+https://github.com/Tendrl/specifications/issues/179
 
 
 == Testing:
