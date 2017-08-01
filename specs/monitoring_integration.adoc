@@ -11,19 +11,28 @@ configuration of grafana, based on the topology changes in etcd. Some of these
 responsibilities would be:
 
 * monitoring-integration should store predefined json’s for dashboards, panels and alerts.
-* Keeping track of the topology changes in etcd to configure the grafana dashboards
-  to ensure that the correct nodes are part of the respective cluster dashboards.
 * Configuring grafana authentication and authorization (https://github.com/Tendrl/specifications/pull/205),
   based on changes in the primary tendrl AA scheme.
+* Keeping track of the topology changes in etcd to configure the grafana dashboards
+  to ensure that the correct nodes are part of the respective cluster dashboards.
+  (Not planned yet, for 1st milestone grafana is configured using some default
+  configuration from monitoring-integration)
 
 
 == Use Cases
+
+For 1st milestone:
 
 * Monitoring-integration should be able to configure grafana dashboard and panels
   and alerts.
 * User should be able access grafana dashboard via tendrl user interface using
   tendrl authentication.
+
+For 2nd milestone:
+
 * Grafana alerting events should be notified via tendrl.
+* Monitoring-integration should be able to configure grafana based on topology
+  changes in etcd.
 
 == Proposed change
 
@@ -51,9 +60,10 @@ for setting up the grafana environment for tendrl users. Monitoring integration 
 keep track of the topology changes in etcd to configure the grafana dashboards.
 
 Monitoring integration should have all grafana related packages as dependency.
-When cluster is created or imported, the flow will install the monitoring integration
-with grafana as dependency. When monitoring integration starts then it will configure
-the grafana environment using some predefined json files.
+Monitoring integration and grafana server are installed via tendrl-ansible in server machine.
+There is just one instance of monitoring-integration and grafana installed across all clusters.
+For now When monitoring integration starts then it will configure
+the grafana environment using some predefined json files (Entire flow is not planned yet).
 
 ```
 Example dashboard json for creating a new dashboard or updating an existing dashboard.
@@ -86,6 +96,45 @@ JSON Body schema:
 * overwrite – Set to true if you want to overwrite existing dashboard with newer
   version or with same dashboard title.
 * message - Set a commit message for the version history.
+
+```
+Grafana APIs used in monitoring integration:
+
+1) Dashboard API:
+    To creates a new dashboard or updates an existing dashboard.
+       POST -  /api/dashboards/db
+        {
+          "dashboard": {
+          "id": null,
+          "title": "Brick utilization",
+          "tags": [ "" ],
+          "timezone": "",
+          "rows": [
+          {
+          }
+          ],
+          "schemaVersion": 6,
+          "version": 0
+          },
+          "overwrite": false
+        }
+2) Data source API
+    To create data source
+      POST /api/datasources
+      {
+        "name":"datasource_name",
+        "type":"graphite",
+        "url":"",
+        "access":"proxy",
+        "basicAuth":false
+      }
+3) Create Organisation
+    To create organisation
+      POST /api/orgs
+      {
+        "name":"New Org."
+      }
+```
 
 Monitoring integration is enabling authorization and authentication in grafana for
 tendrl users.
@@ -250,11 +299,14 @@ None
 Introduce a new component monitoring integration in tendrl.
 
 Monitoring integration should have all predefined json files. When monitoring
-integration starts it should start the script to configure the grafana environment
-using predefined jsons via http api request. When monitoring integration starts it
-has to start a server socket to receive the alerting events from messages.
-Monitoring integration should enable the authentication and authorization for tendrl
-(https://github.com/Tendrl/specifications/pull/205).
+integration starts will configure the grafana environment using predefined jsons
+via http api request.
+
+For first milestone monitoring integration will start grafana configuration process
+when it is started. (This flow will be modified for next milestones)
+When monitoring integration starts it has to start a server socket to receive the
+alerting events from messages. Monitoring integration should enable the authentication
+and authorization for tendrl (https://github.com/Tendrl/specifications/pull/205).
 
 === Security impact:
 
@@ -279,15 +331,32 @@ Create a new component called monitoring-integration and implement its functiona
 == Implementation:
 
 * Create a new tendrl component called monitoring-integration
-* Create a directory called grafana to place all predefined json files and configuration
-  files for grafana.
+* Create a directory called grafana in tendrl/monitoring_integration to place all
+  predefined json files and configuration files for grafana.
 * Create files in grafana directory to configure the grafana environment using
   predefined jsons.
 * Create a grafana configuration file called grafana.conf.yml
 * create a graphite configuration file called graphite.conf.yml
-* Create a directory called server to create an endpoint for receiving grafana
-  alert events and convert that alert events into tendrl alert condition and pass the
-  alert condition to node-agent message socket (for more detail https://github.com/Tendrl/specifications/pull/198).
+* Create a directory called server in tendrl/monitoring_integration to create an endpoint
+  for receiving grafana alert events and convert that alert events into tendrl alert
+  condition and pass the alert condition to node-agent message socket
+  (for more detail https://github.com/Tendrl/specifications/pull/198). (not for 1st milestone)
+* Create a tox.ini file to run unit test cases.
+* Create setup.py file in monitoring_integration
+* Create version.py in monitoring_integration
+* Create check_commit_msg.py to check the commit messages by travis.
+* Create monitoring-integration.spec file for packaging.
+* Create requirements.develop.txt and requirements.master.txt in monitoring integration
+* Create .travis.yml file for Travis CI service
+* Create Makefile for monitoring integration
+* Create directory called etc to have all monitoring integration configuration files.
+* Create a file called tendrl-monitoring-integration.service.
+
+Workflow planned for first milestone is:
+    When monitoring integration start a main function in tendrl/monitoring_integration/__init__.py
+    is called. The main function have a loggic to create dashboard and datasource using predefined
+    json via http api request. It will create dashboard and datasource as a anonomous user.
+    (https://github.com/Tendrl/monitoring-integration/pull/1)
 
 
 == Assignee(s):
