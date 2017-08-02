@@ -1,7 +1,7 @@
 = Spec - Introducing a new component monitoring-integration
 
-Remove existing performance monitoring component and replace it with a new
-monitoring-integration component.
+A new component called Monitoring-Integration is introduced which integrates Grafana
+with tendrl core.
 
 
 == Problem description
@@ -23,16 +23,16 @@ responsibilities would be:
 
 For 1st milestone:
 
-* Monitoring-integration should be able to configure grafana dashboard and panels
-  and alerts.
-* User should be able access grafana dashboard via tendrl user interface using
-  tendrl authentication.
+* Monitoring-integration should be able to configure grafana dashboard and panels.
+* Allow tendrl users to access grafana using anonymous authorization.
 
 For 2nd milestone:
 
 * Grafana alerting events should be notified via tendrl.
 * Monitoring-integration should be able to configure grafana based on topology
   changes in etcd.
+* User should be able access grafana dashboard via tendrl user interface using
+  tendrl authentication.
 
 == Proposed change
 
@@ -85,7 +85,7 @@ Example dashboard json for creating a new dashboard or updating an existing dash
 }
 ```
 
-For each grafana configuration different predefined json is maintained in monitoring
+For each grafana dashboard different predefined json is maintained in monitoring
 integration.
 
 The json is sent to grafana server as http api request.
@@ -142,7 +142,7 @@ tendrl users.
 Monitoring integration also monitors the alerting event from grafana and notify it
 to user via tendrl (https://github.com/Tendrl/specifications/pull/198).
 
-monitoring integration passes dashboard related metrics in dashboard json. Alert
+Monitoring integration passes dashboard related metrics in dashboard json. Alert
 conditions for the particular dashboard are also part of dashboard json only.
 
 ```
