@@ -330,33 +330,39 @@ Create a new component called monitoring-integration and implement its functiona
 
 == Implementation:
 
-* Create a new tendrl component called monitoring-integration
-* Create a directory called grafana in tendrl/monitoring_integration to place all
-  predefined json files and configuration files for grafana.
-* Create files in grafana directory to configure the grafana environment using
-  predefined jsons.
-* Create a grafana configuration file called grafana.conf.yml
-* create a graphite configuration file called graphite.conf.yml
-* Create a directory called server in tendrl/monitoring_integration to create an endpoint
-  for receiving grafana alert events and convert that alert events into tendrl alert
-  condition and pass the alert condition to node-agent message socket
-  (for more detail https://github.com/Tendrl/specifications/pull/198). (not for 1st milestone)
+Implementation details for milestone 1:
+
+* Create a new tendrl component called "monitoring-integration".
+* Create a directory called "etc" to store configuration files:
+    1. grafana/grafana.ini
+    2. tendrl/monitoring-integration/monitoring-integration.conf.sample
+* Copy the monitoring-integration.conf.sample file into
+    /etc/tendrl/monitoring-integration/monitoring-integration.conf".
 * Create a tox.ini file to run unit test cases.
-* Create setup.py file in monitoring_integration
-* Create version.py in monitoring_integration
-* Create check_commit_msg.py to check the commit messages by travis.
-* Create monitoring-integration.spec file for packaging.
-* Create requirements.develop.txt and requirements.master.txt in monitoring integration
-* Create .travis.yml file for Travis CI service
-* Create Makefile for monitoring integration
-* Create directory called etc to have all monitoring integration configuration files.
-* Create a file called tendrl-monitoring-integration.service.
+* Create a setup.py file for package installation.
+* Create a version.py file to specify monitoring integration component version.
+* Create a check_commit_msg.py file to check the commit messages by travis.
+* Create .travis.yml file for Travis CI service.
+* Create a new directory called tendrl.
+* Create a new directory called monitoring_integration inside tendrl directory.
+* Create new file __init__.py in tendrl/monitoring_integration and wite a loggic
+  to create a grafana dashboard and datasource.
+* Create a new directory called grafana in tendrl/monitoring_integration.
+* All predefined json files for create a grafana dashboards are placed in
+  tendrl/monitoring_integration/grafana.
+* Create a file called utils.py in tendrl/monitoring_integration/grafana.
+* utils functions are used to make different api calls for create dashboard
+  and datasource in grafana.
 
 Workflow planned for first milestone is:
-    When monitoring integration start a main function in tendrl/monitoring_integration/__init__.py
-    is called. The main function have a loggic to create dashboard and datasource using predefined
-    json via http api request. It will create dashboard and datasource as a anonomous user.
-    (https://github.com/Tendrl/monitoring-integration/pull/1)
+
+When monitoring integration starts then monitoring-integration is configured
+from a configure file which is present in /etc/tendr/monitoring_integration/monitoring-integration.conf.
+Then monitoring_integration will create dashboards and datasources in grafana using predefined
+json files in tendrl/monitoring_integration/grafana with the help of util functions. When
+monitoring_integration restart it will compare existing dashboards in grafana with predefined
+dashboards in monitoring integration, if any dashboard is not present in grafana then it will create a
+new dashboard otherwise it will skip. (https://github.com/Tendrl/monitoring-integration/pull/1)
 
 
 == Assignee(s):
