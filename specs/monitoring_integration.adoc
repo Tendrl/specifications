@@ -11,7 +11,7 @@ configuration of grafana, based on the topology changes in etcd. Some of these
 responsibilities would be:
 
 * Monitoring-integration should create default dashboards in grafana using predefined json.
-  The dashboard json contains details regarding panels.,metrics and alerts.
+  The dashboard json contains details regarding panels, metrics and alerts.
 * Configuring grafana authentication and authorization (https://github.com/Tendrl/specifications/pull/205),
   based on changes in the primary tendrl AA scheme.
 * Keeping track of the topology changes in etcd to configure the grafana dashboards
