@@ -31,6 +31,9 @@ For 2nd milestone:
 * Grafana alerting events should be notified via tendrl.
 * Monitoring-integration should be able to configure grafana based on topology
   changes in etcd.
+
+For 3rd milestone:
+
 * User should be able access grafana dashboard via tendrl user interface using
   tendrl authentication.
 
