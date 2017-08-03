@@ -96,6 +96,11 @@ https://github.com/Tendrl/specifications/issues/179 )
 load the json configurations. The script is executed after the
 monitoring-integration service is started.  The script will run after first time
 installation and subsequent updates to the monitoring-integration component.
+The graphs will start populating once the node-agent starts populating Graphite
+instance with cluster details.
+
+The cluster list on Tendrl UI will have links to open the Grafana dashboards,
+the dashboards will open in a different tab for navigation.
 
 * Enable single authentication across the UI and Grafana dashboards. (Spec at
 * https://github.com/Tendrl/specifications/pull/205 )
@@ -117,6 +122,12 @@ Other contributors:
   @nnDarshan
 
 === Work Items:
+
+Add required Ansible playbook configuration scripts for Grafana
+https://github.com/Tendrl/specifications/issues/175
+
+Build package scripts for tendrl-monitoring-integration
+https://github.com/Tendrl/specifications/issues/178
 
 Remove monitoring API proxy code
 https://github.com/Tendrl/api/issues/233
