@@ -258,11 +258,73 @@ state based on participating brick's status values
 * Add additional field `is_arbiter` under `Brick` object to mark an arbiter
 brick
 
-* Add an additional object `GeoRepSessions` to hold the geo-rep session details
-for gluster volumes
+* Add an additional object `GeoReplicationPair` to hold the geo-rep session pair
+details for gluster volumes
 
 ```
-TBD
+GeoReplicationPair:
+    attrs:
+        vol_id:
+          help: Volume id
+          type: String
+        session_id:
+          help: "unique id of geo replication session"
+          type: String
+        pair:
+          help: "geo replication session pair name"
+          type: String
+        master_node:
+          help: "master node ip/fqdn"
+          typoe: String
+        master_volume:
+          help: "master volume name"
+          type: String
+        master_brick:
+          help: "master brick name"
+          type: String
+        slave_user:
+          help: "slave user name"
+          type: String
+        slave:
+          help: "slave host and volume name"
+          type: String
+        slave_node:
+          help: "slave node with which geo-rep session is going"
+          type: String
+        status:
+          help: "geo replication session status"
+          type: String
+        crawl_status:
+          help: "geo replication crawl status"
+          typoe: String
+        last_synced:
+          help: "last synced time"
+          type: String
+        entry:
+          help: "entries synced"
+          type: String
+        data:
+          help: "data synced"
+          type: String
+        meta:
+          help: "metadata synced"
+          type: String
+        failures:
+          help: "number of failures"
+          type: String
+        checkpoint_time:
+          help: "checkpoint time"
+          type: String
+        checkpoint_completed:
+          help: "if checkpoint is completed"
+          type: String
+        checkpoint_completion_time:
+          help: "time of checkpoint completion"
+          type: String
+      enabled: true
+      value: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/GeoReplicationSessions/$GeoReplicationPair.session_id/$GeoReplicationPair.pair
+      list: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/GeoReplicationSessions
+help: gluster volume geo replication session details
 ```
 
 * Add an additional field `client_connections` under `Volume` object to hold
