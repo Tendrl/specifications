@@ -1,0 +1,531 @@
+= Enhance gluster cluster synchronization logic as per recommendations
+
+The intent of this change is to accommodate additional details available as part
+of `get-state` output while syncing the gluster cluster details and store them
+in central store.
+
+Also instead of using `gstatus` for cluster health and volume utilization
+details, we need to user recommendations provided by gluster team.
+
+
+== Problem description
+
+This specification talks about various changes needed to be done under gluster
+cluster synchronization code to accomodate the additional details related to
+volume snapshots, geo-rep sessions.
+
+Also as `gtstaus` is quite a unstable and also few scenarios are not taken care
+of, using it for deciding the overall cluster status and volume utilization is
+not appropriate. Rather we need to write the aggregations logic to decide the
+cluster state based on peers status and volume status of the gluster trusted
+storage pool. Also the overall volume utilization should be calculated based on
+aggregations done for the participating bricks of the volumes.
+
+
+== Use Cases
+
+This addresses the synchronization of gluster cluster details like
+
+* Volume snapshot details
+* Add volume re-balance estimation time details
+* Volume geo-rep details
+* Client connections per volume
+* Identification of arbiter volumes in cluster (if any)
+* Instead of `gstatus` use aggregations across bricks utilization to calculate
+volume utilization
+* Instead of `gstatus` use peer status and volume status to aggregate and
+calculate the cluster status
+
+
+== Proposed change
+
+* Use `get-state detail` and `get-state volumeoptions` commands instead of plain
+`get-state` as first provides the detailed (e.g. client connections etc.)
+information for the volume and second is option to list all the volume options
+with default values
+
+* Use `get-state` output to figure out the volume snapshot details and update in
+central store. The snapshot details available as part of `get-state` output are
+documented under references section in sample. These details should be used to
+create instances of `Snapshot` class and persist for a volume.
+
+* Calculate the estimation time for re-balance job. This should be largest
+value among the `time_left` values reported by get-state from different nodes of
+the cluster
+
+* Use `get-state` output for geo-rep session details like no. of geo-rep
+sessions and active geo-rep sessions and update per volume in central store
+
+* Figure out the client connections per brick from `get-state` output and
+aggregate for volume and update in central store. The no of client connections
+for a volume merely a sum of all the participating brick's client connections.
+Note: This logic for calculating client connections for a volume is trivial but
+its as per the guidelines provided from Gluster team.
+
+* Identify an arbiter volume and mark accordingly in central store, based on
+field `volume{n}.arbiter_count` in `get-state` output. For a volume if value of
+`volume{n}.arbiter_count` is non-zero, the volume should be marked as arbiter
+type
+
+* Remove the uses of `gstatus` and use aggregations across bricks of the volume
+to decide the volume utilization data.
+
+The logic here goes like
+
+** First calculate the `raw_capacity` and `raw_used` values for volume and
+cluster merely by adding the `raw_capacity` and `raw_used` for bricks of the
+volume. These details are synced and available with central store for the
+individual bricks
+
+** Now the pseudo code to decide the final values of volume and cluster usable
+and used capacity goes as below
+
+```
+if no of up bricks == no of total bricks:
+     if  volume's disperse_count == 0:
+         # This is distribute or replicate volume
+         volume's usable_capacity = volume's raw_capacity / volume's replica_count
+         volume's used_capacity = volume's raw_used / volume's replica_count
+     else:
+         # this is a disperse volume, with all bricks on-line
+         # assumption : all bricks are the same size
+         disperse_yield = \
+            (volume's disperse_count - volume's redundancy_count)
+            / volume's disperse_count
+         volume's usable_capacity = volume's raw_capacity * disperse_yield
+         volume's used_capacity = volume's raw_used * disperse_yield
+ else:
+     if volume's replica_count > 1 or volume's disperse_count > 0:
+         for subvol in volume's subvols:
+             for brick in subvol:
+                 if brick.status == "Started":
+                     volume's usable_capacity += brick's utilization['total']
+                     volume's used_capacity += brick's utilization['used']
+                 # For replicate volume use only one replica
+                 if volume's replica_count > 1:
+                     break
+     else:
+         volume's usable_capacity = volume's raw_capacity
+         volume's used_capacity = volume' raw_used
+ if volume's usable_capacity > 0:
+     volume's pcnt_used = (volume's used_capacity / volume's usable_capacity) * 100
+ else:
+     volume's pcnt_used = 0
+
+ cluster's usable_capacity += volume's usable_capacity
+ cluster's pcnt_used = 0
+ if cluster's usable_capacity > 0:
+     cluster's pcnt_used = (cluster's used_capacity / cluster's usable_capacity) * 100
+```
+
+Note: This logic is merely lifted from gstatus as suggested by Gluster team
+
+* Remove the uses of `gstatus` and use aggregations of `gluster peer status` and
+`gluster volume status` to decide the cluster health status
+
+The here goes like
+
+** First calculate the volume states based on volume's individual bricks status
+values. The pseudo code to explain the state calculation for volumes is as below
+
+```
+Form a map of sub-volumes with their no of down bricks
+
+if no of up bricks in volume is 0:
+    volume's state = 'down'
+else:
+    if volume's replica_count > 1 or volume's disperse_count > 0:
+        find the subvolume with most down bricks as worst subvolume
+        if no of down bricks in worst subvolume > 0:
+            subvolume problem count = max(
+                volume's replica count,
+                volume's redundancy count + 1
+            )
+            if no of down bricks in worst subvolume == subvolume problem count:
+                if only one subvolume in volume:
+                    volume's state = 'down'
+                else:
+                    volume's state = 'partial'
+            else:
+                volume's state = 'degraded'
+    else:
+        # this volume is not protected (replicate/disperse) so any brick down
+        # means volume state partial
+        if no of up bricks != total bricks:
+            volume's state = 'partial'
+```
+
+Note: This logic is merely lifted from gstatus as suggested by Gluster team
+
+** If any of the volume's state is down or partially up, the cluster status is
+marked as `unhealthy`
+
+** After above logic applied, the gluster peer's collected state is considered
+to overwrite the cluster status. If any of the peer is in non-connected state,
+the cluster status is marked as `unhealthy`. This is to be done un-conditionally
+because in case where there are no volumes in the cluster yet, the peer's
+connected state is the deciding factor for the cluster status
+
+Note: This logic us merely lifted from gstatus as suggested by Gluster team
+
+* Add additonal field `state` under `Volume` object. Use aggregated bricks
+status to find out the volume state value. The logic above defines the mechanism
+how the state of the volume to be decided. Valid set of states for a volume
+would be
+
+** up
+** down
+** up(partial)
+** up(degraded)
+** unknown
+
+Note: The value `unknown` is applicable for the volumes till all the bricks
+details are available in central store.
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+* Add an additional object `Snapshot` to hold volume snapshots details
+
+```
+Snapshot:
+  attrs:
+    vol_id:
+      help: Volume id
+      type: String
+    name:
+      help: name of the snapshot
+      type: String
+    id:
+      help: uuid of the snapshot
+      type: String
+    time:
+      help: Creation time of the snapshot
+      type: String
+    description:
+      help: description of snapshot
+      type: String
+    status:
+      help: status of snapshot
+      type: String
+  enabled: true
+  value: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/Snapshots/$Snapshot.id
+  list: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/Snapshots
+help: gluster volume snapshot details
+```
+
+* Add additional object `ClientConection` to hold the brick connections details
+
+```
+ClientConnection:
+  attrs:
+    brick_name:
+      help: name of the brick
+      type: String
+    hostname:
+      help: client hostname
+      type: String
+    bytesread:
+      help: no of bytes read
+      type: int
+    byteswrite:
+      help: no of bytes written
+      type: int
+    opversion:
+      help: operational version
+      type: String
+  enabled: true
+  value: clusters/$TendrlContext.integration_id/Bricks/all/$Brick.brick_name/ClientConnections/$ClientConnection.hostname
+  list:  clusters/$TendrlContext.integration_id/Bricks/all/$Brick.brick_name/ClientConnections
+  help: brick client connection details
+```
+
+* Add additional field `client_count` under `Volume` and `Brick` classes to hold
+client connection count values
+
+* Add an additional field `time_left` under `RebalanceDetails` object to capture
+remaining time for rebalance
+
+* Add additional field `rebal_estimated_time` under `Volume` object to capture
+the estimated time to complete rebalance on the volume
+
+* Add additional field `state` under `Volume` object to hold the derived volume
+state based on participating brick's status values
+
+* Add additional field `is_arbiter` under `Brick` object to mark an arbiter
+brick
+
+* Add an additional object `GeoReplicationPair` to hold the geo-rep session pair
+details for gluster volumes
+
+```
+GeoReplicationPair:
+    attrs:
+        vol_id:
+          help: Volume id
+          type: String
+        session_id:
+          help: "unique id of geo replication session"
+          type: String
+        pair:
+          help: "geo replication session pair name"
+          type: String
+        master_node:
+          help: "master node ip/fqdn"
+          typoe: String
+        master_volume:
+          help: "master volume name"
+          type: String
+        master_brick:
+          help: "master brick name"
+          type: String
+        slave_user:
+          help: "slave user name"
+          type: String
+        slave:
+          help: "slave host and volume name"
+          type: String
+        slave_node:
+          help: "slave node with which geo-rep session is going"
+          type: String
+        status:
+          help: "geo replication session status"
+          type: String
+        crawl_status:
+          help: "geo replication crawl status"
+          typoe: String
+        last_synced:
+          help: "last synced time"
+          type: String
+        entry:
+          help: "entries synced"
+          type: String
+        data:
+          help: "data synced"
+          type: String
+        meta:
+          help: "metadata synced"
+          type: String
+        failures:
+          help: "number of failures"
+          type: String
+        checkpoint_time:
+          help: "checkpoint time"
+          type: String
+        checkpoint_completed:
+          help: "if checkpoint is completed"
+          type: String
+        checkpoint_completion_time:
+          help: "time of checkpoint completion"
+          type: String
+      enabled: true
+      value: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/GeoReplicationSessions/$GeoReplicationPair.session_id/$GeoReplicationPair.pair
+      list: clusters/$TendrlContext.integration_id/Volumes/$Volume.vol_id/GeoReplicationSessions
+help: gluster volume geo replication session details
+```
+
+* Add an additional field `client_connections` under `Volume` object to hold
+the client connections details
+
+* Add ad additional fields `client_connections` and `arbiter` under `Brick`
+object to hold the client connections and to mark if the brick is arbiter brick
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* Would be handled in a separate spec
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+All the changes above needs to be done under `gluster-inetgration` module
+
+==== Tendrl Dashboard impact:
+
+No direct impact on dashboard. Using APIs dahsboard should siplay the details in
+UI.
+
+=== Security impact:
+
+None.
+
+=== Other end user impact:
+
+User gets a set of APIs for listing volume snapshot and geo-rep sessions details
+
+=== Performance impact:
+
+None.
+
+=== Other deployer impact:
+
+None.
+
+=== Developer impact:
+
+None.
+
+
+== Implementation:
+
+* https://github.com/Tendrl/gluster-integration/issues/334
+* https://github.com/Tendrl/gluster-integration/issues/335
+* https://github.com/Tendrl/gluster-integration/issues/336
+* https://github.com/Tendrl/gluster-integration/issues/338
+* https://github.com/Tendrl/gluster-integration/issues/339
+* https://github.com/Tendrl/gluster-integration/issues/340
+* https://github.com/Tendrl/gluster-integration/issues/341
+* https://github.com/Tendrl/gluster-integration/issues/343
+* https://github.com/Tendrl/gluster-integration/issues/344
+* https://github.com/Tendrl/gluster-integration/issues/345
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+  nnDarshan
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/167
+
+
+== Dependencies:
+
+Dependency on gluster team for providing additional support for below details
+in `get-state` output
+
+* Volume geo-rep session details
+* Client connection details per brick
+* Marking the arbiter brick in case volume if of type `arbiter`
+* All the volume options with default values
+
+Different github issues gluster side as dependencies are
+
+* https://github.com/gluster/glusterfs/issues/277
+
+* https://github.com/gluster/glusterfs/issues/278
+
+* https://github.com/gluster/glusterfs/issues/279
+
+* https://github.com/gluster/glusterfs/issues/291
+
+
+== Testing:
+
+* Check if gluster-integration starts successfully post import cluster and all
+the details about gluster cluster get updated successfully in central store.
+Verify that volume snapshots and geo-rep session details (if present) are
+updated successfully in central store
+
+* Verify the outputs for below REST endpoints
+** `clusters/{id}/Volumes/{volume-id}/GetVolumeSnapshots`
+** `clusters/{id}/Volumes/{volume-id}/GetGeoRepSessions`
+
+
+== Documentation impact:
+
+New API end points should be documented with sample outputs
+
+== References:
+
+* Sample output from `get-state detail` is as below
+
+```
+[Global]
+MYUUID: 3fd809a8-9c44-484b-804e-a4ced35924b4
+op-version: 30901
+
+[Global options]
+
+[Peers]
+Peer1.primary_hostname: dhcp43-116.lab.eng.blr.redhat.com
+Peer1.uuid: 38f8f75f-ebb1-40b8-9ede-5e7b64d1b376
+Peer1.state: Peer in Cluster
+Peer1.connected: Connected
+Peer1.othernames:
+
+[Volumes]
+Volume1.name: vol1
+Volume1.id: 3de76734-b2c1-478f-9c47-613ba6c61fb8
+Volume1.type: Distribute
+Volume1.transport_type: tcp
+Volume1.status: Started
+........
+Volume1.brickcount: 3
+Volume1.Brick1.path: {node1}:/root/gluster_bricks/vol1_b1
+Volume1.Brick1.hostname:{node1}
+Volume1.Brick2.path: {node2}:/root/gluster_bricks/vol1_b2
+Volume1.Brick2.hostname: {node2}
+Volume1.Brick2.port: 49152
+Volume1.Brick2.rdma_port: 0
+Volume1.Brick2.status: Started
+Volume1.Brick2.spacefree: 12111605760Bytes
+Volume1.Brick2.spacetotal: 13407092736Bytes
+Volume1.Brick2.client_count: 2
+Volume1.Brick2.Client1.hostname: 10.70.43.118:49143
+Volume1.Brick2.Client1.bytesread: 3728
+Volume1.Brick2.Client1.byteswrite: 2548
+Volume1.Brick2.Client1.opversion: 31100
+Volume1.Brick2.Client2.hostname: 10.70.43.116:49143
+Volume1.Brick2.Client2.bytesread: 2064
+Volume1.Brick2.Client2.byteswrite: 1356
+Volume1.Brick2.Client2.opversion: 31100
+Volume1.Brick3.path: {node3}:/root/gluster_bricks/vol1_b3
+Volume1.Brick3.hostname: {node3}
+........
+Volume1.snap_count: 2
+Volume1.snapshot1.name: snap-1_GMT-2017.07.18-07.29.59
+Volume1.snapshot1.id: 461910d0-efe8-4c47-9b81-533bb18f8ce4
+Volume1.snapshot1.time: 2017-07-18 07:29:59
+Volume1.snapshot1.description: snapshot-1
+Volume1.snapshot1.status: in_use
+Volume1.snapshot2.name: snap-2_GMT-2017.07.18-07.30.15
+Volume1.snapshot2.id: 1b232c45-77c4-4101-ad12-973a410dbe20
+Volume1.snapshot2.time: 2017-07-18 07:30:15
+Volume1.snapshot2.description: snapshot-2
+Volume1.snapshot2.status: in_use
+.......
+```
+
+* A sample output from `get-state volumeoptions` is as below
+
+```
+[Volume Options]
+Volume1.name: arb_vol
+Volume1.options.count: 301
+Volume1.options.value301: 2
+Volume1.options.key301: cluster.halo-min-replicas
+Volume1.options.value300: 99999
+Volume1.options.key300: cluster.halo-max-replicas
+Volume1.options.value299: 5
+Volume1.options.key299: cluster.halo-max-latency
+Volume1.options.value298: 5
+Volume1.options.key298: cluster.halo-nfsd-max-latency
+Volume1.options.value297: 99999
+Volume1.options.key297: cluster.halo-shd-max-latency
+Volume1.options.value296: False
+Volume1.options.key296: cluster.halo-enabled
+Volume1.options.value295: on
+Volume1.options.key295: disperse.optimistic-change-log
+Volume1.options.value294: 0
+Volume1.options.key294: cluster.max-bricks-per-process
+Volume1.options.value293: off
+Volume1.options.key293: cluster.brick-multiplex
+Volume1.options.value292: 60
+....
+....
+```
