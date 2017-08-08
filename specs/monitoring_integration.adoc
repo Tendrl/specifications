@@ -196,8 +196,13 @@ Implementation details for milestone 1:
 * Create a directory called "etc" to store configuration files:
     1. grafana/grafana.ini
     2. tendrl/monitoring-integration/monitoring-integration.conf.sample
-* Copy the monitoring-integration.conf.sample file into
-    /etc/tendrl/monitoring-integration/monitoring-integration.conf".
+    3. tendrl/monitoring-integration/grafana/dashboards/tendrl-gluster-at-a-glance.json
+    4. tendrl/monitoring-integration/grafana/dashboards/tendrl-gluster-bricks.json
+    5. tendrl/monitoring-integration/grafana/dashboards/tendrl-gluster-hosts.json
+    6. tendrl/monitoring-integration/grafana/dashboards/tendrl-gluster-volumes.json
+    7. tendrl/monitoring-integration/graphite/carbon.conf.sample
+    8. tendrl/monitoring-integration/graphite/graphite-web.conf.sample
+* Create tendrl-monitoring-integration.spec file for packaging.
 * Create a tox.ini file to run unit test cases.
 * Create a setup.py file for package installation.
 * Create a version.py file to specify monitoring-integration component version.
@@ -205,11 +210,13 @@ Implementation details for milestone 1:
 * Create .travis.yml file for Travis CI service.
 * Create a new directory called tendrl.
 * Create a new directory called monitoring_integration inside tendrl directory.
-* Create new file __init__.py in tendrl/monitoring_integration and wite a loggic
-  to create a grafana dashboard and datasource.
+* Create new file "__init__.py" in tendrl/monitoring_integration and wite a loggic
+  to initiate the grafana dashboard and datasource creation process.
 * Create a new directory called grafana in tendrl/monitoring_integration.
-* All predefined json files for create a grafana dashboards are placed in
-  tendrl/monitoring_integration/grafana.
+* Create a file called dashboard.py in tendrl/monitoring_integration to create grafana
+  dashboard.
+* Create a file datasource.py in tendrl/monitoring_integration to create grafana
+  datasource.
 * Create a file called utils.py in tendrl/monitoring_integration/grafana.
 * utils functions are used to make different api calls for create dashboard
   and datasource in grafana.
