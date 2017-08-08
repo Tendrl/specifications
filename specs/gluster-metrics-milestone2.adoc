@@ -1,0 +1,242 @@
+// vim: tw=79
+
+= Gluster Metrics
+
+== Introduction
+
+This specification deals with monitoring tendrl managed gluster cluster.
+It explains the following:
+
+* Which gluster metrics are to be enabled.
+* How each of the metrics is going to be implemented.
+* Any flows to be added to the node agent for configuring any collectd plugins
+  needed by the individual metrics.
+This specification will deal with metrics implemented in milestone 2
+
+== Problem description
+
+Admin using tendrl for gluster cluster management, should be able to see an
+easy to interpret representation of his gluster cluster/s with appropriate
+utilization trend patterns and any issue in his gluster cluster/s should be
+with no/minimal effort be made noticeable to the admin.
+
+== Use Cases
+
+A gluster cluster is imported(or created) in tendrl. From this point, this
+cluster needs to be monitored for utilization and status behaviour.
+
+== Proposed change
+
+The gluster metrics will be enabled at the very level from collectd and any
+aggregations thereon will be done by the grafana either on its own or using the
+aggregation rules as communicated to it by the monitoring-integration module.
+
+* Following are the gluster metrics to be enabled from collectd along with the
+  source of the information:
+    ** Brick level:
+        *** FOP Latency -- gluster volume profile <vol_name> info --xml
+
+            xml attribute hierarchy in cli response:
+            cliOutput -> volProfile -> brick -> cumulativeStats -> fopStats -> fop -> avgLatency
+            cliOutput -> volProfile -> brick -> cumulativeStats -> fopStats -> fop -> minLatency
+            cliOutput -> volProfile -> brick -> cumulativeStats -> fopStats -> fop -> maxLatency
+
+            The grafana aggregates(sum) fop level latencies(avgLatency) into
+            brick level latencies.
+
+        *** LVM Thin Pool metadata usage -- lvm vgs command
+        *** LVM thin pool data usage -- lvm vgs command
+        *** IOPS
+            **** Collectd pushes fop level brick wise fop hits
+                 xml attribute hierarchy in cli response:
+                 cliOutput -> volProfile -> brick -> intervalStats -> fopStats -> fop -> hits
+            **** Grafana aggregates(sum) brick level fop stats
+        *** Throughput
+            **** Collectd pushes totalRead and totalWrite at brick level from
+                 gluster volume profile command o/p
+                 xml attribute hierarchy in cli response:
+                 cliOutput -> volProfile -> brick -> intervalStats -> totalRead
+                 cliOutput -> volProfile -> brick -> intervalStats -> totalWrite
+            **** Grafana aggregates the same as totalRead + totalWrite for iops
+        ----
+        l = map(lambda x: dict(x),
+                map(lambda x: [e.split('=') for e in x],
+                    map(lambda x: x.strip().split('$'), out)))
+        d = {}
+        for i in l:
+            if i['LVM2_LV_ATTR'][0] == 't':
+                k = "%s/%s" % (i['LVM2_VG_NAME'], i['LVM2_LV_NAME'])
+            else:
+                k = os.path.realpath(i['LVM2_LV_PATH'])
+            d.update({k: i})
+        return d
+
+        if lvs and device in lvs and \
+           lvs[device]['LVM2_LV_ATTR'][0] == 'V':
+            thinpool = "%s/%s" % (lvs[device]['LVM2_VG_NAME'],
+                                  lvs[device]['LVM2_POOL_LV'])
+            out['thinpool_size'] = float(
+                lvs[thinpool]['LVM2_LV_SIZE']) / 1024
+            out['thinpool_used_percent'] = float(
+                lvs[thinpool]['LVM2_DATA_PERCENT'])
+            out['metadata_size'] = float(
+                lvs[thinpool]['LVM2_LV_METADATA_SIZE']) / 1024
+            out['metadata_used_percent'] = float(
+                lvs[thinpool]['LVM2_METADATA_PERCENT'])
+            out['thinpool_free'] = out['thinpool_size'] * (
+                1 - out['thinpool_used_percent'] / 100.0)
+            out['thinpool_used'] = out['thinpool_size'] - out['thinpool_free']
+            out['metadata_free'] = out['metadata_size'] * (
+                1 - out['metadata_used_percent'] / 100.0)
+            out['metadata_used'] = out['metadata_size'] - out['metadata_free']
+        ----
+
+    ** Volume level:
+        *** Pending Heal -- gluster volume heal vol-name statistics
+            "No. of heal failed entries" is used for this from cli o/p
+        *** Total Heal -- gluster volume heal vol-name statistics
+            "No. of entries healed" is used for this from cli o/p
+        *** Heal pending Split Brain files -- gluster volume heal vol-name statistics
+            "No. of entries in split-brain" is used for this from cli o/p
+        *** Rebalance
+            **** Files -- gluster get-state
+            **** Size -- gluster get-state
+            **** Failure -- gluster get-state
+        *** Number of connections -- gluster get-state
+        *** Snapshot count -- gluster get-state
+    ** Brick and cluster status wise counters can't be made  available from the
+       level of collectd as only the brick info corresponding to node on which
+       the collectd plugin is currently in execution, will be accessible and
+       info regarding the other bricks in cluster is not available and plugins
+       are stateless. This if required will not be found and updated to
+       graphite by monitoring-integration.
+* The plugin "tendrl_glusterfs_health_counters" in node-agent reads and parses
+  get-state o/p so, all counters will be added from this plugin.
+* The plugin "tendrl_glusterfs_brick_utilization" currently pushes lvm thin
+  pool metadata and data usage but for some reason it is currently appearing
+  as None. Need to debug this as part of this milestone.
+* The plugin "tendrl_glusterfs_profile_info" already uses volume profile info
+  and updates brick level io details. Now, it needs to also update the fop
+  stats which is also available via same command.
+* A new plugin that executes gluster volume heal all statistics and parses it
+  to get heal stats needs to be added. This also needs to be configured from
+  node-agent import flow. The name of the plugin will be
+  "tendrl_glusterfs_heal_info"
+* Volume degraded status -- To be explored..
+* Cluster Quorum status -- To be explored..
+* The aggregated/derived metrics that will be made available at grafana
+  level in accordance with rules configured by monitoring-integration are
+  briefed in:
+    ----
+    https://github.com/Tendrl/specifications/issues/179
+    ----
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+The name-spacing of metrics will follow the following:
+
+* tendrl.clusters.<cluster_id> will be the prefix for all metrics.
+* Node level metrics follow the format:
+   tendrl.clusters.<cluster_id>.nodes.<node_name>.<plugin_name>.<plugin_attrs>
+* Cluster level metrics follow the format:
+    tendrl.clusters.<cluster_id>.<plugin_name>.<plugin_attrs...>
+* Volume level metrics follow the format:
+    tendrl.clusters.<cluster_id>.volumes.<volume_name>.<plugin_name>.
+    <plugin_attrs>
+* Brick level metrics follow the format:
+    tendrl.clusters.<cluster_id>.volumes.<volume_name>.nodes.<node_name>.bricks.
+        <brick_path>.<plugin_name>.<plugin_attrs>
+    and the same would also be maintained @
+    tendrl.clusters.<cluster_id>.nodes.<node_name>.bricks.<brick_path>.
+        <plugin_name>.<plugin_attrs>
+    for mapping directly from node level.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+The configuration method would now change slightly in accordance with
+details in "Proposed Change"
+
+==== Tendrl/common impact:
+None
+
+==== Tendrl/node_agent impact:
+
+* The collectd plugins and templates are maintained and packaged in node-agent
+  So, the changes described in "Proposed Changes" section belong to node-agent
+* New plugin "tendrl_glusterfs_heal_info" to add heal info stats will be added
+  This also involves adding a template to configure the new plugin.
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+The main consumer of this is the tendrl-grafana dashboard.
+The impact in and due to the new dashboard will be detailed in a different
+spec.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+The configuration of collectd from monitoring-integration will slightly change
+in terms of number of plugins to configure and the attributes to be passed in
+configuration.
+
+=== Developer impact:
+
+* The aggreageations that were previously done by the performance-monitoring
+  application will now be done at grafana.
+    ** The rules of aggregation will be communicated to grafana by
+       monitoring-integration. Details of this are out of scope of this spec
+       and will be covered as part of:
+
+       ----
+       https://github.com/Tendrl/specifications/pull/218
+       ----
+
+== Implementation:
+
+
+=== Assignee(s):
+
+Primary assignee:
+  Metrics from collectd: anmolbabu<anmolbudugutta@gmail.com>
+  Dashboard: cloudbehl<cloudbehl@gmail.com>
+
+=== Work Items:
+
+https://github.com/Tendrl/node-agent/issues/575
+
+== Dependencies:
+
+None
+
+== Testing:
+
+The plugins push stats to graphite and the same in graphite will need to be
+tested for correctness.
+
+== Documentation impact:
+
+None
+
+== References:
+
