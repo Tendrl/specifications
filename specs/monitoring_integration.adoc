@@ -1,4 +1,4 @@
-= Spec - Introducing a new component monitoring-integration
+= Spec - Introducing a new component monitoring-integration(1st milestone)
 
 A new component called monitoring-Integration is introduced which integrates Grafana
 with tendrl core.
