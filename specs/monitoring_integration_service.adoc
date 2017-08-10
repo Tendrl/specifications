@@ -17,12 +17,11 @@ Monitoring integration will be providing other functionalities such as
 * Making dynamic configuration changes in graphite and grafana
 
 for which it will be required to be implemented as a service.
-To upload dashboards to grafana the monitoring integration
 
 == Proposed change
 
 Monitoring-integration component is changed to a service based on the tendrl structure.
-Instead of starting each and every time by manually, it is installed and started once
+Instead of starting each and every times manually, it is installed and started once
 as a service in the background.
 
 To convert as a service monitoring-integration component needs some additional
