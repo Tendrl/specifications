@@ -1,0 +1,153 @@
+# User Management: User List View for Admin
+
+## Problem description
+
+This spec talks about the implementation of *User List* view. This view will list down all existing users.
+
+## Use Cases
+
+The flow goes as follows:-
+
+* A user logs in as Admin
+* Clicks on Admin tab in Navigation
+* The navigation drops down
+* Clicks on *Users*
+
+User will land onto https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063808[User list] view page
+
+## Proposed workflow
+
+### UI
+
+There are following features involved in this view:-
+
+* Filter: To filter out User on the basis of:-
+** User ID (username)
+** Last Name
+** Role
+* *Add* Button, which directs to https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063802[Add user] view
+* User Table containing following columns:-
+** User ID (username)
+** First Name
+** Last Name
+** Role(s)
+*** Admin
+*** Normal User
+*** Limited User
+** Notification
+*** Enabled
+*** Disabled
+** Email
+** Actions
+*** Edit Button -  Takes to https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063805[Edit User] view
+
+
+*NOTE*: 
+
+* The fields ```First Name``` and ```Last Name``` will be assigned value from the API property ```name``` by splitting it at space.
+
+### Impacted Modules:
+
+#### Tendrl API impact:
+
+```
+GET /api/1.0/users - List the existing user
+```
+
+* Current sample API response: 
+
+```
+[{
+	"email": "admin@tendrl.org",
+	"username": "admin",
+	"name": "Admin",
+	"role": "admin"
+}]
+```
+
+* Sample API response Required:
+
+```
+{
+	"username": "JDoe1",
+	"name": "John Doe",
+	"role": "admin",
+	"email_notifications": "true",
+	"email": "jdoe@tendrl.org"	
+}
+
+```
+
+API support present for -
+
+* email
+* username
+* name
+* role
+
+Required from API - 
+
+* email_notifications
+
+#### Notifications/Monitoring impact:
+
+If ```email_notifications = true ```, notifications are required to be monitored 
+
+
+### Security impact:
+
+### Other end user impact:
+
+None
+
+### Performance impact:
+
+None
+
+### Other deployer impact:
+
+None
+
+### Developer impact:
+
+None
+
+## Implementation:
+
+
+### Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  a2batic
+  
+### Work Items:
+
+https://github.com/Tendrl/specifications/issues/176
+
+
+## Dependencies:
+
+Need API support for required additional fields:
+
+* status
+* notification
+
+https://github.com/Tendrl/api/issues/238
+
+## Testing:
+
+* Filter should work according to the category selected from drop down
+* All fields must contain correct values
+
+## Documentation impact:
+
+None
+
+## References:
+
+https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063808
+
+https://github.com/Tendrl/specifications/issues/176
