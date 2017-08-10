@@ -1,0 +1,120 @@
+= Collect Brick device details
+
+The underlying device details of gluster bricks has to be maintained in tendrl, as it helps
+admins to take corrective actions on the devices when the brick goes bad.
+
+
+== Problem description
+
+Gluster is just aware of the mount point that is used to create the bricks, it does not worry
+about the underlying devices as it operates with mountpoints. But if something goes wrong with
+the brick, its not of much help if tendrl reports that there is problem with the mount point
+as it is a logical entity and the root cause for this would be an underlying device. So tendrl
+should maintain the mapping between the bricks and underlying block devices.
+
+Each brick will map to one or more block devices, the name of block devices that are under
+the brick are stored as attribute of the brick `clusters/<cluster-id>/Bricks/all/<brick-path>/devices`.
+Each of the device in the list can be mapped to block devices under every node details, the
+path would be `nodes/<node-id>/LocalStorage/BlockDevices/all/<device_path>`
+
+== Use Cases
+
+* It helps the storage admin to easily take corrective actions when some thing happens to the
+Brick.
+
+== Proposed change
+
+Since brick device details are not provided by gluster get state. Tendrl should explicitly
+gather these details by using the mount point of the brick.
+
+For gathering this information tendrl can use blivet python module. Blivet is a python module
+for system storage configuration. Using blivet tendrl can gather the device hierarcy that is
+used to create the brick. Sample snippet of how to gather the information from blivet is given
+below:
+[source,python]
+----
+import blivet
+
+b = blivet.Blivet()
+b.reset() # this will gather the device information in this machine
+device = b.devicetree.resolveDevice(<filesystem>)
+
+ancestors = device.ancestors
+----
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+Data model remains the same, these details will be stored in the brick object, whose
+path is '/clusters/<cluster-id>/bricks/'
+
+=== REST API impact
+
+None
+
+=== Security impact
+
+None
+
+=== Notifications/Monitoring impact
+
+While there is a brick state change event, when we send the alerts we should also
+include the brick device information in the message.
+
+=== Other end user impact
+
+User will be able to view the underlying physical device info of a brick.
+
+=== Performance Impact
+
+None
+
+=== Other deployer impact
+
+None
+
+=== Developer impact
+
+None
+
+== Implementation
+
+=== Assignee(s)
+
+nnDarshan
+
+Primary assignee:
+nnDarshan
+
+Other contributors:
+None
+
+=== Work Items
+
+* gluster state sync should have additional piece of code to get the brick device details
+using blivet.
+
+* the updation of device details in the sds state sync thread should happen via a seperate
+greenlet
+
+== Dependencies
+
+This spec would add a new rpm(python-blivet) depencency on gluster-integraion
+
+== Testing
+
+Make sure that the underlying device details are properly synced for different types of
+devices.
+
+== Documentation Impact
+
+None
+
+== References
+
+* https://github.com/Tendrl/specifications/issues/173
+
+* https://github.com/Tendrl/gluster-integration/issues/333
