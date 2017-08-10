@@ -42,6 +42,7 @@ monitoring-integration service stops.
 
 When monitoring-integration start manager module will do the all configuration
 using configuration files. It will also create a separate namespace for the monitoring-integration.
+the namespace will be called "NS.monitoring"
 
 Namespace:
 
@@ -52,11 +53,41 @@ monitoring-integration.
 Object:
 
 Each tendrl component has its own set of objects for a different purpose. Each
-object have its own structure. Monitoring-integration have an object called Config.
+object have its own structure. Monitoring-integration have an config and definition
+object.
+
+```
+Sample config class for monitoring-integration:
+
+class Config(objects.BaseObject):
+    internal = True
+
+    def __init__(self, config=None, *args, **kwargs):
+        self._defs = {}
+        super(Config, self).__init__(*args, **kwargs)
+
+        self.data = config or cmn_config.load_config(
+            'node-agent', "/etc/tendrl/monitoring-integration/monitoring-integration.conf.yaml")
+        self.value = '_NS/monitoring/config'
+
+
+Sample definition class for monitoring-integration:
+
+class Definition(objects.BaseObject):
+    internal = True
+
+    def __init__(self, *args, **kwargs):
+        self._defs = {}
+        super(Definition, self).__init__(*args, **kwargs)
+
+        self.data = pkg_resources.resource_string(__name__, "monitoring_integration.yaml")
+        self._parsed_defs = yaml.safe_load(self.data)
+        self.value = '_NS/monitoring/definitions'
+```
 
 Install and run:
 
-Monitoring-integration will be installed in service machine only. It will be
+Monitoring-integration will be installed in service node only. It will be
 installed and started by tendrl-ansible as a service. There is just one instance
 of monitoring-integration installed across all clusters.
 
@@ -66,7 +97,7 @@ None
 
 == Data model impact:
 
-Monitoring-integration configuration stored in etcd : “_NS/monitoring_integration/config”
+Monitoring-integration configuration stored in etcd : “_NS/monitoring/config”
 
 == Impacted Modules:
 
@@ -144,6 +175,9 @@ Steps to change monitoring-integration as service:
 * The main function in manager should initialize and start the all gevent classes using "MonitoringIntegrationManager"
   class.
 * The manager should stop all gevents when monitoring-integration service is stopped.
+* Create a file tendrl-monitoring-integration.service systemd unit, and modify the
+  tendrl-monitoring-integration.spec to copy it into systemd folder. (Reffer
+  performance-monitoring repo to create service file).
 
 === Assignee(s):
 
