@@ -1,0 +1,171 @@
+# User Management: Adding new User in Tendrl
+
+## Problem description
+
+This spec talks about Adding/Creating a new User to Tendrl by the Admin
+
+## Use Cases
+
+The flow goes as follows:-
+
+* A user logs in as Admin
+* Clicks on Admin tab in Navigation
+* The navigation drops down
+* Clicks on *Users*
+* Clicks on *Add* button in Users page view
+
+User will land onto https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063802[Add Users] page
+
+## Proposed change
+
+### UI changes
+
+* Add *Users* tab in Admin navigation tab
+* Add *Add User* Button in Users Page view
+* Add a form for adding a user. The form will contain following feilds:-
+** User ID
+*** Input type : text
+*** Validations:
+**** Should be Unique
+**** Minimum length: 4 characters
+**** Should be mandatory
+** First Name
+*** Input type : text
+*** Validations:
+**** Should be mandatory
+** Last Name
+*** Input type : text
+** Email
+*** Input type : email
+*** Validations:
+**** Should be unique
+**** Validate email ID
+**** Should be mandatory
+** Email Notification
+*** Input type : checkbox
+*** Default : Enabled
+** Password
+*** Input type : password
+*** Validations:
+**** Minimum length: 8 characters
+**** Should be mandatory
+** Confirm Password
+*** Input type : password
+*** Validations:
+**** Should be mandatory
+**** Should match with the password
+** Set a Role
+*** Admin
+*** Normal user
+*** Limited user
+*** Input type : Radio button
+*** Default : admin
+
+*NOTE*: 
+
+* The fields ```First Name``` and ```Last Name``` will be assigned value from the API property ```name``` by splitting it at space.
+* Maximum length for field ```name``` : 100 Characters
+
+### Impacted Modules:
+
+#### Tendrl API impact:
+
+```
+POST /api/1.0/users - creates a new user
+```
+
+* Current sample API response: 
+
+```
+{
+	"email": "thardy@tendrl.org",
+	"username": "thardy",
+	"name": "Tom Hardy",
+	"role": "admin"
+}
+
+```
+
+* Sample API response Required:
+
+```
+{
+	"username": "JDoe1",
+	"name" : "John Doe",
+	"email": "jdoe@tendrl.org",
+	"email_notifications": "true",
+	"role": "admin"
+}
+
+```
+
+API support present for -
+
+* email
+* username
+* name
+* role
+
+Required from API - 
+
+* email_notifications
+
+#### Notifications/Monitoring impact:
+
+If ```email_notifications = true ```, email notifications are required to be monitored 
+
+### Security impact:
+
+### Other end user impact:
+
+None
+
+### Performance impact:
+
+None
+
+### Other deployer impact:
+
+None
+
+### Developer impact:
+
+None
+
+## Implementation:
+
+
+### Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  a2batic
+  
+### Work Items:
+
+https://github.com/Tendrl/specifications/issues/176
+
+
+## Dependencies:
+
+Need API support for required additional fields:
+
+* email_notifications
+
+
+## Testing:
+
+* Test whether fields of adding user form are validating.
+* Check if user is actually getting created and displayed on user list view with correct details.
+
+## Documentation impact:
+
+None
+
+## References:
+
+https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063802
+
+https://github.com/Tendrl/specifications/issues/176
