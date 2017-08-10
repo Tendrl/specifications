@@ -54,6 +54,11 @@ Object:
 Each tendrl component has its own set of objects for a different purpose. Each
 object have its own structure. Monitoring-integration have an object called Config.
 
+Install and run:
+
+Monitoring-integration will be installed in service machine only. It will be
+installed and started by tendrl-ansible as a service. There is just one instance
+of monitoring-integration installed across all clusters.
 
 == Alternatives
 
@@ -117,6 +122,8 @@ None
 Convert the monitoring-integration as service
 
 == Implementation:
+
+Steps to change monitoring-integration as service:
 
 * Create a module called manager in tendrl/monitoring_integration.
 * Create a file called "__init__.py" in tendrl/monitoring_integration/manager.
