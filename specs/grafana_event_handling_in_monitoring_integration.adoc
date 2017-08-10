@@ -1,0 +1,342 @@
+:imagesdir: ./images
+
+= Grafana Event Handling In Monitoring-Integration
+
+As per the new architecture grafana has been introduced to monitor health of the system so henceforth
+all the thresholds for alerts will be configured in grafana and events raised by grafana will be notified to
+respective user via the tendrl.
+
+
+== Problem description
+
+In the present alerting scenerio, collectd is used to monitor and track the state changes of the system
+objects based on some configured thresholds. All events intercepted by tendrl are notified to the admin via
+configured endpoint by the tendrl alerting module. These notifications contain properly structured alert details
+including some tendrl specific metadata.
+In the new architecture, grafana has been introduced to monitor system and henceforth all thresholds will be
+configured in grafana. Any event of an alert is notified by grafana via configured notification channel,
+but the alert structure received from grafana lacks important alert and tendrl specific details
+required by the user.
+
+== Use cases
+
+Goal: Notify user in case of any alert event.
+
+Actors:
+
+1) Monitoring Integration
+
+Steps:
+
+* Threshold for alerts are configured in grafana as per user requirements.
+
+* A notification channel is configured in grafana.
+
+* Any change in system state is notified to tendrl component
+  via alerts sent by grafana.
+
+* Such events (alerts by grafana) needs to be notified to respective users/admin.
+
+* The alert structure received from grafana is converted into tendrl message structure
+  and passed to node agent socket.
+
+* A tendrl component called notifier, notifies users/admin of these events
+
+
+== Proposed change
+
+
+image::alert_component.png[Tendrl Alerting System]
+
+
+- Alert-Handler: Alert-handler is a part of Monitioring-Integration component which will receive all
+                 alerts from webhook receiver and modify the alerts as per tendrl specification.
+
+- Notifier: Its function is to send notification to the users.(https://github.com/Tendrl/specifications/issues/190)
+
+Grafana provides a facitlity to configure webhooks as a notification channel.
+Monitoring-Integration will provide an endpoint(webhook receiver) where grafana can send all alerts.
+To configure this endpoint in grafana, Alert-Handler will send a post request to grafana API
+(/api/alert-notifications) to create a custom webhook notification channel with url as
+"http://{host-ip}:{host-port_number}"
+
+Once the Monitoring-Integration service is started, the end point will be ready to receive
+alerts from grafana. If any change in system state crosses the threshold then an alert is raised
+by grafana and such events are notified by grafana to tendrl Monitoring-Integration component. 
+On receiving an event, it is parsed and turned into a message object. Received grafana events
+have very limited information about the alert,so some grafana related information such as time of alert
+needs to be fetched from grafana. This could be done via an API call to grafana by using alert_id received
+in the alert sent by grafana as a queryparamter.Some tendrl specific metadata such as priority and severity
+is also added which is required to notify users and to store events in etcd. These details are dynamically
+configurable and are stored in etcd.
+
+All the information regarding the event is stored in message payload and this information is used by node-agent to
+set alert condition in etcd.
+
+```
+Received grafana alert:
+{
+  "evalMatches": [{
+    "value":6961614848,
+    "metric":"collectd.dhcp42-170_lab_eng_blr_redhat_com.memory.memory-free",
+    "tags":null
+   }],
+   "message":"alert",
+   "ruleId":6,
+   "ruleName":"Panel Title alert",
+   "ruleUrl":"http://localhost:3000/dashboard/db/new_graphite?fullscreen\u0026edit\u0026tab=alert\u0026panelId=3\u0026orgId=1",
+   "state":"alerting",
+   "title":"[Alerting] Panel Title alert"
+}
+
+Alert from API request: http://{ip}:3000/api/alerts/6
+{
+  Id: 6,
+  Version: 0,
+  OrgId: 1,
+  DashboardId: 7,
+  PanelId: 3,
+  Name: "Panel Title alert",
+  Message: "alert",
+  Severity: "",
+  State: "alerting",
+  Handler: 1,
+  Silenced: false,
+  ExecutionError: " ",
+  Frequency: 5,
+  EvalData:- {
+    evalMatches:- [{
+      metric: "collectd.dhcp42-170_lab_eng_blr_redhat_com.memory.memory-free",
+      tags: null,
+      value: 6961614848
+    }]
+  },
+  NewStateDate: "2017-07-18T23:07:16+05:30",
+  StateChanges: 291,
+  Created: "2017-09-18T14:36:37+05:30",
+  Updated: "2017-07-19T04:37:11+05:30",
+  Settings:- {
+    conditions:- [{
+      evaluator:- {
+        params:- [ 6956963696 ],
+        type: "gt"
+      },
+      operator:- {
+        type: "and"
+      },
+      query:- {
+        datasourceId: 3,
+        model:- {
+          refId: "A",
+          target: "collectd.dhcp42-170_lab_eng_blr_redhat_com.memory.memory-free"
+        },
+        params: - ["A","5m","now"]
+      },
+      reducer:- {
+        params:[],
+        type: "avg"
+      },
+      type: "query"
+    }],
+    executionErrorState: "alerting",
+    frequency: "5s",
+    handler: 1,
+    message: "alert",
+    name: "Panel Title alert",
+    noDataState: "alerting",
+    notifications:[]
+  }
+}
+    
+```
+
+After receiving alert then it will converted to current tendrl alert structure. 
+```
+Alert_id
+node_id
+time_stamp
+resource
+current_value
+tags
+alert_type
+severity
+significance
+ackedby
+acked
+ack_comment
+acked_at
+pid
+source
+```
+
+The message payload will contain information regarding the scope of the event which will be
+used by node-agent to classify events and store them under proper path in etcd.
+The message to be notified will be tendrl-object specific and will be provided by MessageFormatters.
+This message will be included in the message payload by the Alert-Handler.
+
+The node-agent will store the message object in etcd and the notifier will notify the users/endpoints via the
+configured channel.
+
+Notifier functionalities are explained in https://github.com/Tendrl/specifications/pull/199
+
+Webhook Receiver:
+
+Webhook receiver will be a part of Monitoring-Integration service and will listen to a preconfigure port for any
+alerts from grafana. Once any alerting event is received the webhook receiver will pass the event details to the
+Alert-Handler.
+
+In case of multiple alerts, the webhook receiver will read alerts sequentially from the socket and call
+Alert-Handler for each alert received.
+
+The Monitoring-Integration will be deployed on the server node (where grafana is also deployed) so the host_ip will
+be localhost and the port_number would be choosen in such a way that it doesnt collide with other ports already being used.
+
+=== Alternatives:
+
+None
+
+
+=== Data model impact:
+
+
+No changes in existing structure.
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+The alerting evetns will now be stored in etcd under /alerting/alerts so the API will
+have to retreive the alerting events from the new path instead of fetching events from
+messages/events/ and then looking for alerting events i.e. events with priority as Notify 
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+Node-agent must be modified to insert the events received by Monitoring
+Integration in etcd under alerting/alerts/ instead of messages/events/.
+
+Monitoring integration adds scope ( global, cluster specific or node specific)
+of alert in the message metadata, this scope should be used by node-agent
+to place the event in the proper path in etcd.
+
+==== Sds integration impact:
+
+None
+
+==== Tendrl/performance-monitoring impact:
+
+A  new component "Monitoring Integration" will be introduced to
+handle events generated by grafana.
+
+In this component:
+
+Create a new class called AlertHandler and run this class as separate gevent.
+AlertHandler will receive the alert event from socket and convert that alert
+as dictionary based on current alert structure and pass the alert as a message
+to the node-agent socket. (more details in implementation section)
+
+```
+To fetch details regarding particular alert from grafana:
+   http://{ip}:3000/api/alerts/{id}
+```
+
+==== Tendrl/alerting impact:
+
+Tendrl alerting system will be renamed as Notifier.
+Its main functionality would be to fetch the alert events and
+notify the respective user.
+
+=== Security impact:
+ 
+None
+ 
+=== Other end user impact:
+
+Users will be able to set alerts in Grafana itself and get notified for the same.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+Need to create a end point to receive alerting event from grafana. Convert that alert event into current alerting structure. And pass the alert into node-agent socket.
+
+== Implementation:
+
+A new repository for Monitoring-Integration will be created.
+
+Following are the implementation details of how this functionality will be achieved.
+
+* Create a new file called alert_handler.py in monitoring-integration.
+
+* Create a new class called AlertHandler in alert_handler.py
+
+* Run AlertHandler as seperate gevent from monitoring-integration manager.
+
+* Create a function called ‘to_dict’ in AlertHandler to convert the received alert into dictionary based on current tendrl alert structure.
+
+* Create a new message object using alert dictionary as metadata.
+
+* Pass the message object into message socket using Event class.
+
+* Pass the created Event to the node-agent socket.
+
+* Notify the respective user about the alert.
+
+Webhook Receiver to receive the alerting events from grafana:
+Psuedo code:
+
+webhook_receiver():
+
+    socket.host =  localhost
+    socket.pot  =  1000008
+    while True:
+         conn,adress = socket.accept()
+         request = conn.recv(1024)
+         notify_alert_handler(request)
+
+=== Assignee(s):
+
+
+@GowthamShanmugam
+@rishubhjain
+
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/169
+
+
+== Dependencies:
+
+None
+
+
+== Testing:
+
+Check all grafana and sds alerts are stored and notified to the users correctly.
+
+
+== Documentation impact:
+
+None
+
+
+== References:
+
+None
+
+
