@@ -1,14 +1,14 @@
 = Spec - Introducing a new component monitoring-integration(1st milestone)
 
 A new component called monitoring-Integration is introduced which integrates Grafana
-with tendrl core.
+with the tendrl core.
 
 
 == Problem description
 
 The new monitoring-integration component would primarily focus on configuration of
 grafana. Monitoring-integration should create default dashboards in grafana using
-predefined json.
+predefined JSON.
 
 
 == Use Cases
@@ -21,18 +21,18 @@ predefined json.
 === Why monitoring-integration?
 
 Grafana is used for visualizing time series data in graphs. Based on the metrics
-from datasource it will create graphs and display. It provides a rich set of tools
+from data-source it will create graphs and display. It provides a rich set of tools
 to display monitoring and analytics using time series data. monitoring-integration
 component would primarily focus on configuration of grafana.
 
-Monitoring-integration and grafana server are installed manually in server machine.
+Monitoring-integration and grafana server are installed manually in the server machine.
 There is just one instance of monitoring-integration and grafana installed across
 all clusters. For now when monitoring-integration starts then it will create gafana
-dashboards using some predefined json files.
-(Complelete flow structure for monitoring-integration is out of scope of this specification).
+dashboards using some predefined JSON files.
+(Complete flow structure for monitoring-integration is out of scope of this specification).
 
-For each grafana dashboard different predefined json is maintained in monitoring-integration.
-The json is sent to grafana server as http api request.
+For each grafana dashboard different predefined JSON is maintained in monitoring-integration.
+The JSON is sent to grafana server as HTTP API request.
 
 JSON Body schema:
 
@@ -42,7 +42,7 @@ JSON Body schema:
 * message - Set a commit message for the version history.
 
 ```
-Example dashboard json for creating a new dashboard or updating an existing dashboard.
+Example dashboard JSON for creating a new dashboard or updating an existing dashboard.
 
 {
   "dashboard": {
@@ -62,7 +62,7 @@ Example dashboard json for creating a new dashboard or updating an existing dash
 ```
 
 Monitoring-integration is enabling anonymous access to create dashboards and
-datasource by changing grafana configuration file. It Setting the organization name
+data-source by changing grafana configuration file. It Setting the organization name
 that should be used for anonymous users.
 
 
@@ -104,13 +104,13 @@ Introduce a new component monitoring-integration in tendrl.
 
 Monitoring integration should have all predefined json files and configuration files
 for grafana. When monitoring-integration starts it will create the grafana dashboard
-and datasource using predefined jsons via http api request.
+and datasource using predefined JSON via HTTP API request.
 
 ```
 Grafana APIs used in monitoring-integration:
 
 1) Dashboard API:
-    To creates a new dashboard or update an existing dashboard.
+    To create a new dashboard or update an existing dashboard.
        POST -  /api/dashboards/db
         {
           "dashboard": {
@@ -137,7 +137,7 @@ Grafana APIs used in monitoring-integration:
         "access":"proxy",
         "basicAuth":false
       }
-3) Create Organisation
+3) Create Organization
     To create organisation
       POST /api/orgs
       {
@@ -152,7 +152,7 @@ None
 
 === Other end user impact:
 
-User can access the grafana dashboards using tendrl authorization only.
+Users can access the grafana dashboards using tendrl authorization only.
 
 === Performance impact:
 
@@ -160,7 +160,7 @@ None
 
 === Other deployer impact:
 
-Monitoring-integration needs grafana packages as dependency.
+Monitoring-integration needs grafana packages as a dependency.
 
 === Developer impact:
 
@@ -183,21 +183,21 @@ Implementation details for milestone 1:
 * Create .travis.yml file for Travis CI service.
 * Create a new directory called tendrl.
 * Create a new directory called monitoring_integration inside tendrl directory.
-* Create new file __init__.py in tendrl/monitoring_integration and wite a loggic
-  to create a grafana dashboard and datasource.
+* Create new file "__init__.py" in tendrl/monitoring_integration and write a loggic
+  to create a grafana dashboard and data-source.
 * Create a new directory called grafana in tendrl/monitoring_integration.
-* All predefined json files for create a grafana dashboards are placed in
+* All predefined JSON files for creating a grafana dashboards are placed in
   tendrl/monitoring_integration/grafana.
 * Create a file called utils.py in tendrl/monitoring_integration/grafana.
 * utils functions are used to make different api calls for create dashboard
-  and datasource in grafana.
+  and data-source in grafana.
 
-Workflow planned for first milestone is:
+Workflow planned for The first milestone is:
 
 When monitoring-integration starts then it is configured from a configuration file
 "/etc/tendr/monitoring_integration/monitoring-integration.conf".
-Then it will create dashboards and datasources in grafana using predefined
-json files from etc/tendrl/monitoring_integration/grafana directory with the help of util functions. When
+Then it will create dashboards and data-sources in grafana using predefined
+JSON files from etc/tendrl/monitoring_integration/grafana directory with the help of util functions. When
 monitoring_integration restart it will compare existing dashboards in grafana with predefined
 dashboards in monitoring integration, if any dashboard is not present in grafana then it will create a
 new dashboard otherwise it will skip.
@@ -216,7 +216,7 @@ https://github.com/Tendrl/specifications/issues/179
 
 == Testing:
 
-Check dashboards and datasource are created successfully in grafna. And it is accessible
+Check dashboards and data-source are created successfully in grafna. And it is accessible
 via anonymous access.
 
 == Documentation impact:
