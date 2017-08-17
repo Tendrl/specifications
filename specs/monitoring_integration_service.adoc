@@ -25,14 +25,14 @@ by systemd.
 To be able to run as a daemon, the component needs some additional changes.
 
 Mananger::
-monitoring-integration execution flow is started from the manager modules. Manager
+monitoring-integration execution flow is started from the Manager modules. Manager
 module is the entry point for monitoring-integration, all the gevents are initialized
-and started from the manager modules. A manager can kill all the gevent when
+and started from the Manager modules. A Manager can kill all the gevent when
 monitoring-integration service stops.
 +
-When monitoring-integration start manager module will do the all configuration
-using configuration files. It will also create a separate namespace for the monitoring-integration.
-the namespace will be called "NS.monitoring"
+When monitoring-integration starts, the Manager module will do the all configuration
+using configuration files. It will also create a separate namespace for the
+monitoring-integration. the namespace will be called "NS.monitoring"
 
 Namespace::
 A manager will create its own namespace for the monitoring-integration to separate
@@ -75,7 +75,7 @@ class Definition(objects.BaseObject):
 
 Install and run:
 
-monitoring-integration will be installed in service node only. It will be
+monitoring-integration will be installed in server node only. It will be
 installed and started by tendrl-ansible as a service. There is just one instance
 of monitoring-integration installed across all clusters.
 
@@ -112,7 +112,7 @@ None
 
 === Tendrl/monitoring-integration impact:
 
-Changes need to convert monitoring-integration as service:
+Changes need to convert monitoring-integration as daemon:
 
 * Create a module called manager in monitoring-integration
 * Create a namespace for the monitoring-integration
