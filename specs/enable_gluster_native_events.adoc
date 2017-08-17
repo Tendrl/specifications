@@ -83,8 +83,8 @@ in the performance.
 === Other deployer impact
 
 We would need to install an additional package glusterfs-events on all the storage
-nodes and this daemon has to be started and configured as part of import cluster
-flow.
+nodes and this daemon has to be started and configured as part of gluster-integraion
+startup.
 
 === Developer impact
 
