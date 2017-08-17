@@ -1,0 +1,151 @@
+// vim: tw=79
+
+= Adding a new notification medium
+
+This specification briefs about what needs to be done to plug-in a new
+noticication medium to tendrl's alert delivery system.
+
+
+== Problem description
+
+A new alert delivery channel needs to be added to the Tendrl supported list of
+alert delivery channels.
+
+== Use Cases
+
+A new alert delivery channel needs to be added to the Tendrl supported list of
+alert delivery channels
+
+== Proposed change
+
+To add a new alert delivery channel to Tendrl's notifier the following needs to
+be done:
+
+Every notification plugin needs to extend NotificationPlugin and it is
+automatically injected with alert object in its dispatch_notification method
+
+----
+The NotificationPlugin interface is defined at:
+https://github.com/Tendrl/notifier/blob/master/tendrl/alerting/notification/__init__.py#L28
+----
+
+Following are the functions to be implemented in the new subclass:
+
+* set_destinations: This would let the plugin know to all the destinations
+  specific to the plugin
+* get_alert_destinations: Logic to get refined list of destinations based on
+  current alert notification subscriptions.
+* format_message: If any custom formatting custom to plugin needs to be made
+  in addition to the formatted readable message in alert.
+
+  ----
+  Note: The example for custom formatting the message custom to plugin is as in
+  https://github.com/Tendrl/notifier/blob/master/tendrl/alerting/notification/handlers/mail_handler.py#L86
+  ----
+
+* dispatch_notification: Logic to send out the alert..
+
+The call to dispatch_notification is made automatically whenever there is a
+new alert detected. But, calls to other functions currently are left to
+implementation of dispatch_notification. The framework can be improved to
+automatically automate the invocation of all these plugin functions.
+
+Finally the plugin code written based on the information above needs to be
+placed in the path tendrl/alerting/notification/handlers(will change to
+tendrl/notifier/notification/handlers) and rest everything
+is internal to notifier application and happens automatically.
+
+----
+A sample for implementing this is at:
+
+https://github.com/Tendrl/notifier/blob/master/tendrl/alerting/notification/handlers/mail_handler.py
+----
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* An Api to configure the notification plugin(channel) specific end-points
+  need to be added.
+
+==== Notifications/Monitoring impact:
+
+The changes described in Proposed Change section above are specific to
+notifier module.
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+Configuring plugin specific end-point is end-user impact.
+This will happen via api described in Tendrl API impact section.
+The api description will be in Api documentation
+
+=== Performance impact:
+
+* This involves reads from central store
+* This plugin will be invoked for every alert detected by notifier module
+  in series.
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+
+Primary assignee:
+  <github-id or None>
+
+Other contributors:
+  <github-id or None>
+
+=== Work Items:
+
+* github issue on notifier module to track the addition of notification channel
+
+== Dependencies:
+
+* Plugin specific library dependencies might be required
+
+== Testing:
+
+Test when an alert is generated, is the alert dispatched to all configured
+notificatication end-points by the new plugin means.
+
+== Documentation impact:
+
+The support for new notification channel will need to be documented.
+
+== References:
+
+* Any links specific to the notification method/channel
