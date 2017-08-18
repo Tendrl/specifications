@@ -1,0 +1,197 @@
+= Enable SELinux for tendrl
+
+SELinux should be enabled in tendrl for the system which controled by selinux.
+
+== Problem description
+
+Tendrl could be installed in a system where SELinux could be already enforced.
+Currenlty Tendrl requires selinux to be in disable state. If tendrl disables
+the selinux which may brack the existing policy(security concerns) of the system
+which runs selinux enabled.
+
+A SELinux-enabled system that runs in permissive mode is not protected by SELinux.
+which will leads to privilege escalation issue. This allows the system
+to be attacked if it does not managed by Selinux completely. A normal user
+with no specific privileges on the system who is trying to interact with one of
+the root-running processes that can suddenly misbehave and give the user
+root access or allows the user to launch root access commands.
+
+Currently tendrl services like gluster-integration, node-agent, api,
+monitoring-integration services are running as unconfined services.
+ex1: system_u:system_r:unconfined_service_t:s0 18240 ? 02:51:40 tendrl-node-age
+ex2: system_u:system_r:unconfined_service_t:s0 18240 ? 02:51:40 tendrl-api
+Unconfined Service issue:- This will leads the 'privileges of the process'
+being attacked easily. Tendrl process that run as root are prone to be attacked
+to get root access on the system.
+
+Tendrl services does not belong to any selinux domain. Proper selinux domain should
+be assigned to every tendrl services to identify what is allowed for this service.
+
+Currently tendrl does not have enough confined rules for files being used by
+its process. Contexts for files used by tendrl should also be specified clearly.
+So that the resource can be used with the restricted gated privilege.
+The file or directory created in a directory should also acquire same context.
+
+When the system runs SELinux in permissive mode, users are able to
+label files incorrectly. Files created with SELinux in permissive mode are not
+labeled correctly while files created while SELinux is disabled are not labeled
+at all. This behavior causes problems when changing to enforcing mode.
+Also there are some application that know about SELinux status can change their
+behavior when selinux is in permissive mode.
+
+== Use Cases
+
+* Enable SELinux security system for tendrl
+* Retain the existing security measures in an already enabled SELinux system
+
+== Proposed change
+
+* Running a tendrl related services in a Specific Security Context
+  Tendrl can have a selinux policies for all tendrl related services
+  Each tendrl proces can be assigned to an unique security context which,
+  just like with the user under which the process runs, helps Linux in
+  identifying what the application should and shouldn't be allowed to do.
+
+* Marking only the required type as permissive
+  In addition to have SELinux policies for tendrl, it would better to mark
+  only the required type as permissive initially; instead of making the
+  entire system permissive, tendrl could make only the purticular domain as permissive.
+  Over the release iterations, testing various test cases, SELinux can be
+  compleatly enforced. Because it's inevitable to completely block any new
+  avc errors which might come on any new updates to tendrl.
+
+=== Alternatives
+
+None
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+SELinux policy files will be added in to this tendrl-api module.
+This set of policies will be used at tendrl server.
+
+Sample Policy:
+policy_module(tendrl, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+
+type tendrl_t;
+type tendrl_exec_t;
+init_daemon_domain(tendrl_t, tendrl_exec_t)
+
+type tendrl_conf_t;
+files_config_file(tendrl_conf_t)
+
+type tendrl_log_t;
+logging_log_file(tendrl_log_t)
+
+type tendrl_var_lib_t;
+files_type(tendrl_var_lib_t)
+
+type tendrl_var_run_t;
+files_pid_file(tendrl_var_run_t)
+
+type tendrl_unit_file_t;
+systemd_unit_file(tendrl_unit_file_t)
+
+type tendrl_custom_port_t;
+corenet_port(tendrl_custom_port_t)
+
+permissive tendrl_t;
+
+########################################
+#
+# tendrl local policy
+#
+allow tendrl_t self:capability { sys_rawio sys_admin net_admin };
+allow tendrl_t self:fifo_file rw_fifo_file_perms;
+allow tendrl_t self:unix_stream_socket create_stream_socket_perms;
+allow tendrl_t self:tcp_socket { accept listen };
+- - -
+optional_policy(`
+          unconfined_domain(tendrl_t)
+')
+
+==== Tendrl commons impact:
+
+SELinux policy files will be added in to this tendrl-commons module.
+This will be used for every nodes participating in the tendrl.
+
+Sample tendrl AVCs:
+type=AVC msg=audit(1502404324.889:1973): avc:  denied  { connectto } for
+pid=22078 comm="gluster" path="/run/glusterd.socket"
+scontext=system_u:system_r:collectd_t:s0
+tcontext=system_u:system_r:glusterd_t:s0 tclass=unix_stream_socket
+
+type=AVC msg=audit(1502404325.445:1975): avc:  denied  { read write } for
+pid=22129 comm="lvm" name="lvm" dev="tmpfs" ino=12517
+scontext=system_u:system_r:collectd_t:s0
+tcontext=system_u:object_r:lvm_lock_t:s0 tclass=dir
+
+type=AVC msg=audit(1502404325.447:1976): avc:  denied  { add_name } for
+pid=22129 comm="lvm" name="V_cl_dhcp43-71:aux"
+scontext=system_u:system_r:collectd_t:s0
+tcontext=system_u:object_r:lvm_lock_t:s0 tclass=dir
+
+type=AVC msg=audit(1502404265.426:1967): avc:  denied  { read } for
+pid=21307 comm="lvm" name="vda2" dev="devtmpfs" ino=8415
+scontext=system_u:system_r:collectd_t:s0
+tcontext=system_u:object_r:fixed_disk_device_t:s0 tclass=blk_file
+
+The above AVC can be read as:
+The Trace reporting time: Fri Aug 11 04:01:05 IST 2017, process with PID 21307
+tried to read a file called vda2 on a file system hosted on the devtmpfs device.
+This file has inode number 8415, and has the security context
+system_u:object_r:fixed_disk_device_t assigned to it.
+The Trace process itself is running with the system_u:system_r:collectd_t context.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+
+=== Assignee(s):
+
+tjeyasing@redhat.com
+
+If more than one person is working on the implementation, please designate the
+primary author and contact.
+
+Primary assignee:
+  tjeyasin
+
+=== Work Items:
+
+
+
+== Dependencies:
+
+None
+
+== Testing:
+
+== Documentation impact:
+
+The apis mentioned above need to be documented.
+
+== References:
+
+None
