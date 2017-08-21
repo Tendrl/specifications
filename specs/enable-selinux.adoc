@@ -4,39 +4,39 @@ SELinux should be enabled in tendrl for the system which controled by selinux.
 
 == Problem description
 
-Tendrl could be installed in a system where SELinux could be already enforced.
-Currenlty Tendrl requires selinux to be in disable state. If tendrl disables
-the selinux which may brack the existing policy(security concerns) of the system
-which runs selinux enabled.
+* Policy violation:-
+Currently tendrl needs selinux in permissive mode. A SELinux-enabled system that
+runs in permissive mode is not protected by SELinux. if tendrl needs selinux to be
+disabled in an already selinux enforced system, it may break the security rule
+of the system.
 
-A SELinux-enabled system that runs in permissive mode is not protected by SELinux.
-which will leads to privilege escalation issue. This allows the system
-to be attacked if it does not managed by Selinux completely. A normal user
-with no specific privileges on the system who is trying to interact with one of
-the root-running processes that can suddenly misbehave and give the user
-root access or allows the user to launch root access commands.
+* Privilege escalation issue:-
+Disabling selinux in a system, can lead to privilege escalation issue.  For example,
+A normal user with no specific privileges on the system who is trying to interact
+with one of the root-running processes that can suddenly misbehave and give
+the user root access or allows the user to launch root access commands.
 
+* Service are not belongs to any proper selinux domain:-
 Currently tendrl services like gluster-integration, node-agent, api,
 monitoring-integration services are running as unconfined services.
 ex1: system_u:system_r:unconfined_service_t:s0 18240 ? 02:51:40 tendrl-node-age
 ex2: system_u:system_r:unconfined_service_t:s0 18240 ? 02:51:40 tendrl-api
-Unconfined Service issue:- This will leads the 'privileges of the process'
-being attacked easily. Tendrl process that run as root are prone to be attacked
-to get root access on the system.
+Unconfined Service issue:- This will lead the 'privileges of the process'
+being attacked easily. Tendrl processes that run as root are prone to
+be attacked to get root access on the system.
 
-Tendrl services does not belong to any selinux domain. Proper selinux domain should
-be assigned to every tendrl services to identify what is allowed for this service.
+* Unclear or undefined context for files and directory:-
+Currently tendrl does not have enough confined rules for the files and
+directories being used by its process. Contexts for files are unclear in tendrl.
+By having proper contexts for the files and directories used by tendrl,
+the resources can have restricted gated privilege.
 
-Currently tendrl does not have enough confined rules for files being used by
-its process. Contexts for files used by tendrl should also be specified clearly.
-So that the resource can be used with the restricted gated privilege.
-The file or directory created in a directory should also acquire same context.
-
-When the system runs SELinux in permissive mode, users are able to
-label files incorrectly. Files created with SELinux in permissive mode are not
-labeled correctly while files created while SELinux is disabled are not labeled
-at all. This behavior causes problems when changing to enforcing mode.
-Also there are some application that know about SELinux status can change their
+* Incorrect or missing lable:-
+Continues use of permissive mode might causes the users to label files
+incorrectly. Any file or files created when selinux in permissive/disable mode,
+will not be labeled correctly or will not be labled at all.
+This behavior could create problems when its changed to enforcing mode.
+Also there are few applications that know about SELinux status can change their
 behavior when selinux is in permissive mode.
 
 == Use Cases
@@ -46,19 +46,24 @@ behavior when selinux is in permissive mode.
 
 == Proposed change
 
-* Running a tendrl related services in a Specific Security Context
-  Tendrl can have a selinux policies for all tendrl related services
-  Each tendrl proces can be assigned to an unique security context which,
-  just like with the user under which the process runs, helps Linux in
-  identifying what the application should and shouldn't be allowed to do.
+* Running tendrl related services in a Specific Security Context
+  Every tendrl process must be set to work according to its personal security
+  environment. Every tendrl process should have its own well defined
+  selinux policy. It should be given a definite determination for tendrl process
+  of which any user is permitted to work with, which products or application
+  can be accessed and what can be run.
 
 * Marking only the required type as permissive
-  In addition to have SELinux policies for tendrl, it would better to mark
-  only the required type as permissive initially; instead of making the
-  entire system permissive, tendrl could make only the purticular domain as permissive.
-  Over the release iterations, testing various test cases, SELinux can be
-  compleatly enforced. Because it's inevitable to completely block any new
-  avc errors which might come on any new updates to tendrl.
+  In addition to have SELinux policies for tendrl
+  Instead of allowing a complete system to "permissive", It would be better
+  to temporarily allow/configure a particular domain to "permissive"
+  in addition to have individual selinux policies for tendrl processes.
+  Because, in an emerging application, it is impossible to know all the possible
+  avc errors beforehand and add all the required selinux rules.
+  Over the release iterations and testing various test cases additional selinux
+  rules can be added into the existing policy to make the system
+  compleatly enforced.
+
 
 === Alternatives
 
@@ -72,8 +77,8 @@ None
 
 ==== Tendrl API impact:
 
-SELinux policy files will be added in to this tendrl-api module.
-This set of policies will be used at tendrl server.
+SELinux policy files will be added for tendrl-api module.
+These set of policies will be used at tendrl server.
 
 Sample Policy:
 policy_module(tendrl, 1.0.0)
@@ -190,7 +195,7 @@ None
 
 == Documentation impact:
 
-The apis mentioned above need to be documented.
+None
 
 == References:
 
