@@ -30,7 +30,7 @@ module is the entry point for monitoring-integration, all the gevents are initia
 and started from the Manager modules. A Manager can kill all the gevent when
 monitoring-integration service stops.
 +
-When monitoring-integration starts, the Manager module will do the all configuration
+When monitoring-integration starts, the Manager module will do the all configurations
 using configuration files. It will also create a separate namespace for the
 monitoring-integration. the namespace will be called "NS.monitoring"
 
@@ -85,7 +85,9 @@ None
 
 == Data model impact:
 
-monitoring-integration configuration stored in etcd : “_NS/monitoring/config”
+monitoring-integration configuration and definition object are stored in etcd :
+    * Configuration object path :  “_NS/monitoring/config”
+    * Definition object path : "_NS/monitoring/definitions"
 
 == Impacted Modules:
 
@@ -164,8 +166,25 @@ Steps to change monitoring-integration as service:
   class.
 * The manager should stop all gevents when monitoring-integration service is stopped.
 * Create a file tendrl-monitoring-integration.service systemd unit, and modify the
-  tendrl-monitoring-integration.spec to copy it into systemd folder. (Reffer
-  performance-monitoring repo to create service file).
+  tendrl-monitoring-integration.spec to copy it into systemd folder.
+
+```
+structure of manager:
+
+class MonitoringIntegrationManager(common_manager.Manager):
+    def __init__(self):
+        # intialize gevents
+
+     def start(self):
+        # start gevents
+def _upload_default_dashboards():
+   # implementation to update or create grafana dashboard
+
+def main():
+  # create monitoring integration namespace
+  # Initialize MonitoringIntegrationManager and call start()
+  # stop all threads when stop signal is received
+```
 
 === Assignee(s):
 
@@ -180,8 +199,9 @@ https://github.com/Tendrl/specifications/issues/179
 
 == Testing:
 
-Check monitoring-integration works as expected after converted to service.
-
+* Check monitoring-integration works as expected after converted to service.
+* Test the service start/stop/update rpm and make sure the config and definitions
+  get loaded properly in etcd.
 
 == Documentation impact:
 
