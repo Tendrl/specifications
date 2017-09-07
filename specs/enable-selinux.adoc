@@ -121,13 +121,10 @@ allow tendrl_t self:fifo_file rw_fifo_file_perms;
 allow tendrl_t self:unix_stream_socket create_stream_socket_perms;
 allow tendrl_t self:tcp_socket { accept listen };
 - - -
-optional_policy(`
-          unconfined_domain(tendrl_t)
-')
 
 ==== Tendrl commons impact:
 
-SELinux policy files will be added in to this tendrl-commons module.
+SELinux policy files will be added to tendrl-commons module.
 This will be used for every nodes participating in the tendrl.
 
 Sample tendrl AVCs:
@@ -184,7 +181,7 @@ Primary assignee:
   tjeyasin
 
 === Work Items:
-
+https://github.com/Tendrl/node-agent/issues/604
 
 
 == Dependencies:
