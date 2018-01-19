@@ -1,0 +1,213 @@
+= Introduce a un-manage cluster mechanism in tendrl
+
+The intent of this change is to introduce an un-manage cluster functionality in
+tendrl. This makes the cluster known to tendrl but not managed anymore, meaning
+the monitoring, alerting and management of the cluster is no more possible from
+tendrl. At later stage (if required) admin can decide to re-import the cluster
+to start managing it again.
+
+The un-manage functionality is helpful for scenario where admin wants to bring
+down the cluster for some critical maintenance activities and doesn't want the
+monitoring etc to be performed for that period.
+
+== Problem description
+
+There are situations when admin needs some critical maintenance of the cluster
+and during this period he doesn't want any monitoring etc taking place. Also
+of he decides to dismantle the cluster at some stage we should have a mechsnism
+using which the cluster could be marked as un-managed from tendrl side.
+
+Tendrl also should provide a provision to re-import the cluster at later stage
+if admin wants and the process should be quite seamless and no or very less
+manual intervention required for this job to be performed.
+
+
+== Use Cases
+
+This addresses the un-managing and re-import an un-managed cluster at later
+stage. The un-manage functionality in tendrl needs to take care of below things
+
+* Stop any services which got started as part of tendrl managing the storage
+nodes and disable the services
+* Set the cluster state properly so that the same is marked and listed as
+un-managed in UI dashboards. No operations should be allowed on the un-managed
+cluster and there should not be any monitoring, alerting or entities management
+supported on this cluster anymore
+* User should have an option to re-import the cluster if needed later and it
+should seamlessly work as usual
+
+
+== Proposed change
+
+* On un-manage cluster start a flow in tendrl server node's node-agent which
+creates child jobs on storage nodes to stop tendrl specific services like
+collectd and tendrl-gluster-integration
+
+* Mark the cluster flag `is_managed` as `False` so that the cluster could be
+listed as un-managed in UI dashboards and all the possible actions could be
+disabled for it
+
+* Archive the graphite (monitoring) data for the cluster in archive location so
+the grafana dashboards dont list the cluster and its entities anymore
+
+* Delete the grafana alert dashboards for the cluster and its dependent entities
+
+The logic here goes like
+
+** Start a flow in node-agent on tendrl server node for un-manage cluster
+
+** The first atom of the above flow invokes child jobs on the storage node's
+node-agent to stop tendrl specific services and marking them dissabled
+
+** In the main atom of the un-manage cluster flow remove if any etcd details for
+the cluster and then mark the cluster is_managed flag as `False`
+
+** One of the atoms now un-manage cluster flow, invokes a flow in
+monitoring-integration to archive the graphite data for the cluser
+
+** Finally another atom invokes a flow in monitoring-integration to remove the
+grafana alert dashboards for the cluster and its dependent entities
+
+So the structure of the un-manage cluster flow would look something as below
+
+```
+UnmanageCluster:
+  tags:
+    - "tendrl/monitor"
+  atoms:
+    - tendrl.objects.Cluster.atoms.StopMonitoringServices
+    - tendrl.objects.Cluster.atoms.StopIntegrationServices
+    - tendrl.objects.Cluster.atoms.DeleteClusterDetails
+    - tendrl.objects.Cluster.atoms.DeleteMonitoringDetails
+  help: "Unmanage a Gluster Cluster"
+  enabled: true
+  inputs:
+    mandatory:
+      - TendrlContext.integration_id
+  run: tendrl.flows.UnmanageCluster
+  type: Update
+  uuid: 2f94a48a-05d7-408c-b400-e27827f4efed
+  version: 1
+```
+
+=== Alternatives
+
+None
+
+=== Data model impact
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+* Introduce an API `cluster/{int-id}/unmanage` for triggering an un-manage
+cluster fow
+
+==== Notifications/Monitoring impact:
+
+* A flow to archive the cluster specific graphite data
+
+* A flow to remove the grafana alerts dashboards for the cluster and its
+dependent entities
+
+* Raise an alert once cluster got un-managed with details like where to look
+for old graphite data etc
+
+==== Tendrl/common impact:
+
+* A flow un-manage cluster to be tergetted at tendrl server node
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+==== Tendrl Dashboard impact:
+
+* UX requirements for invoking an un-manage cluster flow for an existing cluster
+is captured at https://redhat.invisionapp.com/share/8QCOEVEY9
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+User gets an option to un-mnaage an existing cluster and can re-import at later
+stage
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+The tendrl-ansible module need to provide a mechanism to setup tendrl components
+and dependencies on additional new node in the cluster.
+
+<TBD> details to be added here of the plyabooks etc.
+
+=== Developer impact:
+
+None
+
+
+== Implementation:
+
+* https://github.com/Tendrl/commons/issues/797
+
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+  mbukatov
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/252
+
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Check if UI dashboard has an option to trigget un-manage cluster flow
+
+* Check if the flow gets completed successfully and verify if the grafana
+dashboard reflects and cluster details available now for the selected cluster
+
+* Verify that not grafana alert dashboards available now for the un-managed
+cluster
+
+* Verify that the clusters list report the cluster as un-managed and import
+option is enabled now
+
+* Try to import the cluster back and it should be successful. All grafana
+dashboards,  grafana alert dashboards and UI reflect the cluster details back
+
+* Invoke the REST end point `clusters/{int-id}/unmanage` and the cluster should
+be un-managed successfully
+
+
+== Documentation impact:
+
+* New un-manage cluster feature should be documented with details like what all
+gets disabled / removed in case a cluster is un-managed
+
+* New API end point should be documented with sample input / output structures
+
+== References:
+
+* https://redhat.invisionapp.com/share/8QCOEVEY9
+
+* https://github.com/Tendrl/commons/pull/798
+
+* https://github.com/Tendrl/monitoring-integration/pull/317
