@@ -1,0 +1,192 @@
+// vim: tw=79
+
+= Packaging tendrl monitoring-integration and changes
+
+Grafana is a monitoring tool which works with some standard time-series db which
+is added into tendrl for visualizing tendrl metrics. It will be using graphite
+as a database. This spec file addresses the required changes for all the tendrl
+components to support grafana for monitoring tendrl metrics.
+
+
+== Problem description
+
+Integrating grafana into tendrl needs some changes in most of the tendrl
+packages. This document will provides the details about the required changes
+in the tendrl components to support grafana based on package prospective.
+
+
+== Use Cases
+
+Install tendrl packages and its depdendencies to support grafana integration
+
+== Proposed change
+
+* The Makefile, spec file, service file and any other build related files
+in the tendrl packages should be updated to support grafana integration.
+* All the related jobs in tendrl-copr, jenkins should also updated.
+
+
+=== Alternatives
+
+None
+
+
+=== Data model impact:
+
+None
+
+
+=== Impacted Modules:
+
+
+==== Tendrl/tendrl-ansible impact:
+Currently tendrl-ansible installs and configure packages for tendrl-nodes and
+tendrl-server. As per the recent change, tendrl-ansible need not install and
+configure all the tendrl packages like performance-monitoring, tendrl-alerting,
+tendrl-node-monitoring, and its dependencies. The configuration yaml files
+should be updated to support grafana integration.
+
+* Update roles in site.yml.sample about the repo details install grafana and
+  its dependencies for tendrl-server host installation.
+* Add repo details under tendrl-ansible/roles files directory with keys and
+  the repo files tasks to install the repos
+
+* Create and add tasks to install grafana and tendrl metrics packages in
+  tendrl-ansible/roles/tasks
+
+* Include tasks to configure grafana and monitoring-integration  packages
+  in tendrl-ansible/roles/tasks
+
+*  Update tendrl-ansible/roles/tendrl-server/handlers/main.yml to check the
+   status of grafana server service and start
+
+Reference issue: Tendrl/tendrl-ansible#18
+
+
+==== Tendrl/monitoring-integration impact:
+This is the new package added into tendrl app to dynamically configure
+grafana by using the json template with the given values or the retrieved
+values from etcd. The json will be used by the grafana service which will
+fetche the values from graphite to visualize the data. There will be a
+service which runs in the tendrl-server to perform this job.
+This package needs to be builded for tendrl.
+This package (rpm) should install all the required packages and the
+service file during installation.
+Reference Doc: https://github.com/Tendrl/specifications/pull/218
+
+
+==== Tendrl/node_agent impact:
+Node-monitoring will be integrated with node-agent. The services of
+both the components will be merged together. The changes should be
+updated into the spec file, after the merge of the pr for the
+spec: https://github.com/Tendrl/specifications/pull/219.
+Build scripts should be updated to support make-snapshot which should
+automatically update the release version as per fedora guidelines to
+ntegrate with centos-ci
+
+
+==== Tendrl/api impact:
+This package will be used for calling api to importing gluster and
+user identity management. The build script should be updated to support
+make-snapshot and automatic release version.
+
+
+==== Tendrl/gluster-integration impact:
+Build scripts should be updated to support make-snapshot which should
+automatically update the release version as per fedora guidelines to
+integrate with centos-ci.
+
+
+==== Tendrl/ui impact:
+This package will be used to show tendrl dashboard which will show the
+appropriate grafana dashboard based on user’s selection.
+This tendrl component is now renamed to tendrl-ui. This change should be
+updated everywhere in copr, jenkins and in the tendrl-ui spec files.
+Add required changes for make-snapshot support and automatic version
+change as per guidelines.
+
+
+==== Notifications/Monitoring impact:
+Remove all the build releated script for performance monitoring,
+node-monitoring from copr, jenkins ci.
+
+
+==== Tendrl/common impact:
+Update the scripts for automatic version change as per guidelines.
+
+
+==== Sds integration impact:
+None
+
+=== Security impact:
+None
+
+
+=== Other end user impact:
+None
+
+
+=== Performance impact:
+None
+
+
+=== Other deployer impact:
+None
+
+
+=== Developer impact:
+None
+
+
+=== Assignee(s):
+Timothy Asir Jeyasing
+
+
+=== Work Items:
+None
+
+
+== Dependencies:
+None
+
+== Testing:
+Test whether the package installation installs all the packages properly
+
+
+== Documentation impact:
+Document should be updated to provide installation steps of grafana
+and monitoring-integration
+
+Steps
+1) Add the repo for grafana
+   ex:-
+   [grafana]
+   name=grafana
+   baseurl=https://packagecloud.io/grafana/stable/el/6/$basearch
+   repo_gpgcheck=1
+   enabled=1
+   gpgcheck=1
+   gpgkey=https://packagecloud.io/gpg.key https://grafanarel.s3.amazonaws.com/RPM-GPG-KEY-grafana
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+
+2) install grafana and its dependent packages
+   ex:- yum install grafana
+   which will automatically pull the required dependencies from the repo
+
+3) Start the server (init.d service)
+   ex:- service grafana-server start
+   This will start the grafana-server process as the grafana user, which is created
+   during package installation. The default HTTP port is 3000, and default user
+   and group is admin. One can update the details in the grafana configuration which
+   will be located in /etc/grafana.ini
+
+4) Configure the Grafana server to start at boot time:
+   /sbin/chkconfig --add grafana-server
+
+5) Enable the systemd service to start at boot
+   systemctl enable grafana-server.service
+
+
+== References:
+
