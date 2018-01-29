@@ -1,0 +1,247 @@
+:imagesdir: ./images/
+
+= Tendrl Definitions: Display list of volume and host associated with a gluster cluster discovered by Tendrl
+
+== Problem description
+
+Display list of volume and host associated with a gluster cluster present in Tendrl. 
+
+*Host List*
+
+The details shown for each host are -
+
+* Status
+* Name(fqdn)
+* Role
+* Alerts
+
+The host list should have functionality for 
+
+* filtering by name, role and status.
+* sorting by name and role.
+
+Host list will be sorted by name by default.
+
+View design will look like:
+
+image::hostList.png[Gluster specific host list view]
+
+*Volume List*
+
+The details shown for each volume are -
+
+* Status
+* Name
+* Type
+* Brick Count
+* Alerts
+* Running: Yes/No
+* Last Rebalance
+
+The volume list should have functionality for 
+
+* filtering by name, type and status.
+* sorting by name and status.
+
+Volume list will be sorted by name by default.
+
+View design will look like:
+
+image::volumeList.png[Gluster specific host list view]
+
+The workflow is as follows:
+
+* API will provide the list of volume asscociated with a gluster cluster to the Tendrl.
+
+* API will provide the list of hosts present in Tendrl and UI will find the associated host with a gluster cluster.
+
+* User will click on *Cluster Details" button from cluster list view to go to object details view.
+
+* Two tabs will be displayed on the page: Hosts and Volumes
+
+* Clicking hosts tab will list down the hosts associated with that gluster cluster.
+
+* Clicking volumes tab will list down the volumes associated with that gluster cluster.
+
+== Use Casess
+
+Display list of volume and host associated with a gluster cluster present in Tendrl. 
+
+== Proposed change
+
+* Create a view for cluster object detail which will have two tab: Hosts and Volumes.
+* Create components for hosts and volumes list page.
+* Implement client side filter and sorting functionality using angular's filter and orderby components.
+* Send polling call after 10 seconds for volume list and 30 seconds for host list to get the updated data. 
+* Show total count of volumes and hosts present for the glsuter cluster in Tendrl.
+
+Tendrl API related changes:
+
+* Get API call for getting host list.
+* Get API call for getting volume list.
+
+=== Alternatives
+
+None.
+
+=== Data model impact:
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+----
+
+* API to Get host list
+
+----
+
+/api/1.0/nodes - fetch the list of hosts
+
+Sample API Response - 
+
+```
+{
+	"nodes": [{
+		"hash": "3f70e10c2207b2eb7c1332ff166a4edd",
+		"last_sync": "2017-08-29 06:17:33.969768+00:00",
+		"node_id": "e4577433-ddb1-44da-9f7b-49b02701b6cc",
+		"status": "UP",
+		"sync_status": "in_progress",
+		"tags": ["tendrl/integration/gluster", "detected_cluster/4261837617061df79475b71b611de0d03ba709a02b3ed705672e95509ddb637d", "provisioner/b687087b-8f59-47b9-9f06-910d48815a92", "gluster/server", "tendrl/node_e4577433-ddb1-44da-9f7b-49b02701b6cc", "tendrl/integration/b687087b-8f59-47b9-9f06-910d48815a92", "tendrl/node"],
+		"updated_at": "2017-08-29 06:17:44.546277+00:00",
+		"fqdn": "dhcp42-140.lab.eng.blr.redhat.com",
+		"cluster": {
+			"sds_version": "4.0dev",
+			"updated_at": "2017-08-24 01:09:27.488920+00:00",
+			"cluster_id": "4261837617061df79475b71b611de0d03ba709a02b3ed705672e95509ddb637d",
+			"cluster_name": "gluster-4261837617061df79475b71b611de0d03ba709a02b3ed705672e95509ddb637d",
+			"hash": "ac57e55e702bdc9aff18189d080d42f4",
+			"integration_id": "b687087b-8f59-47b9-9f06-910d48815a92",
+			"sds_name": "gluster"
+		}
+	}]
+}
+```
+
+----
+
+* API to Get volume list
+
+----
+
+/api/1.0/{cluster_id}/GetVolumeList - fetch the list of volumes
+
+Sample API Response - 
+
+```
+[{
+	"brick_count": "3",
+	"name": "vol1",
+	"profiling_enabled": "True",
+	"subvol_count": "3",
+	"disperse_count": "0",
+	"replica_count": "1",
+	"updated_at": "2017-08-29 06:49:49.087630+00:00",
+	"snap_count": "0",
+	"vol_type": "Distribute",
+	"client_count": "0",
+	"options": {
+		...
+	},
+	"state": "up",
+	"status": "Started",
+	"rebal_status": "not_started",
+	"quorum_status": "not_applicable",
+	"pcnt_used": "10.3236796268",
+	"transport_type": "tcp",
+	"vol_id": "30e6f136-0a58-45cc-9a97-8bd0ddcffaae",
+	"rebal_estimated_time": "0",
+	"used_capacity": "4152315904",
+	"deleted": "",
+	"arbiter_count": "0",
+	"snapd_status": "Offline",
+	"rebalancedetails": {
+		...
+	},
+	"bricks": [{
+		"dhcp42-78.lab.eng.blr.redhat.com:_root_glusterfs_vol1_b3": ""
+	}, {
+		"dhcp43-148.lab.eng.blr.redhat.com:_root_glusterfs_vol1_b2": ""
+	}, {
+		"dhcp41-173.lab.eng.blr.redhat.com:_root_glusterfs_vol1_b1": ""
+	}],
+	"redundancy_count": "0",
+	"snapd_inited": "True",
+	"usable_capacity": "40221278208",
+	"stripe_count": "1",
+	"hash": "128cf143a942867bb795d8d585bca98b"
+}]
+```
+
+API support present for -
+
+* Status
+* Name
+* Type
+* Bricks count
+* Is Rebalance running or not
+* Last Rebalance
+
+Required from API - 
+
+* Alert Count - targeted for milestone 3
+
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+None
+
+=== Other deployer impact:
+None
+
+=== Developer impact:
+None
+
+== Implementation:
+
+* Mapped properties will be taken from the API response to display it on the cluster specific volume and host list view.
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+  a2batic
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/216
+
+== Dependencies:
+
+None
+
+== Testing:
+
+Test whether hosts and volumes associated with the gluster clusters are correctly displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://github.com/Tendrl/specifications/issues/216
