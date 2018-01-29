@@ -1,0 +1,156 @@
+:imagesdir: ./images
+== Spec for tendrl threshold event generation
+
+Changes in threshold event generation due to a restriction in the graphana with
+generating alerts for templates using variables.
+
+
+== Problem description
+
+Due to a restriction in the graphana with generating alerts for templates using
+variables, it is necessary to generate Events for threshold breaches via collectd.
+However, collectd alerts can only be generated for data that ends up in graphite
+via collectd. However, with gluster, Events for global objects such as volumes
+needs to be generated via tendrl's gluster-integration component. This requires
+that the threshold configuration be available in etcd to enable components to own
+specific attributes of specific objects whose thresholds the component would be
+responsible for monitoring.
+
+
+== Proposed change
+
+image::tendrl_threshold_event_generation.png[Tendrl Threshold Event Generation]
+
+The long term way of doing this kind of threshold configuration would be to do
+it per cluster. However, in the current grafana integration only global thresholds
+are respected. This spec needs to focus on enabling the splitting up of threshold
+monitoring responsibilities across multiple components based on global gluster
+specific threshold configuration.
+
+The proposed short-term changes would need to be:
+
+* monitoring-integration maintains a list of gluster thresholds that need to
+  populated in grafana templates. This makes it the right component to push the
+  thresholds in a global etcd namespace.
+* gluster-integration enables flows that allow it to check the global configuration
+  and make a copy in their corresponding cluster namespace.
+** gluster-integration, upon connecting to etcd, checks the global namespace for
+   the threshold configuration and if available, makes a copy of it inside the cluster
+   namespace. It uses this cluster specific copy to monitor the thresholds thereafter.
+** gluster-integration exposes a flow to check and copy the global configuration.
+* monitoring-integration, upon pushing the configuration namespace, invokes the
+  flow exposed by gluster-integration on all gluster clusters being managed to
+  enable those clusters to make a localised copy of the configuration to enable
+  monitoring.
+* gluster-integration does not monitor a cluster unless there's a local copy of
+  the threshold configuration available.
+
+Drawback is:
+
+* The fact that gluster-integration cannot start monitoring without monitoring-integration
+being present is a drawback of this current short-term approach.
+
+
+=== Alternatives
+
+Long term, the default threshold configuration needs to be in the gluster definition
+files, for any of the object attributes that require such monitoring. The definition
+files would provide the default values. These values could then be made configurable
+by copying them to a per-cluster namespace, essentially the same as the per-cluster
+copy of the global namespace.
+
+It would also be necessary, long term, to clearly indicate in the definition files
+the objects that gluster-integration would be responsible for monitoring. Once the
+defaults have been made available in the cluster namespace as configuration objects,
+other components could claim responsibility for individual attributes. This would
+enable multiple components to manage different parts of the system with explicit
+assignment of responsibilities.
+
+
+=== Data model impact:
+
+(To do)
+
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+* When monitoring-integration invoke flow, gluster-integration should read the
+  cluster specific configuration from global namespace and keep that in gluster
+  namespace.
+* Gluster-integration should calculate the threshold values and compare it with local
+  namespace threshold values. If calculated threshold value is high then it should
+  raise the alerting event via message socket.
+
+==== Tendrl/monitoring-integration impact:
+
+* monitoring-integration maintains a list of gluster thresholds in json, these
+  threshold values are populated in grafana templates as well as in global etcd namespace.
+* After storing gluster thresholds in etcd, it will invoke the flow in gluster-integration
+  to copy the threshold values from etcd.
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+None
+
+=== Assignee(s):
+
+(To do)
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/239
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Check threshold related alerts are raised from gluster-integration correctly.
+
+== Documentation impact:
+
+None
+
+== References:
+
+None
