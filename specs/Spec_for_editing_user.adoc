@@ -1,0 +1,167 @@
+# User Management: Editing User view for Admin
+
+## Problem description
+
+This spec talks about viewing or editing information stored about a single user.
+
+## Use Cases
+
+The flow goes as follows:-
+
+* A user logs in as Admin
+* Clicks on Admin tab in Navigation
+* The navigation drops down
+* Clicks on *Users*
+* Clicks on *Edit* option for a particular user
+
+User will land onto https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063805[Edit User] view page
+
+## Proposed workflow
+
+### UI
+
+Edit user view consist of a form:-
+
+* ```User ID``` - Not Editable
+* First Name
+** Input type: text
+* Last Name
+** Input type: text
+* Email
+** Input type: email
+** validation : Input should be a valid email
+* Email Notifications - whether user should receive notifications
+** Input type: checkbox
+* Password
+** Input type: password
+** Validation: Should be minimum of 8 characters
+** Should contain a Show/Hide button for password visibility. The default visibility will be *hidden*.
+* Confirm Password
+** Input type: password
+** Validation: Should match password
+** Should contain a Show/Hide button for password visibility. The default visibility will be *hidden*.
+* Select a Role
+** Roles: Admin, Normal, Limited
+** The default will be the current assigned role of User
+* ```Save``` button
+** This button commits changes and returns to User List view page.
+*  ```Cancel``` button
+** Will be active always
+** After clicking on this button, User will be redirected to User List view page
+
+*NOTE*: 
+
+* The fields ```First Name``` and ```Last Name``` will be assigned value from the API property ```name``` by splitting it at space.
+* Maximum length for field ```name``` : 100 Characters
+
+### Impacted Modules:
+
+#### Tendrl API impact:
+
+```
+PUT /api/1.0/users/username - Update an existing user.
+```
+
+* Sample API response now : 
+
+```
+{
+	"email": "thardy@tendrl.org",
+	"username": "thardy",
+	"name": "Tom Hardee",
+	"role": "normal"
+}
+```
+
+* Sample API response:
+
+```
+{
+	"username": "JDoe1",
+	"name": "John Doe"
+	"role": "admin",
+	"email_notifications": "true",
+	"email": "jdoe@tendrl.org",
+}
+
+```
+
+API support present for -
+
+* email
+* username
+* name
+* role
+
+Required from API - 
+
+* email_notifications
+
+#### Notifications/Monitoring impact:
+
+* If ```email_notifications = true ```, notifications are required to be monitored
+
+
+### Security impact:
+
+### Other end user impact:
+
+None
+
+### Performance impact:
+
+None
+
+### Other deployer impact:
+
+None
+
+### Developer impact:
+
+None
+
+## Implementation:
+
+
+### Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  a2batic
+  
+### Work Items:
+
+https://github.com/Tendrl/specifications/issues/176
+
+
+## Dependencies:
+
+Need API support for required additional fields:
+
+* first_name
+* last_name
+* status
+* notification
+
+https://github.com/Tendrl/api/issues/238
+
+
+## Testing:
+
+* The user is receiving notifications as per ```email_notifications = Enabled/Disabled```.
+* All validation are followed.
+* Password show/hide button works correctly.
+* The ```Save``` button is enabled only when there is a change is information
+* Both ```Save``` and ```Cancel``` links to https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063808[User list] view
+
+## Documentation impact:
+
+None
+
+## References:
+
+https://redhat.invisionapp.com/share/KNB25OEQT#/screens/226063808
+
+https://github.com/Tendrl/specifications/issues/176
