@@ -1,0 +1,162 @@
+:imagesdir: ./images/
+
+= Tendrl Definitions: Display list of unmanaged gluster clusters discovered by Tendrl
+
+Display list of unmanaged gluster clusters present in Tendrl. The list should have functionality for 
+
+* filtering by name.
+* sorting by name, status, cluster version and managed.
+
+Cluster list will be sorted by name by default.
+
+View design will look like:
+
+image::upadtedClusterList.png[Upadted Cluster List]
+
+== Problem description
+
+Tendrl should show list of unmanaged gluster clusters present in Tendrl along with their details.
+
+The details shown for each cluster in UI is -
+
+* Cluster Name
+* Status
+* Managed State
+* Cluster Version
+* Import button
+* Message to state cluster configurable state for eg. ready to import, cluster misconfigured.
+
+The workflow is as follows:
+
+* API will provide the list of clusters to the Tendrl.
+
+* User can click on expand icon of each cluster record to see the error messages and hosts associated with it.
+
+* In the hosts tab, host fqdn and role will be displayed.
+
+* If Managed state is "No" and cluster is ready to import, Import button will be displayed.
+
+* If Managed state is "No" and cluster is not properly configured, Import button will be disabled.
+
+* Clicking Import button will take to import cluster workflow.
+
+== Use Casess
+
+Users can see the list of unmanaged gluster cluster present in Tendrl. They can also 
+
+* filter by name.
+* sort by name, status, cluster version and managed.
+
+== Proposed change
+
+* Will use the existing cluster list view which will now display the unmanaged clusters as well.
+
+=== Alternatives
+
+None.
+
+=== Data model impact:
+See 'Impacted Modules' section where all the details are populated.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+/api/1.0/GetClusterList - fetch the list of clusters
+
+Sample API Response -
+
+```
+{
+	"clusters": [{
+		"cluster_id": "8db45a04-c5cc-40eb-a246-d50d1dff32da",
+		"integration_id": "8db45a04-c5cc-40eb-a246-d50d1dff32da",
+		"hash": "ac33d73a1795a419300584ce68a0c487",
+		"sds_version": "4.0dev",
+		"updated_at": "2017-08-29 06:35:46.416036+00:00",
+		"sds_name": "gluster",
+		"cluster_name": "gluster-91942981e1b798cee690e5bedce81caf5a45765b0d9407cf32c9e6aea35524c8",
+		"errors": [],
+		"globaldetails": {
+			"hash": "0b9b091541456449c0cc0bdc0e38672a",
+			"connection_count": "0",
+			"status": "healthy",
+			"connection_active": "0",
+			"volume_up_degraded": "0",
+			"peer_count": "3",
+			"updated_at": "2017-08-29 06:44:29.796123+00:00",
+			"vol_count": "1"
+		},
+		"public_network": "",
+		"cluster_network": "",
+		"is_managed": "no",
+		"enable_volume_profiling": "no",
+		"nodes": [{
+			"status": "UP",
+			"hash": "69ac13ba5deeec292fd6ab7f6faa48ff",
+			"tags": ["tendrl/integration/gluster", "gluster/server", "tendrl/integration/8db45a04-c5cc-40eb-a246-d50d1dff32da", "tendrl/node_aabfbfb2-c092-4722-9496-8f75e8ac71ac", "detected_cluster/91942981e1b798cee690e5bedce81caf5a45765b0d9407cf32c9e6aea35524c8", "tendrl/node"],
+			"sync_status": "done",
+			"fqdn": "dhcp41-173.lab.eng.blr.redhat.com",
+			"updated_at": "2017-08-29 07:15:21.999929+00:00",
+			"node_id": "aabfbfb2-c092-4722-9496-8f75e8ac71ac",
+			"last_sync": "2017-08-29 07:15:21.858793+00:00",
+			"node_id": "aabfbfb2-c092-4722-9496-8f75e8ac71ac"
+		}]
+	}]
+}
+```
+
+Backend implementation is being tracked in github issue: https://github.com/Tendrl/specifications/issues/211
+
+==== Notifications/Monitoring impact:
+None
+
+==== Tendrl/common impact:
+
+==== Tendrl/node_agent impact:
+
+==== Sds integration impact:
+
+=== Security impact:
+
+=== Other end user impact:
+None
+
+=== Performance impact:
+None
+
+=== Other deployer impact:
+None
+
+=== Developer impact:
+None
+
+== Implementation:
+
+* Cluster Name, version, status, managed state will be taken from the API response to display it on the cluster list view.
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+  a2batic
+
+=== Work Items:
+
+https://github.com/Tendrl/specifications/issues/225
+
+== Dependencies:
+
+https://github.com/Tendrl/api/issues/234
+
+== Testing:
+
+Test whether unmanaged gluster clusters are correctly displayed or not.
+
+== Documentation impact:
+
+None
+
+== References:
+
+https://github.com/Tendrl/specifications/issues/225
