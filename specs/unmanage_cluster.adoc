@@ -184,17 +184,27 @@ None
 * Check if the flow gets completed successfully and verify if the grafana
 dashboard reflects and cluster details available now for the selected cluster
 
-* Verify that not grafana alert dashboards available now for the un-managed
+* Verify that no grafana alert dashboards available now for the un-managed
 cluster
 
 * Verify that the clusters list report the cluster as un-managed and import
 option is enabled now
 
 * Try to import the cluster back and it should be successful. All grafana
-dashboards,  grafana alert dashboards and UI reflect the cluster details back
+dashboards, grafana alert dashboards and UI reflect the cluster details back
 
 * Invoke the REST end point `clusters/{int-id}/unmanage` and the cluster should
 be un-managed successfully
+
+* On un-manage cluster completion, the alert dashboards in grafana would vanish
+for the entities of the cluster like volume, bricks etc. Verify to make sure the
+same happens as expected
+
+* Once cluster is un-managed the details of the cluster would vanish from
+dashboards in grafana. Verify the same happens as expected
+
+* Verify that the final alert post un-manage flow, tells about removal of
+details from grafana dashboards and grafana alert dashboards
 
 
 == Documentation impact:
@@ -203,6 +213,9 @@ be un-managed successfully
 gets disabled / removed in case a cluster is un-managed
 
 * New API end point should be documented with sample input / output structures
+
+* The expected behavior post un-manage call in grafana dashboards should be
+clearly mentioned in documents
 
 == References:
 
