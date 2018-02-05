@@ -40,21 +40,21 @@ so that it can participate in the cluster managed in tendrl.
 == Proposed change
 
 This change works on the assumptions that admin manually takes care of
-installation of glusterf bits on the new nodes and then adding it to the peers
-list. Post this tendrl comes inot picture to get the new node known and accepted
-in tendrl eco system.
+installation of glusterfs bits on the new nodes and then adding it to the peers
+list. Post this tendrl comes into picture to get the new node known and accepted
+in tendrl eco-system.
 
 The required changes are as below -
 
-* Introduce a mechanism in tendrl-ansible which allows rerun of the playbooks
+* Introduce a mechanism in tendrl-ansible which allows re-run of the play-books
 with updated inventory file with new nodes entries. This ideally would do the
 required tendrl-node-agent installation and configuration on the new gluster
 node leaving old ones untouched.
 
 * Update the tendrl-gluster-integration such a way that once it figures out a
-peer in the cluster which is not yet part of known nodeds of the cluster, it
+peer in the cluster which is not yet part of known nodes of the cluster, it
 understand that this is new peer. This flow should ideally invoke a import
-cluster flow targetted at the specific additional node only. This flow makes
+cluster flow targeted at the specific additional node only. This flow makes
 sure that collectd and tendrl-gluster-integration get installed on the new node
 and they are configured properly.
 
@@ -71,7 +71,7 @@ node-agent on tendrl server node. When a new node is seen in peers list which is
 not yet imported in tendrl, a in memory inventory file with additional node can
 be passed to ansible-playbook and required node-agent setup could be done. Once
 node-agent setup is complete, there could be a separate job to start import
-cluster flow targetted at new specific node.
+cluster flow targeted at new specific node.
 
 This option is not considered at the moment.
 
@@ -168,6 +168,11 @@ new node is seamless and automatic
 * Verify that there is a notification of success of new node getting imported in
 tendrl
 
+* Verify that post detection and action from tendrl, the additional nodes and
+its related entities get reflected in UI and grafana dashbaords properly
+
+* Verify this auto expansion post detection applies to multiple nodes as well
+and doesn't limit to one node at a time
 
 == Documentation impact:
 
@@ -177,3 +182,6 @@ involvement of tendrl-ansible for setting up node
 == References:
 
 * <TBD> link to tendrl-ansible issue to track the changes for this support
+
+* https://github.com/Tendrl/specifications/issues/257 to track the auto
+detection of additional node(s) in the cluster as a separate specification
