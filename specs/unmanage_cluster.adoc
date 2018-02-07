@@ -14,7 +14,7 @@ monitoring etc to be performed for that period.
 
 There are situations when admin needs some critical maintenance of the cluster
 and during this period he doesn't want any monitoring etc taking place. Also
-of he decides to dismantle the cluster at some stage we should have a mechsnism
+if he decides to dismantle the cluster at some stage we should have a mechanism
 using which the cluster could be marked as un-managed from tendrl side.
 
 Tendrl also should provide a provision to re-import the cluster at later stage
@@ -57,13 +57,13 @@ The logic here goes like
 ** Start a flow in node-agent on tendrl server node for un-manage cluster
 
 ** The first atom of the above flow invokes child jobs on the storage node's
-node-agent to stop tendrl specific services and marking them dissabled
+node-agent to stop tendrl specific services and marking them disabled
 
 ** In the main atom of the un-manage cluster flow remove if any etcd details for
 the cluster and then mark the cluster is_managed flag as `False`
 
 ** One of the atoms now un-manage cluster flow, invokes a flow in
-monitoring-integration to archive the graphite data for the cluser
+monitoring-integration to archive the graphite data for the cluster
 
 ** Finally another atom invokes a flow in monitoring-integration to remove the
 grafana alert dashboards for the cluster and its dependent entities
@@ -103,7 +103,7 @@ None
 ==== Tendrl API impact:
 
 * Introduce an API `cluster/{int-id}/unmanage` for triggering an un-manage
-cluster fow
+cluster flow
 
 ==== Notifications/Monitoring impact:
 
@@ -117,7 +117,7 @@ for old graphite data etc
 
 ==== Tendrl/common impact:
 
-* A flow un-manage cluster to be tergetted at tendrl server node
+* A flow un-manage cluster to be targeted at tendrl server node
 
 ==== Tendrl/node_agent impact:
 
@@ -129,8 +129,76 @@ None
 
 ==== Tendrl Dashboard impact:
 
-* UX requirements for invoking an un-manage cluster flow for an existing cluster
-is captured at https://redhat.invisionapp.com/share/8QCOEVEY9
+* Following changes required in UI dashboards based on UX designs mentioned at
+https://redhat.invisionapp.com/share/8QCOEVEY9
+
+** Add an option namely `Unmanage` under kebab menu for each successfully
+imported and managed cluster
+
+** Add a dialog box which opens up on click event of `Unmanage` option from
+kebab menu of the cluster. This dialog box is for confirmation from user to
+start un-manage flow for the cluster
+
+===== Workflow
+
+* User clicks the `Unmanage` option from the kebab menu for a managed cluster
+
+* The click event triggers a dialog box with appropriate message. A sample
+message is available at
+https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/273239640
+
+* There are 3 possible actions on this dialog
+
+** `Close` icon to close the dialog and no action performed for un-managing the
+cluster. User would be directed back to clusters list page
+
+** `Cancel` button to close the dialog and no action performed for un-managing the
+cluster. User would be directed back to clusters list page
+
+** `Unmanage` button to start the un-manage cluster task in backend. A message
+with task details gets displayed on dialog box. Sample message available at
+https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/273239844
+
+** This final message after submission of the task for un-managing cluster would
+also provide a button to view the task details. A button `View Task Progress` is
+available for the same. User can opt to close this dialog and later user context
+menus to check the task updates
+
+** Once a cluster is being moved to un-managed state, the changes in properties
+listed for cluster are as below
+
+*** `Import Status` changed to `Unmanaging`
+
+*** `Is Managed` changed to `no`
+
+*** The columns `Volume Profiling`, `Volumes` and `Alerts` would be hidden
+
+*** `View Details` link would be available to check the task details
+
+*** `Dashboard` button would be disabled
+
+*** Kebab menu for the un-managed cluster would be hidden
+
+** Once the un-manage cluster task gets completed a global notification gets
+received
+
+** If task was successful, the state of the cluster would be changed to ready to
+import
+
+If task failed due to some issues, the cluster details would listed as below in
+
+*** `Import Status` changed to `Unmanage failed`
+
+*** `Is managed` changed to `no`
+
+*** The columns `Volume Profiling`, `Volumes` and `Alerts` would be hidden
+
+*** `View Details` link would be available to check the errors
+
+*** `Dashboard` button would be disabled
+
+*** Kebab menu for the un-managed cluster would be hidden
+
 
 === Security impact:
 
@@ -138,7 +206,7 @@ None
 
 === Other end user impact:
 
-User gets an option to un-mnaage an existing cluster and can re-import at later
+User gets an option to un-manage an existing cluster and can re-import at later
 stage
 
 === Performance impact:
@@ -167,6 +235,7 @@ None
 Primary assignee:
   shtripat
   mbukatov
+  a2batic
 
 === Work Items:
 
@@ -179,7 +248,7 @@ None
 
 == Testing:
 
-* Check if UI dashboard has an option to trigget un-manage cluster flow
+* Check if UI dashboard has an option to trigger un-manage cluster flow
 
 * Check if the flow gets completed successfully and verify if the grafana
 dashboard reflects and cluster details available now for the selected cluster
@@ -224,3 +293,7 @@ clearly mentioned in documents
 * https://github.com/Tendrl/commons/pull/798
 
 * https://github.com/Tendrl/monitoring-integration/pull/317
+
+* https://github.com/Tendrl/ui/issues/801
+
+* https://github.com/Tendrl/api/issues/349
