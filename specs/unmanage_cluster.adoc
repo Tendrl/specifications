@@ -90,13 +90,38 @@ UnmanageCluster:
   version: 1
 ```
 
+* While import flow in progress the values of `cluster_job_id` and
+`cluster_job_status` should be set with import job id and `Importing`
+respectively
+
+* Once import flow is successful the value of `cluster_job_status` would be set
+as `done`
+
+* If import flow fails the value of `cluster_job_status` would be set as
+`Import failed`
+
+* While un-manage flow in progress the values of `cluster_job_id` and
+`cluster_job_status` should be set with un-manage job id and `Unmanaging`
+respectively
+
+* Once un-manage flow is successful the value of `cluster_job_status` would be
+set as `done`
+
+* If un-manage flow fails the value of `cluster_job_status` would be set as
+`Unmanage failed`
+
+
 === Alternatives
 
 None
 
 === Data model impact
 
-None
+* Change the fields `import_job_id` and `import_status` as `cluster_job_id` and
+`cluster_job_status` respectively for cluster entity
+
+* The same fields would be updated with appropriate details while import and
+un-manage flows on cluster
 
 === Impacted Modules:
 
@@ -244,7 +269,7 @@ Primary assignee:
 
 == Dependencies:
 
-None
+* https://github.com/Tendrl/api/issues/349
 
 == Testing:
 
@@ -295,5 +320,3 @@ clearly mentioned in documents
 * https://github.com/Tendrl/monitoring-integration/pull/317
 
 * https://github.com/Tendrl/ui/issues/801
-
-* https://github.com/Tendrl/api/issues/349
