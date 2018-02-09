@@ -29,10 +29,12 @@ stage. The un-manage functionality in tendrl needs to take care of below things
 
 * Stop any services which got started as part of tendrl managing the storage
 nodes and disable the services
+
 * Set the cluster state properly so that the same is marked and listed as
 un-managed in UI dashboards. No operations should be allowed on the un-managed
 cluster and there should not be any monitoring, alerting or entities management
 supported on this cluster anymore
+
 * User should have an option to re-import the cluster if needed later and it
 should seamlessly work as usual
 
@@ -90,25 +92,21 @@ UnmanageCluster:
   version: 1
 ```
 
-* While import flow in progress the values of `cluster_job_id` and
-`cluster_job_status` should be set with import job id and `Importing`
-respectively
+* While import flow in progress the values of `current_job` and `statuss`
+should be set with `{'job_id': 'import job id', 'job_name': 'ImportCluster',
+'status': 'in_progress'}` id and `Importing` respectively
 
-* Once import flow is successful the value of `cluster_job_status` would be set
-as `done`
+* Once import flow is successful the value of `status` would be set as `done`
 
-* If import flow fails the value of `cluster_job_status` would be set as
-`Import failed`
+* If import flow fails the value of `status` would be set as `failed`
 
-* While un-manage flow in progress the values of `cluster_job_id` and
-`cluster_job_status` should be set with un-manage job id and `Unmanaging`
-respectively
+* While un-manage flow in progress the values of `current_job` and `status`
+should be set with `{'job_id': 'unmanage job id', 'job_name': 'ImportCluster',
+'status': 'in_progress'}` and `Unmanaging` respectively
 
-* Once un-manage flow is successful the value of `cluster_job_status` would be
-set as `done`
+* Once un-manage flow is successful the value of `status` would be set as `done`
 
-* If un-manage flow fails the value of `cluster_job_status` would be set as
-`Unmanage failed`
+* If un-manage flow fails the value of `status` would be set as `failed`
 
 
 === Alternatives
@@ -117,11 +115,18 @@ None
 
 === Data model impact
 
-* Change the fields `import_job_id` and `import_status` as `cluster_job_id` and
-`cluster_job_status` respectively for cluster entity
+* Change the fields `import_job_id` and `import_status` as `current_job` and
+`status` respectively for cluster entity
 
 * The same fields would be updated with appropriate details while import and
 un-manage flows on cluster
+
+* The field `current_job` would maintain a dict containing `status`, `job_name`
+and `job_id` for currently running job on cluster
+
+* The field `status` would maintain values like `importing`, `unmanaging`,
+`syncing` or `unknown` at a time. This maintains any flows running status on the
+cluster
 
 === Impacted Modules:
 
