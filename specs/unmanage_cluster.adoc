@@ -10,6 +10,11 @@ The un-manage functionality is helpful for scenario where admin wants to bring
 down the cluster for some critical maintenance activities and doesn't want the
 monitoring etc to be performed for that period.
 
+Also in scenario where there is a failure in cluster import user might need to
+resolve the issues reported while import failure and then re-import the cluster.
+This flow would need an un-manage of the cluster first and the na fresh import
+of the cluster.
+
 == Problem description
 
 There are situations when admin needs some critical maintenance of the cluster
@@ -20,6 +25,9 @@ using which the cluster could be marked as un-managed from tendrl side.
 Tendrl also should provide a provision to re-import the cluster at later stage
 if admin wants and the process should be quite seamless and no or very less
 manual intervention required for this job to be performed.
+
+In case there is a failure in import cluster, tendrl needs to provide an option
+to un-manage and import the cluster again.
 
 
 == Use Cases
@@ -38,6 +46,9 @@ supported on this cluster anymore
 * User should have an option to re-import the cluster if needed later and it
 should seamlessly work as usual
 
+* User should have an option to un-manage a import failed cluster and import it
+again in tendrl
+
 
 == Proposed change
 
@@ -48,6 +59,8 @@ collectd and tendrl-gluster-integration
 * Mark the cluster flag `is_managed` as `False` so that the cluster could be
 listed as un-managed in UI dashboards and all the possible actions could be
 disabled for it
+
+* Delete cluster entity details from tendrl central store
 
 * Archive the graphite (monitoring) data for the cluster in archive location so
 the grafana dashboards dont list the cluster and its entities anymore
@@ -92,7 +105,7 @@ UnmanageCluster:
   version: 1
 ```
 
-* While import flow in progress the values of `current_job` and `statuss`
+* While import flow in progress the values of `current_job` and `status`
 should be set with `{'job_id': 'import job id', 'job_name': 'ImportCluster',
 'status': 'in_progress'}` id and `Importing` respectively
 
@@ -107,6 +120,21 @@ should be set with `{'job_id': 'unmanage job id', 'job_name': 'ImportCluster',
 * Once un-manage flow is successful the value of `status` would be set as `done`
 
 * If un-manage flow fails the value of `status` would be set as `failed`
+
+* If an import cluster fails tendrl UI needs to keep import cluster option open
+and if user selects the option, it should throw a dialog telling about the
+previous import failure and if user confirms to go ahead about un-manage and
+then import the cluster, UI should submit an un-manage cluster first. If the
+un-manage cluster task succeeds, then UI should submit a import for the same
+cluster
+
+* UI needs to have client side storage option to retain the previous un-manage
+cluster task-id for reference and for showing the details of the tasks in UI
+
+* So if there is an import failure for a cluster user tries import again for the
+cluster after user confirmation UI submits two tasks one by one. One for
+un-manage cluster and after success import cluster. UI should maintain both the
+tasks details for detailing in UI
 
 
 === Alternatives
@@ -304,6 +332,10 @@ dashboards in grafana. Verify the same happens as expected
 
 * Verify that the final alert post un-manage flow, tells about removal of
 details from grafana dashboards and grafana alert dashboards
+
+* Verify the scenatio when a cluster import fails, and user is able to start
+a un-manage + reimport cluster option from UI. UI should be able to list details
+of both the tasks in this scenario
 
 
 == Documentation impact:
