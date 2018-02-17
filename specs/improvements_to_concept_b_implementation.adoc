@@ -1,0 +1,86 @@
+= Improvements/Enhancements required in concept-b implementation of Tendrl UI
+
+== Introduction
+The intent of this change is to optimize the user experience and usability for the Tendrl users, i.e. allowing quicker access to managed objects through fewer steps, as well as allowing for dynamic product features (menu items) to be exposed based on a given context (cluster type). Moreover, it allows for easier access to top-level objects (cluster resources) being managed with a given cluster.
+
+== Problem Description
+The Tendrl release 1.5.4 uses a navigation that requires multiple-level drill-down to examine details of objets with a cluster. Its navigation uses a static menu bar on the left with access to top-level objects only via drill-downs in the right pane, which is less than optimal.
+
+* It’s not easy access to access cluster-top level objects without a drill-down, and it’s not obvious to user where they go to find volume information a quick glance.
+* To switch to another cluster from a drill-down, a user has to go to the Cluster via the menu item or breadcrumb to choose a different cluster (2 step/clicks).
+
+To optimize and improve the user experience and usability, we want to introduce a more optimal navigation, whereby we use a Context Selector in the masthead to allow for quickly switching between clusters. Additionally, the left-hand navigation menu bar would be context-sensitive, i.e. the menu is shown in context of a selector cluster, allowing for different menu items (product features) to be presented for different cluster types (e.g. Ceph and Gluster). No navigation bar is shown when all clusters are selected. This is further detailed in [Concept B: Single Cluster / Element Manager Concept with Context Switcher Navigation (Optimized UX)](https://redhat.invisionapp.com/share/8QCOEVEY9).
+
+== Proposed change
+
+Following are the changes to be done in the concept-b implementaion -
+
+* Remove expanded view for hosts from [cluster list view](https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/244738628). 
+* Modal for showing [import task errors](https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/244738627).
+* Add a link to the 'All Clusters' view to open the import task details in a new page (at this point the left navigation will be hidden). Once a cluster is successfully imported, a link will be provided to direct the user to 'Cluster detail' views for the newly imported cluster.
+* In all list views, use buttons to show primary actions and kebab menu to show secondary actions.
+* Add 'Volumes count' and 'Alerts count' on cluster list view.
+* Add 'Bricks count' on host list view.
+* Integrate cluster specific Events and Tasks APIs.
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+Required from API - 
+
+* Volumes and Alerts count in '/api/1.0/clusters' API.
+* Bricks count in '/api/1.0/clusters/{cluster_id}/nodes' API.
+* A way to get the import task id for unmanaged cluster in '/api/1.0/clusters' API to fetch task details for it. Unmanged clusters should have a property 'task_id' which will correspond to import task in clusters API.
+* API for fetching events and tasks per cluster level.
+
+=== Performance Impact:
+There should be no UI performance impact due to this change.
+
+== Implementation:
+
+=== Assignee(s):
+
+Primary assignee:
+  gnehapk
+
+Other contributors:
+  None
+  
+=== Work Items:
+
+https://github.com/Tendrl/ui/issues/780
+
+== Dependencies:
+
+https://github.com/Tendrl/api/issues/341 (Resolved)
+
+https://github.com/Tendrl/api/issues/342 (Resolved)
+
+https://github.com/Tendrl/api/issues/329 (Resolved)
+
+https://github.com/Tendrl/api/issues/343 (Resolved)
+
+== Acceptance Criteria:
+
+The following should be satisfied to confirm that this spec is completed and working as intended:
+
+* The left-navigation bar should only appear when a single cluster is selected in the Context Selector or from any place where a single cluster is selected, e.g. breadcrumb, hyperlink, etc.
+* When "All Clusters" is selected, there should be no left-navigation bar.
+* Verify Admin area is launched from the utilities in the top right and only accessible by Admin user.
+* Verify that hosts listing for a failed Import Cluster is showing in a modal (dialog).
+* Verify that error should be listed in a modal for a failed Import Cluster on clicking "View Details" link.
+* Verify that Cluster, Host, and Volume details are hyperlinked from the object name (and not from a “Details” button)
+* Verify buttons in the Clusters, Hosts, and Volumes list views show primary actions and kebab menu to show secondary actions when there are more than 3 actions.
+* Verify volumes and alert count in Clusters list view.
+* Verify bricks count in Hosts list view.
+* Verify bricks count in Volumes list view.
+* Verify that tasks and events displayed on task and event list views should belong to selected cluster.
+* When the cluster's import task is in progress, "View Details" link should take user to import task detail view.
+* On successful completion of import task, "View cluster details" link should take user to cluster detail views of the newly imported cluster.
+
+== References:
+
+* https://redhat.invisionapp.com/share/8QCOEVEY9
+* https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/244738628
+* https://redhat.invisionapp.com/share/8QCOEVEY9#/screens/244738627
