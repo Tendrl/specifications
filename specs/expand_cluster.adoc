@@ -1,0 +1,187 @@
+= Automatic handling of cluster expansion from CLI in tendrl
+
+The intent of this change is make sure expansion of an existing gluster cluster
+by adding newer nodes to the system by admin using CLI is taken care properly
+and the cluster reflects the changes in tendrl UI as well as grafana dashboards.
+
+Later once tendrl supports day-1 and day-2 operations, there could be options
+for adding newer nodes to the cluster from UI itself but at the moment the same
+is not possible in tendrl and its out of scope for this document.
+
+This document talk about auto detection of any cluster expansion done from CLI
+and reflecting all its components details in tendrl properly.
+
+
+== Problem description
+
+If an existing gluster cluster which is already being managed by tendrl gets
+extended from CLI by admin, the same should be reflected and updated in tendrl
+and all its components like UI, grafana dashboards etc.
+
+Getting a new node in gluster cluster and managed by tendrl includes
+provisioning of the node with tendrl components so that it can update all its
+details to tendrl. To be precise it should cover
+
+* install tendrl-node-agent on the new node
+
+* install collectd and tendrl-gluster-integration on new node
+
+* Configure all the services and start them, so they start reporting their data
+to tendrl
+
+
+== Use Cases
+
+This addresses the scenario when there is node peer probed into a gluster
+cluster from CLI. This new node needs to be provisioned with tendrl components
+so that it can participate in the cluster managed in tendrl.
+
+
+== Proposed change
+
+This change works on the assumptions that admin manually takes care of
+installation of glusterfs bits on the new nodes and then adding it to the peers
+list. Post this tendrl comes into picture to get the new node known and accepted
+in tendrl eco-system.
+
+The required changes are as below -
+
+* Introduce a mechanism in tendrl-ansible which allows re-run of the play-books
+with updated inventory file with new nodes entries. This ideally would do the
+required tendrl-node-agent installation and configuration on the new gluster
+node leaving old ones untouched.
+
+* Update the tendrl-gluster-integration such a way that once it figures out a
+peer in the cluster which is not yet part of known nodes of the cluster, it
+understand that this is new peer. This flow should ideally invoke a import
+cluster flow targeted at the specific additional node only. This flow makes
+sure that collectd and tendrl-gluster-integration get installed on the new node
+and they are configured properly.
+
+* Update the peer attach event handler in tendrl-gluster-integration to tackle
+the scenario in which the new node is not yet imported in tendrl but its part of
+underlying cluster. Once node gets marked as imported, the required flows should
+be invoked in monitoring-integration for creation of alert dashboards.
+
+
+=== Alternatives
+
+An alternate option could be to get tendrl-ansible functionality within the
+node-agent on tendrl server node. When a new node is seen in peers list which is
+not yet imported in tendrl, a in memory inventory file with additional node can
+be passed to ansible-playbook and required node-agent setup could be done. Once
+node-agent setup is complete, there could be a separate job to start import
+cluster flow targeted at new specific node.
+
+This option is not considered at the moment.
+
+=== Data model impact
+
+None
+
+=== Impacted Modules:
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+* Raise an alert once cluster got expanded with details of new node
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+tendrl-gluster-integration needs to figure out the new node in the system in
+one of the nodes of the cluster and auto initiate the import cluster flow on the
+new node.
+
+==== Tendrl Dashboard impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+User get a notification about new node in the cluster, and manual work to be
+done for tendrl-ansible. Once tendrl-ansible does installation of node-agent on
+the new node, auto expansion of the cluster would happen and a notification
+would be raised once import successful for new node.
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+The tendrl-ansible module need to provide a mechanism to setup tendrl components
+and dependencies on additional new node in the cluster.
+
+<TBD> details to be added here of the plyabooks etc.
+
+=== Developer impact:
+
+None
+
+
+== Implementation:
+
+* https://github.com/Tendrl/commons/issues/805
+
+
+=== Assignee(s):
+
+Primary assignee:
+  shtripat
+  mbukatov
+
+=== Work Items:
+
+* https://github.com/Tendrl/specifications/issues/253
+
+
+== Dependencies:
+
+None
+
+== Testing:
+
+* Check if there is a notification in tendrl UI regarding new node in cluster.
+This notification should ask for using tendrl-ansible to set up new node for
+import in tendrl
+
+* Verify if tendrl-ansible is able to set up new node properly with node-agent
+
+* Verify once node-agent is setup on the additional node, the import for the
+new node is seamless and automatic
+
+* Verify that there is a notification of success of new node getting imported in
+tendrl
+
+* Verify that post detection and action from tendrl, the additional nodes and
+its related entities get reflected in UI and grafana dashbaords properly
+
+* Verify this auto expansion post detection applies to multiple nodes as well
+and doesn't limit to one node at a time
+
+== Documentation impact:
+
+* The new expand cluster feature needs to be updated in docs with details of
+involvement of tendrl-ansible for setting up node
+
+== References:
+
+* <TBD> link to tendrl-ansible issue to track the changes for this support
+
+* https://github.com/Tendrl/specifications/issues/257 to track the auto
+detection of additional node(s) in the cluster as a separate specification
