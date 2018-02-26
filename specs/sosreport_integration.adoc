@@ -1,0 +1,299 @@
+// vim: tw=79
+
+= SOS Report integration
+
+The propose of this file is to identify data-points and techniques for
+SOS Report integration with Tendrl components.
+
+== Problem description
+The current SOS report is not having any feature or plugin to analyze Tendrl components. Since the Tendrl components function as individual services, these components can be analysed with the help of SOS report in case of failures.
+
+== Use Cases
+
+One way to integrate SOS Report with Tendrl is creating plugin for each Tendrl component.
+
+* Usually SOS Report is run by an admin on each node to get the report. Assuming a multi-cluster environment with large number of nodes, two types of situations can come into picture here :
+
+** One or a few nodes fail and admin runs SOS-Report on them.
+
+** There is a multi-node failure. Will it feasible to let admin run SOS Report on all of the failed nodes?
+
+* Using policies in SOS Report it is decided how it will behave on a particular distribution. It has to be decided for which distributions the policies have to be written.
+
+== Proposed change
+
+For different Tendrl services their respective plugins have to be written.
+
+* Following are the data-points which can be used for the plugins:
+
+** Tendrl-node-agent
+*** Rpm versions for common and node-agent
+*** If tendrl-tendrl-epel-7.repo is enabled
+*** Configurations in /etc/tendrl/node-node/
+*** Status of tendrl-node-agent.socket service
+*** SELinux configurations
+*** Firewall status and configurations
+*** Package requirements
+
+** Tendrl-gluster-integration
+*** Rpm versions of commons, node-agent and gluster-integration
+*** Tendrl-node-agent service status
+*** Gdeploy status
+*** Configurations in /etc/tendrl/gluster-integration/
+*** Package requirements
+
+** Tendrl-ceph-integration
+*** Rpm versions of commons, node-agent and ceph-integration
+*** Tendrl-node-agent service status
+*** Ceph cluster health ("ceph -w"  or "ceph status || ceph -w")
+*** Node-agent service status
+*** Configuration in /etc/tendrl/ceph-integration/
+*** Package requirements
+
+** Tendrl-performance-monitoring
+*** Rpm versions of commons, node-agent and performance-monitoring
+*** Tendrl-node-agent service status
+*** GraphiteDB status and required permissions
+*** Carbon-cache service status
+*** Configurations in /etc/tendrl/performance-monitoring/
+*** Package requirements
+
+** Tendrl-api
+*** Installed ruby version
+*** Package requirements
+*** Gem dependencies
+*** Apache httpd process status and configurations
+*** Etcd connection configuration
+
+* Since logging is common for all the Tendrl services the logs can be captured from syslog.
+** According to current rsyslog config the log messages are present in /var/log/messages
+
+* Sample code :
+
+[source, python]
+.tendrl-node-agent.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlNodeAgent(Plugin):
+    """Tendrl Node Agent
+    """
+    plugin_name = "tendrl_node_agent"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/node-agent/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["yum repolist | grep tendrl",
+                            "systemctl status tendrl-node-agent.socket"
+                             ])
+
+----
+
+[source, python]
+.tendrl-gluster-integration.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlGlusterIntegration(Plugin):
+    """Tendrl Gluster Integration
+    """
+    plugin_name = "tendrl_gluster_integration"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/gluster-integration/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output("systemctl status tendrl-node-agent")
+----
+
+[source, python]
+.tendrl-ceph-integration.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlCephIntegration(Plugin):
+    """Tendrl Ceph Integration
+    """
+    plugin_name = "tendrl_ceph_integration"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/ceph-integration/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output("systemctl status tendrl-node-agent")
+----
+
+[source, python]
+.tendrl-performance-monitoring.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlPerformanceMonitoring(Plugin):
+    """Tendrl Performance Monitoring
+    """
+    plugin_name = "tendrl_performance_monitoring"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/performance-monitoring/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["systemctl status tendrl-node-agent.socket",
+                             "systemctl status carbon-cache",
+                             "ls -la /var/lib/graphite-web/graphite.db"
+                             ])
+
+----
+
+[source, python]
+.tendrl-api.py
+----
+from sos.plugins import Plugin
+
+
+class TendrlApi(Plugin):
+    """Tendrl Node Agent
+    """
+    plugin_name = "tendrl_node_agent"
+    profiles = ('tendrl',)
+
+    def setup(self):
+
+        self.add_copy_spec("/etc/tendrl/etcd.yml")
+        self.add_cmd_output(["ruby -v",
+                             "gem --version"
+                             ])
+        self.add_cmd_output(["systemctl status httpd.service"])
+----
+
+=== Alternatives
+
+* Rather than creating different plugings for different tendrl services, a
+single plugin can also be taken into consideration.
+
+[source, python]
+.tendrl.py
+----
+from sos.plugins import Plugin
+
+class Tendrl(Plugin):
+    """Tendrl
+    """
+    plugin_name = "tendrl"
+    profiles = ('tendrl', 'storage')
+
+    def setup(self):
+
+        self.limit = self.get_option("log_size")
+        self.add_copy_spec_limit("/var/log/messages-*", sizelimit=self.limit)
+        self.add_copy_spec("/etc/tendrl/")
+        self.add_cmd_output("rpm -qa | grep tendrl",
+                            suggest_filename="tendrl_rpm_version")
+        self.add_cmd_output(["yum repolist | grep tendrl",
+                             "systemctl status tendrl-node-agent.socket",
+                             "systemctl status tendrl-node-agent",
+                             "systemctl status carbon-cache",
+                             "ls -la /var/lib/graphite-web/graphite.db",
+                             "ruby -v",
+                             "gem --version",
+                             "systemctl status httpd.service"
+                             ])
+----
+
+=== Data model impact:
+
+None
+
+=== Impacted Modules:
+
+None
+
+==== Tendrl API impact:
+
+None
+
+==== Notifications/Monitoring impact:
+
+None
+
+==== Tendrl/common impact:
+
+None
+
+==== Tendrl/node_agent impact:
+
+None
+
+==== Sds integration impact:
+
+None
+
+=== Security impact:
+
+None
+
+=== Other end user impact:
+
+None
+
+=== Performance impact:
+
+None
+
+=== Other deployer impact:
+
+None
+
+=== Developer impact:
+
+None
+
+== Implementation:
+
+None
+
+=== Assignee(s):
+
+Primary assignee:
+  anmolsachan
+
+=== Work Items:
+
+To be decided.
+
+== Dependencies:
+
+Listed in proposed change section.
+
+== Testing:
+
+None
+
+== Documentation impact:
+
+None
+
+== References:
+
+* https://github.com/Tendrl/documentation/wiki/Tendrl-Package-Installation-Reference
+* https://github.com/Tendrl/api#_deployment_requirements
